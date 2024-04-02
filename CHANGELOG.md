@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.2](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.1.1...v5.1.2) (2024-04-02)
+
+
+### Bug Fixes
+
+* initialize contao framework in cron jobs ([5c5eb57](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/5c5eb57c7ac7fa686357c4399c9c8934d9724295))
+
 ## [5.1.1](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.1.0...v5.1.1) (2024-03-06)
 
 
