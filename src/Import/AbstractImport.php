@@ -85,7 +85,7 @@ class AbstractImport extends Backend
         // Generate the alias if there is none
         $objEvent->alias = $this->slug->generate(
             $objEvent->title,
-            CalendarModel::findByPk($objEvent->pid)->jumpTo,
+            CalendarModel::findById($objEvent->pid)->jumpTo,
             $aliasExists,
         );
 

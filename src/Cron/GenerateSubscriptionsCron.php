@@ -22,7 +22,7 @@ class GenerateSubscriptionsCron
 {
     public function __construct(
         private readonly ExportController $calendarExport,
-        private readonly ContaoFramework $contaoFramework
+        private readonly ContaoFramework $contaoFramework,
     ) {
     }
 
@@ -32,7 +32,7 @@ class GenerateSubscriptionsCron
 
         $arrCalendar = CalendarModel::findBy(['make_ical=?'], [1]);
 
-        if (!$arrCalendar) {
+        if (empty($arrCalendar)) {
             return;
         }
 

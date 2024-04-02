@@ -16,7 +16,8 @@ class Csv
 {
     /**
      * take a CSV line (utf-8 encoded) and returns an array
-     * 'string1,string2,"string3","the ""string4"""' => array('string1', 'string2', 'string3', 'the "string4"').
+     * 'string1,string2,"string3","the ""string4"""' => array('string1', 'string2',
+     * 'string3', 'the "string4"').
      *
      * @return array<string>
      */
