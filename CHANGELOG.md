@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.2.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.1.3...v5.2.0) (2024-04-04)
+
+
+### Features
+
+* new page type "ics feed" ([182da03](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/182da039ce577b2066ee7b420cd0fb83d854ae6b))
+
+
+### Bug Fixes
+
+* add custom page icon for page type "ics feed" ([344d5db](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/344d5db0c88951cdfeadb37aeb664c979d06585e))
+
 ## [5.1.3](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.1.2...v5.1.3) (2024-04-04)
 
 
