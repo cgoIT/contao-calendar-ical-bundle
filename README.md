@@ -1,7 +1,7 @@
-[![Latest Version on Packagist](http://img.shields.io/packagist/v/cgoit/contao-calendar-ical-php8-bundle.svg?style=flat)](https://packagist.org/packages/cgoit/contao-calendar-ical-php8-bundle)
+[![Latest Version on Packagist](http://img.shields.io/packagist/v/cgoit/contao-calendar-ical-bundle.svg?style=flat)](https://packagist.org/packages/cgoit/contao-calendar-ical-bundle)
 ![Dynamic JSON Badge](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FcgoIT%2Fcontao-calendar-ical-bundle%2Fmain%2Fcomposer.json&query=%24.require%5B%22contao%2Fcore-bundle%22%5D&label=Contao%20Version)
-[![Installations via composer per month](http://img.shields.io/packagist/dm/cgoit/contao-calendar-ical-php8-bundle.svg?style=flat)](https://packagist.org/packages/cgoit/contao-calendar-ical-php8-bundle)
-[![Installations via composer total](http://img.shields.io/packagist/dt/cgoit/contao-calendar-ical-php8-bundle.svg?style=flat)](https://packagist.org/packages/cgoit/contao-calendar-ical-php8-bundle)
+[![Installations via composer per month](http://img.shields.io/packagist/dm/cgoit/contao-calendar-ical-bundle.svg?style=flat)](https://packagist.org/packages/cgoit/contao-calendar-ical-bundle)
+[![Installations via composer total](http://img.shields.io/packagist/dt/cgoit/contao-calendar-ical-bundle.svg?style=flat)](https://packagist.org/packages/cgoit/contao-calendar-ical-bundle)
 
 Contao 4 and Contao 5 Calendar iCal Bundle
 =======================
