@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.3](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.1.2...v5.1.3) (2024-04-04)
+
+
+### Bug Fixes
+
+* change column types to prevent "row to large" errors ([178d37a](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/178d37aff4938d868dcf598f0ea7a23cca9b0e87))
+
 ## [5.1.2](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.1.1...v5.1.2) (2024-04-02)
 
 
