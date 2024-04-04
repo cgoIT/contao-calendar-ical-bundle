@@ -1,5 +1,5 @@
 {
-  "name": "cgoit/contao-calendar-ical-php8-bundle",
+  "name": "cgoit/contao-calendar-ical-bundle",
   "type": "contao-bundle",
   "description": "iCal support for calendar of Contao OpenSource CMS",
   "keywords": [
