@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 $GLOBALS['TL_LANG']['tl_content']['calendar_legend'] = 'Kalender-Einstellungen';
 $GLOBALS['TL_LANG']['tl_content']['ical_download_title'] = 'iCal-Datei herunterladen';
-$GLOBALS['TL_LANG']['tl_content']['error_generating_ical_file'] = 'Beim erzeugen der ics Datei ist ein Fehler aufgetreten.';
+$GLOBALS['TL_LANG']['tl_content']['error_generating_ical_file'] = 'Beim Erzeugen der ics Datei ist ein Fehler aufgetreten.';
 
 $GLOBALS['TL_LANG']['tl_content']['ical_calendar']['0'] = 'Kalender';
 $GLOBALS['TL_LANG']['tl_content']['ical_calendar']['1'] = 'Bitte wählen Sie einen oder mehrere Kalender aus.';

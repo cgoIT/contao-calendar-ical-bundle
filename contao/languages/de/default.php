@@ -11,9 +11,13 @@ declare(strict_types=1);
  */
 
 use Cgoit\ContaoCalendarIcalBundle\Controller\ContentElement\ContentIcalElement;
+use Cgoit\ContaoCalendarIcalBundle\Controller\Page\IcsFeedController;
 
 $GLOBALS['TL_LANG']['CTE'][ContentIcalElement::TYPE]['0'] = 'iCal';
 $GLOBALS['TL_LANG']['CTE'][ContentIcalElement::TYPE]['1'] = 'Dieses Element erstellt einen Hyperlink auf eine vCalendar (iCal)-Datei, die heruntergeladen werden kann und dazu verwendet werden kann, die enthaltenen Termine in einer externen Kalenderanwendung anzuzeigen.';
+
+$GLOBALS['TL_LANG']['PTY'][IcsFeedController::TYPE]['0'] = 'ics Feed';
+$GLOBALS['TL_LANG']['PTY'][IcsFeedController::TYPE]['1'] = 'Dieser Seitentyp erzeugt einen ics-Feed für einen oder mehrere Kalender, der in eine externe Kalenderanwendung eingebunden werden kann.';
 
 $GLOBALS['TL_LANG']['MSC']['import_calendar']['0'] = 'Kalender importieren';
 $GLOBALS['TL_LANG']['MSC']['import_calendar']['1'] = 'Importieren Sie eine iCal (.ics) Kalender-Datei in Ihren Kalender.';
