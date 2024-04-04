@@ -32,6 +32,7 @@ class IcsFeedController extends AbstractController
 
     public function __construct(
         private readonly IcsExport $icsExport,
+        private readonly int $defaultEndTimeDifference,
     ) {
     }
 
@@ -40,17 +41,14 @@ class IcsFeedController extends AbstractController
         $this->initializeContaoFramework();
 
         $startDate = !empty($pageModel->ical_start) ? (int) $pageModel->ical_start : time();
-        $endDate = !empty($pageModel->ical_end) ? (int) $pageModel->ical_end : time() + 365 * 24 * 3600;
+        $endDate = !empty($pageModel->ical_end) ? (int) $pageModel->ical_end :
+            time() + $this->defaultEndTimeDifference * 24 * 3600;
 
         $arrCalendars = CalendarModel::findMultipleByIds(StringUtil::deserialize($pageModel->ical_calendar, true));
         $vCalendar = $this->icsExport->getVcalendar($arrCalendars, $startDate, $endDate,
             $pageModel->ical_title, $pageModel->ical_description, $pageModel->ical_prefix);
 
-        $this->tagResponse($vCalendar);
-
-        foreach ($arrCalendars as $calendar) {
-            $this->tagResponse('contao.db.tl_calendar'.$calendar->id);
-        }
+        $this->tagResponse($arrCalendars);
 
         $response = new Response($vCalendar->createCalendar());
         $response->headers->set('Content-Type', self::MIME_TYPE);

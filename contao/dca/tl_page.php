@@ -1,7 +1,7 @@
 <?php
 
 /*
- * This file is part of cgoit\contao-calendar-ical-php8-bundle for Contao Open Source CMS.
+ * This file is part of cgoit\contao-calendar-ical-bundle for Contao Open Source CMS.
  *
  * @copyright  Copyright (c) 2024, cgoIT
  * @author     cgoIT <https://cgo-it.de>
@@ -10,7 +10,7 @@
 
 use Cgoit\ContaoCalendarIcalBundle\Controller\Page\IcsFeedController;
 
-$GLOBALS['TL_DCA']['tl_page']['palettes'][IcsFeedController::TYPE] = '{title_legend},title,alias,type;{calendar_legend},ical_calendar,ical_title,ical_description,ical_prefix,ical_start,ical_end;{publish_legend},published,start,stop';
+$GLOBALS['TL_DCA']['tl_page']['palettes'][IcsFeedController::TYPE] = '{title_legend},title,type;{routing_legend},alias,routePath,routePriority,routeConflicts;{calendar_legend},ical_calendar,ical_title,ical_description,ical_prefix,ical_start,ical_end;{cache_legend:hide},includeCache;{expert_legend:hide},cssClass,sitemap,hide,noSearch;{publish_legend},published,start,stop';
 
 $GLOBALS['TL_DCA']['tl_page']['fields']['ical_calendar'] = [
     'exclude' => true,
