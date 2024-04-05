@@ -13,45 +13,36 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\EventListener\DataContainer;
 
 use Contao\BackendUser;
+use Contao\CalendarModel;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
-use Doctrine\DBAL\Connection;
-use Symfony\Bundle\SecurityBundle\Security;
 
 #[AsCallback(table: 'tl_content', target: 'fields.ical_calendar.options')]
 #[AsCallback(table: 'tl_page', target: 'fields.ical_calendar.options')]
 class CalendarOptionsListener
 {
-    public function __construct(
-        private readonly Connection $connection,
-        private readonly Security $security,
-    ) {
-    }
-
     /**
      * @return array<mixed>
      */
     public function __invoke(DataContainer $dc): array
     {
-        $user = $this->security->getUser();
+        $user = BackendUser::getInstance();
 
-        $qb = $this->connection->createQueryBuilder()
-            ->select('id, title')
-            ->from('tl_calendar')
-        ;
-
-        if ($user instanceof BackendUser && !$this->security->isGranted('ROLE_ADMIN')) {
-            $qb->where($qb->expr()->in('id', $user->calendars));
+        if (!$user->isAdmin && !\is_array($user->calendars)) {
+            return [];
         }
 
-        $results = $qb->executeQuery();
+        $arrOptions = [];
+        $arrCalendars = CalendarModel::findAll(['order' => 'title']);
 
-        $options = [];
-
-        foreach ($results->fetchAllAssociative() as $archive) {
-            $options[$archive['id']] = $archive['title'];
+        if (!empty($arrCalendars)) {
+            foreach ($arrCalendars as $objCalendar) {
+                if ($user->isAdmin || \in_array($objCalendar->id, $user->calendars, true)) {
+                    $arrOptions[$objCalendar->id] = $objCalendar->title;
+                }
+            }
         }
 
-        return $options;
+        return $arrOptions;
     }
 }
