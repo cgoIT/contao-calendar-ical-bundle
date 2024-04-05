@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.2.1](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.2.0...v5.2.1) (2024-04-05)
+
+
+### Bug Fixes
+
+* change implementation to be compatible with contao 4 ([c4f1de4](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/c4f1de488eafff85b6f43574c3d28da6687d027b))
+
 ## [5.2.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.1.3...v5.2.0) (2024-04-04)
 
 
