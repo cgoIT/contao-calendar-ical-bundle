@@ -28,7 +28,7 @@ class GetAllEventsListener
      * @param array<mixed> $events
      * @param array<mixed> $calendars
      */
-    public function __invoke(array $events, array $calendars, int $timeStart, int $timeEnd, Module $module): array
+    public function __invoke(array $events, array $calendars, int $timeStart, int|null $timeEnd, Module $module): array
     {
         $arrCalendars = CalendarModel::findBy(
             ['id IN ('.implode(',', $calendars).')', 'ical_source=?'],
