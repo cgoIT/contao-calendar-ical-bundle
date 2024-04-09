@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.2.2](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.2.1...v5.2.2) (2024-04-09)
+
+
+### Bug Fixes
+
+* timeEnd of event could be null ([3a59e99](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/3a59e996c66cd95d4347c06875d90d4b590ab253))
+
 ## [5.2.1](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.2.0...v5.2.1) (2024-04-05)
 
 
