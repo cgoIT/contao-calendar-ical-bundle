@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.2.3](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.2.2...v5.2.3) (2024-04-11)
+
+
+### Bug Fixes
+
+* fix sql error SQLSTATE[23000]: Integrity constraint violation: 1052 Column 'id' in where clause is ambiguous ([b0fc158](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/b0fc158e887dc5946faa3f68a93a1a29589129e7))
+
+
+### Miscellaneous Chores
+
+* fix ecs errors ([88033c8](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/88033c8dc6ff473c5c6cd6b952e6879189a70103))
+
 ## [5.2.2](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.2.1...v5.2.2) (2024-04-09)
 
 
