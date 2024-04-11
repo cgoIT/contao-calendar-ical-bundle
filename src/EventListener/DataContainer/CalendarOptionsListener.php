@@ -33,7 +33,7 @@ class CalendarOptionsListener
         }
 
         $arrOptions = [];
-        $arrCalendars = CalendarModel::findAll(['order' => 'title']);
+        $arrCalendars = CalendarModel::findAll(['order' => 'tl_calendar.title']);
 
         if (!empty($arrCalendars)) {
             foreach ($arrCalendars as $objCalendar) {

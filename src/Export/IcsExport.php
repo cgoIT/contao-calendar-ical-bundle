@@ -28,6 +28,10 @@ class IcsExport extends Backend
      */
     public function getVcalendar(Collection|array|null $arrCalendars, int $intStart, int $intEnd, string|null $title = null, string|null $description = null, string|null $prefix = null): Vcalendar|null
     {
+        if ($arrCalendars !== null && $arrCalendars instanceof Collection) {
+            $arrCalendars = $arrCalendars->getModels();
+        }
+
         $ical = new Vcalendar();
         $ical->setMethod(IcalInterface::PUBLISH);
         $ical->setXprop(IcalInterface::X_WR_CALNAME, $title ?? reset($arrCalendars)->title);

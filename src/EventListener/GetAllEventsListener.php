@@ -31,7 +31,7 @@ class GetAllEventsListener
     public function __invoke(array $events, array $calendars, int $timeStart, int|null $timeEnd, Module $module): array
     {
         $arrCalendars = CalendarModel::findBy(
-            ['id IN ('.implode(',', $calendars).')', 'ical_source=?'],
+            ['tl_calendar.id IN ('.implode(',', $calendars).')', 'tl_calendar.ical_source=?'],
             ['1'],
         );
 
