@@ -28,7 +28,7 @@ class IcsExport extends Backend
      */
     public function getVcalendar(Collection|array|null $arrCalendars, int $intStart, int $intEnd, string|null $title = null, string|null $description = null, string|null $prefix = null): Vcalendar|null
     {
-        if ($arrCalendars !== null && $arrCalendars instanceof Collection) {
+        if (null !== $arrCalendars && $arrCalendars instanceof Collection) {
             $arrCalendars = $arrCalendars->getModels();
         }
 
