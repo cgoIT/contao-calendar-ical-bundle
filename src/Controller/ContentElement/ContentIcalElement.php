@@ -29,6 +29,7 @@ use Kigkonsult\Icalcreator\Vcalendar;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\File as SymfonyFile;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
@@ -42,6 +43,7 @@ class ContentIcalElement extends AbstractContentElementController
     protected Vcalendar $ical;
 
     public function __construct(
+        private readonly RequestStack $requestStack,
         private readonly string $projectDir,
         private readonly IcsExport $icsExport,
     ) {
@@ -65,7 +67,17 @@ class ContentIcalElement extends AbstractContentElementController
             }
 
             // Generate a general HTML output using the download template
-            $tpl = new FrontendTemplate(empty($model->ical_download_template) ? 'ce_download' : $model->ical_download_template);
+            $downloadTemplate = 'ce_download';
+            if (!empty($model->ical_download_template)) {
+                $request = $this->requestStack->getCurrentRequest();
+
+                // Use the custom template unless it is a back end request
+                if (!$request || !System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request)) {
+                    $downloadTemplate = $model->ical_download_template;
+                }
+            }
+
+            $tpl = new FrontendTemplate($downloadTemplate);
             $tpl->link = !empty($model->linkTitle) ? $model->linkTitle : $GLOBALS['TL_LANG']['tl_content']['ical_download_title'];
             $tpl->title = $GLOBALS['TL_LANG']['tl_content']['ical_download_title'];
             $tpl->href = Controller::addToUrl('ical=1');
