@@ -28,7 +28,7 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['ical_title'] = [
     'search' => true,
     'inputType' => 'text',
     'eval' => ['mandatory' => true, 'maxlength' => 255, 'tl_class' => 'w50 clr'],
-    'sql' => "text NOT NULL default ''",
+    'sql' => "text NULL",
 ];
 
 $GLOBALS['TL_DCA']['tl_content']['fields']['ical_description'] = [
@@ -44,7 +44,7 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['ical_prefix'] = [
     'search' => true,
     'inputType' => 'text',
     'eval' => ['maxlength' => 128, 'tl_class' => 'w50 clr'],
-    'sql' => "text NOT NULL default ''",
+    'sql' => "text NULL",
 ];
 
 $GLOBALS['TL_DCA']['tl_content']['fields']['ical_start'] = [
@@ -72,5 +72,5 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['ical_download_template'] = [
     'inputType' => 'select',
     'options_callback' => static fn () => Controller::getTemplateGroup('ce_download_', [], 'ce_download'),
     'eval' => ['chosen' => true, 'tl_class' => 'w50'],
-    'sql' => "text NOT NULL default ''",
+    'sql' => "text NULL",
 ];

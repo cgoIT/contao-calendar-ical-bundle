@@ -56,7 +56,7 @@ class ContentIcalElement extends AbstractContentElementController
 
         if (!empty($ical)) {
             if (!empty(Input::get('ical'))) {
-                $filename = StringUtil::sanitizeFileName($model->ical_title).'.ics';
+                $filename = StringUtil::sanitizeFileName($model->ical_title ?? $model->id).'.ics';
                 $file = new File('system/tmp/'.$filename);
                 $file->write($ical->createCalendar());
                 $file->close();
