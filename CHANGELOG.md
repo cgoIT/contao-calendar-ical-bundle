@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.2.5](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.2.4...v5.2.5) (2024-04-25)
+
+
+### Bug Fixes
+
+* set all text columns to 'text NULL' since mysql doesn't support default values for text columns in strict mode ([96fed30](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/96fed3075147385cb5a26e9e3aa8ced562a80b3f))
+
+
+### Miscellaneous Chores
+
+* fix ecs errors ([55fb3b5](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/55fb3b5c99ed4f5b46f92d9eda6d72f56ae21925))
+
 ## [5.2.4](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.2.3...v5.2.4) (2024-04-23)
 
 
