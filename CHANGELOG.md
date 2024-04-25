@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.2.4](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.2.3...v5.2.4) (2024-04-23)
+
+
+### Bug Fixes
+
+* use custom download template for ical ce only in the frontend, fixes [#43](https://github.com/cgoIT/contao-calendar-ical-bundle/issues/43) ([82081c5](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/82081c509e769cbae7649e3a293b14f9437f73de))
+
 ## [5.2.3](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.2.2...v5.2.3) (2024-04-11)
 
 
