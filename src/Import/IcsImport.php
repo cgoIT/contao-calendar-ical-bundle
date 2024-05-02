@@ -19,15 +19,33 @@ use Kigkonsult\Icalcreator\Util\DateTimeFactory;
 use Kigkonsult\Icalcreator\Util\DateTimeZoneFactory;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Kigkonsult\Icalcreator\Vevent;
+use Symfony\Component\DependencyInjection\Exception\ParameterNotFoundException;
 
 class IcsImport extends AbstractImport
 {
+    /**
+     * @var array<mixed>
+     */
+    private readonly array $arrMonths;
+
+    private readonly int $maxRepeatCount;
+
     public function __construct(
         private readonly Connection $db,
         Slug $slug,
         private readonly int $defaultEndTimeDifference,
     ) {
         parent::__construct($slug);
+
+        System::loadLanguageFile('default', 'en', true);
+        $this->arrMonths = $GLOBALS['TL_LANG']['MONTHS'];
+        System::loadLanguageFile('default');
+
+        try {
+            $this->maxRepeatCount = System::getContainer()->getParameter('cgoit_calendar_extended.max_repeat_count');
+        } catch (ParameterNotFoundException) {
+            $this->maxRepeatCount = 365;
+        }
     }
 
     public function importIcsForCalendar(CalendarModel $objCalendar, bool $force_import = false): void
@@ -241,28 +259,67 @@ class IcsImport extends AbstractImport
                 }
 
                 if (\is_array($rrule)) {
-                    $objEvent->recurring = true;
-                    $objEvent->recurrences = \array_key_exists('COUNT', $rrule) ? $rrule['COUNT'] : 0;
-                    $repeatEach = [];
+                    $objEvent->recurrences = \array_key_exists('COUNT', $rrule) ? ((int) $rrule['COUNT']) - 1 : 0;
 
-                    switch ($rrule['FREQ']) {
-                        case 'DAILY':
-                            $repeatEach['unit'] = 'days';
-                            break;
-                        case 'WEEKLY':
-                            $repeatEach['unit'] = 'weeks';
-                            break;
-                        case 'MONTHLY':
-                            $repeatEach['unit'] = 'months';
-                            break;
-                        case 'YEARLY':
-                            $repeatEach['unit'] = 'years';
-                            break;
+                    if (\array_key_exists('BYDAY', $rrule) && \is_array($rrule['BYDAY']) && \in_array('recurringExt', $fieldNames, true)) {
+                        $objEvent->recurringExt = true;
+                        $objEvent->recurring = false;
+
+                        $rruleByDay = $rrule['BYDAY'][0];
+                        $repeatEachExt = [];
+                        if (\array_key_exists(0, $rruleByDay) && \array_key_exists('DAY', $rruleByDay)) {
+                            $repeatEachExt['value'] = match ($rruleByDay[0]) {
+                                1 => 'first',
+                                2 => 'second',
+                                3 => 'third',
+                                4 => 'fourth',
+                                5 => 'fifth',
+                                default => 'last',
+                            };
+
+                            $repeatEachExt['unit'] = match ($rruleByDay['DAY']) {
+                                'MO' => 'monday',
+                                'TU' => 'tuesday',
+                                'WE' => 'wednesday',
+                                'TH' => 'thursday',
+                                'FR' => 'friday',
+                                'SA' => 'saturday',
+                                default => 'sunday',
+                            };
+
+                            $objEvent->repeatEachExt = serialize($repeatEachExt);
+                            $objEvent->repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEachExt, $timezone, $timeshift, true);
+                        }
+                    } else {
+                        $objEvent->recurring = true;
+                        if (\in_array('recurringExt', $fieldNames, true)) {
+                            $objEvent->recurringExt = false;
+                        }
+                        $repeatEach = [];
+
+                        switch ($rrule['FREQ']) {
+                            case 'DAILY':
+                                $repeatEach['unit'] = 'days';
+                                break;
+                            case 'WEEKLY':
+                                $repeatEach['unit'] = 'weeks';
+                                break;
+                            case 'MONTHLY':
+                                $repeatEach['unit'] = 'months';
+                                break;
+                            case 'YEARLY':
+                                $repeatEach['unit'] = 'years';
+                                break;
+                        }
+
+                        if (\array_key_exists('BYMONTHDAY', $rrule) && !\array_key_exists('INTERVAL', $rrule)) {
+                            $repeatEach['value'] = 1;
+                        } else {
+                            $repeatEach['value'] = $rrule['INTERVAL'] ?? 1;
+                        }
+                        $objEvent->repeatEach = serialize($repeatEach);
+                        $objEvent->repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEach, $timezone, $timeshift);
                     }
-
-                    $repeatEach['value'] = $rrule['INTERVAL'] ?? 1;
-                    $objEvent->repeatEach = serialize($repeatEach);
-                    $objEvent->repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEach, $timezone, $timeshift);
 
                     if (\in_array('repeatWeekday', $fieldNames, true) && isset($rrule['WKST']) && \is_array($rrule['WKST'])) {
                         $weekdays = ['MO' => 1, 'TU' => 2, 'WE' => 3, 'TH' => 4, 'FR' => 5, 'SA' => 6, 'SU' => 0];
@@ -439,7 +496,7 @@ class IcsImport extends AbstractImport
      *
      * @throws \Exception
      */
-    private function getRepeatEnd(CalendarEventsModel $objEvent, array $rrule, array $repeatEach, string $timezone, int $timeshift = 0): int
+    private function getRepeatEnd(CalendarEventsModel $objEvent, array $rrule, array $repeatEach, string $timezone, int $timeshift = 0, bool $blnExtended = false): int
     {
         if (($until = $rrule[IcalInterface::UNTIL] ?? null) instanceof \DateTime) {
             // convert UNTIL date to current timezone
@@ -460,13 +517,69 @@ class IcsImport extends AbstractImport
             return (int) min(4_294_967_295, PHP_INT_MAX);
         }
 
-        if (isset($repeatEach['unit'], $repeatEach['value'])) {
+        if (!$blnExtended && isset($repeatEach['unit'], $repeatEach['value'])) {
             $arg = $repeatEach['value'] * $objEvent->recurrences;
             $unit = $repeatEach['unit'];
 
             $strtotime = '+ '.$arg.' '.$unit;
 
             return (int) strtotime($strtotime, $objEvent->endTime);
+        }
+        if ($blnExtended && isset($repeatEach['unit'], $repeatEach['value'])) {
+            $arg = $repeatEach['value'];
+            $unit = $repeatEach['unit'];
+
+            $recurrences = $objEvent->recurrences;
+            $month = (int) date('n', $objEvent->startDate);
+            $year = (int) date('Y', $objEvent->startDate);
+            $next = (int) $objEvent->startTime;
+
+            if ($recurrences > 0) {
+                for ($i = 0; $i < $recurrences; ++$i) {
+                    ++$month;
+
+                    if (0 === $month % 13) {
+                        $month = 1;
+                        ++$year;
+                    }
+
+                    $timetoadd = $arg.' '.$unit.' of '.$this->arrMonths[$month - 1].' '.$year;
+                    $strtotime = strtotime($timetoadd, $next);
+
+                    if (false === $strtotime) {
+                        break;
+                    }
+
+                    $next = strtotime(date('d.m.Y', $strtotime).' '.date('H:i', $objEvent->startTime));
+                }
+
+                return $next;
+            }
+            $repeatEnd = min(4294967295, PHP_INT_MAX);
+            $i = 0;
+
+            while ($next <= $repeatEnd) {
+                $timetoadd = $arg.' '.$unit.' of '.$GLOBALS['TL_LANG']['MONTHS'][$month - 1].' '.$year;
+                $strtotime = strtotime($timetoadd, $next);
+
+                if (false === $strtotime) {
+                    break;
+                }
+
+                $next = strtotime(date('d.m.Y', $strtotime).' '.date('H:i', $objEvent->startTime));
+
+                ++$month;
+
+                if (0 === $month % 13) {
+                    $month = 1;
+                    ++$year;
+                }
+
+                // check if we reached the configured max value
+                if (++$i === $this->maxRepeatCount) {
+                    return $next;
+                }
+            }
         }
 
         return 0;
