@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.3.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.2.5...v5.3.0) (2024-05-02)
+
+
+### Features
+
+* better reoccurence handling ([8958c68](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/8958c68cc9b70cbae284bb51ad8ef83c0939f48f))
+
+
+### Miscellaneous Chores
+
+* add shadow dependencies ([88ad63a](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/88ad63a8918fe19e78566c9892c96e0ca92ac558))
+* minor adjustments in composer.json ([d0ba8b3](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/d0ba8b310229a738639e1355a2b2669c68cab894))
+
 ## [5.2.5](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.2.4...v5.2.5) (2024-04-25)
 
 
