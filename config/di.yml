@@ -8,6 +8,7 @@ services:
             $requestStack: '@request_stack'
             $db: '@database_connection'
             $slug: '@contao.slug'
+            $contaoFramework: '@contao.framework'
             $insertTagParser: '@contao.insert_tag.parser'
             $csrfTokenManager: '@contao.csrf.token_manager'
             $csrfTokenName: '%contao.csrf_token_name%'

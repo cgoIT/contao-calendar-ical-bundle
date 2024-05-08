@@ -8,6 +8,7 @@ use Contao\BackendUser;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
 use Contao\Config;
+use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Slug\Slug;
 use Contao\Date;
 use Contao\File;
@@ -33,9 +34,12 @@ class IcsImport extends AbstractImport
     public function __construct(
         private readonly Connection $db,
         Slug $slug,
+        private readonly ContaoFramework $contaoFramework,
         private readonly int $defaultEndTimeDifference,
     ) {
         parent::__construct($slug);
+
+        $this->contaoFramework->initialize();
 
         System::loadLanguageFile('default', 'en', true);
         $this->arrMonths = $GLOBALS['TL_LANG']['MONTHS'];
