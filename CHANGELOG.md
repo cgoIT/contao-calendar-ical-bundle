@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.3.1](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.0...v5.3.1) (2024-05-08)
+
+
+### Bug Fixes
+
+* initialize contao framework before loading language files ([3a90ada](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/3a90adabd80aeccc20c1f4dec1a7356acd787f6e))
+
 ## [5.3.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.2.5...v5.3.0) (2024-05-02)
 
 
