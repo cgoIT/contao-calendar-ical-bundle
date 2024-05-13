@@ -20,6 +20,7 @@ use Kigkonsult\Icalcreator\Util\DateTimeFactory;
 use Kigkonsult\Icalcreator\Util\DateTimeZoneFactory;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Kigkonsult\Icalcreator\Vevent;
+use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Exception\ParameterNotFoundException;
 
 class IcsImport extends AbstractImport
@@ -47,7 +48,7 @@ class IcsImport extends AbstractImport
 
         try {
             $this->maxRepeatCount = System::getContainer()->getParameter('cgoit_calendar_extended.max_repeat_count');
-        } catch (ParameterNotFoundException) {
+        } catch (InvalidArgumentException) {
             $this->maxRepeatCount = 365;
         }
     }
