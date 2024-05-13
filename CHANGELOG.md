@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.3.3](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.2...v5.3.3) (2024-05-13)
+
+
+### Miscellaneous Chores
+
+* fix ecs findings ([4ad2007](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/4ad20078c4d542b1e4b899fbf4f4170b9e88f98f))
+
 ## [5.3.2](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.1...v5.3.2) (2024-05-13)
 
 
