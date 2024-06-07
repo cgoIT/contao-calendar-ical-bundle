@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.3.4](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.3...v5.3.4) (2024-06-07)
+
+
+### Bug Fixes
+
+* add advanced repeating event support to calendar export ([4bb4f00](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/4bb4f00249df6126f6905f118f2aa1d575142a2d))
+* remove CalendarEventsModelExt and update event fetching in IcsExport ([c6461a5](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/c6461a529f6ce25bfa593263f5a71408b7f4347b))
+
 ## [5.3.3](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.2...v5.3.3) (2024-05-13)
 
 
