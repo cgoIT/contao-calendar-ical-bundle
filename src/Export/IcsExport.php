@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Export;
 
+use Cgoit\ContaoCalendarIcalBundle\Model\CalendarEventsModelExt;
 use Contao\Backend;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
@@ -18,9 +19,31 @@ use Kigkonsult\Icalcreator\Vevent;
 
 class IcsExport extends Backend
 {
+    private readonly array $dayMap;
+
+    private readonly array $posMap;
+
     public function __construct(
         private readonly InsertTagParser $insertTagParser,
     ) {
+        $this->dayMap = [
+            'monday' => Vcalendar::MO,
+            'tuesday' => Vcalendar::TU,
+            'wednesday' => Vcalendar::WE,
+            'thursday' => Vcalendar::TH,
+            'friday' => Vcalendar::FR,
+            'saturday' => Vcalendar::SA,
+            'sunday' => Vcalendar::SU,
+        ];
+
+        $this->posMap = [
+            'first' => 1,
+            'second' => 2,
+            'third' => 3,
+            'fourth' => 4,
+            'fifth' => 5,
+            'last' => -1,
+        ];
     }
 
     /**
@@ -40,7 +63,7 @@ class IcsExport extends Backend
 
         if (!empty($arrCalendars)) {
             foreach ($arrCalendars as $objCalendar) {
-                $arrEvents = CalendarEventsModel::findCurrentByPid($objCalendar->id, $intStart, $intEnd);
+                $arrEvents = CalendarEventsModelExt::findCurrentByPid($objCalendar->id, $intStart, $intEnd);
 
                 if (null !== $arrEvents) {
                     // HOOK: modify the result set
@@ -130,31 +153,49 @@ class IcsExport extends Backend
                                 $arrRepeat = StringUtil::deserialize($objEvent->repeatEach, true);
                                 $arg = $arrRepeat['value'];
 
-                                $freq = 'YEARLY';
+                                $freq = Vcalendar::YEARLY;
 
                                 switch ($arrRepeat['unit']) {
                                     case 'days':
-                                        $freq = 'DAILY';
+                                        $freq = Vcalendar::DAILY;
                                         break;
                                     case 'weeks':
-                                        $freq = 'WEEKLY';
+                                        $freq = Vcalendar::WEEKLY;
                                         break;
                                     case 'months':
-                                        $freq = 'MONTHLY';
+                                        $freq = Vcalendar::MONTHLY;
                                         break;
                                     case 'years':
-                                        $freq = 'YEARLY';
+                                        $freq = Vcalendar::YEARLY;
                                         break;
                                 }
 
-                                $rrule = ['FREQ' => $freq];
+                                $rrule = [Vcalendar::FREQ => $freq];
 
                                 if ($objEvent->recurrences > 0) {
-                                    $rrule['count'] = $objEvent->recurrences;
+                                    $rrule[Vcalendar::COUNT] = $objEvent->recurrences;
                                 }
 
                                 if ($arg > 1) {
-                                    $rrule['INTERVAL'] = $arg;
+                                    $rrule[Vcalendar::INTERVAL] = $arg;
+                                }
+
+                                $vevent->setRrule($rrule);
+                            } elseif (!empty($objEvent->recurringExt)) {
+                                $arrRepeat = StringUtil::deserialize($objEvent->repeatEachExt, true);
+                                $unit = $arrRepeat['unit']; // thursday
+                                $arg = $arrRepeat['value']; // first
+
+                                $byDay = ['0' => $this->posMap[$arg], Vcalendar::DAY => $this->dayMap[$unit]];
+
+                                $rrule = [
+                                    Vcalendar::FREQ => Vcalendar::MONTHLY,
+                                    Vcalendar::INTERVAL => 1,
+                                    Vcalendar::BYDAY => $byDay,
+                                ];
+
+                                if ($objEvent->recurrences > 0) {
+                                    $rrule[Vcalendar::COUNT] = $objEvent->recurrences;
                                 }
 
                                 $vevent->setRrule($rrule);
