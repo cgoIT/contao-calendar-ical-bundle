@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Export;
 
-use Cgoit\ContaoCalendarIcalBundle\Model\CalendarEventsModelExt;
 use Contao\Backend;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
@@ -12,6 +11,7 @@ use Contao\Config;
 use Contao\CoreBundle\InsertTag\InsertTagParser;
 use Contao\Model\Collection;
 use Contao\StringUtil;
+use Contao\System;
 use Kigkonsult\Icalcreator\IcalInterface;
 use Kigkonsult\Icalcreator\Util\DateTimeFactory;
 use Kigkonsult\Icalcreator\Vcalendar;
@@ -63,7 +63,11 @@ class IcsExport extends Backend
 
         if (!empty($arrCalendars)) {
             foreach ($arrCalendars as $objCalendar) {
-                $arrEvents = CalendarEventsModelExt::findCurrentByPid($objCalendar->id, $intStart, $intEnd);
+                try {
+                    $arrEvents = System::importStatic('\Cgoit\CalendarExtendedBundle\Models\CalendarEventsModelExt')->findCurrentByPid($objCalendar->id, $intStart, $intEnd);
+                } catch (\Exception) {
+                    $arrEvents = CalendarEventsModel::findCurrentByPid($objCalendar->id, $intStart, $intEnd);
+                }
 
                 if (null !== $arrEvents) {
                     // HOOK: modify the result set
