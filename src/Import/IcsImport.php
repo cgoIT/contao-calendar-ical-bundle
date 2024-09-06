@@ -359,6 +359,8 @@ class IcsImport extends AbstractImport
     }
 
     /**
+     * @return array<mixed>
+     *
      * @throws \Exception
      */
     public function getDateFromPc(Pc $pc, string $tz): array

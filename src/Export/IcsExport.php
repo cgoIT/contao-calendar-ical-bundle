@@ -19,8 +19,14 @@ use Kigkonsult\Icalcreator\Vevent;
 
 class IcsExport extends Backend
 {
+    /**
+     * @var array<mixed>
+     */
     private readonly array $dayMap;
 
+    /**
+     * @var array<mixed>
+     */
     private readonly array $posMap;
 
     public function __construct(

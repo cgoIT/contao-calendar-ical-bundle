@@ -311,8 +311,6 @@ class CsvImport extends AbstractImport
         ;
 
         static::redirect(str_replace('&key=import', '', (string) Environment::get('request')));
-
-        return '';
     }
 
     private function getTimestampFromDefaultDatetime(string $strDate): bool|int

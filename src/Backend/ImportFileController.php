@@ -277,7 +277,5 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
 
         $this->icsImport->importFromIcsFile($cal, $objCalendar, $startDate, $endDate, $tz, $this->filterEventTitle, null, null, $deleteCalendar, $timeshift);
         static::redirect(str_replace('&key=import', '', (string) Environment::get('request')));
-
-        return '';
     }
 }

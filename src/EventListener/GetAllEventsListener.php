@@ -27,6 +27,8 @@ class GetAllEventsListener
     /**
      * @param array<mixed> $events
      * @param array<mixed> $calendars
+     *
+     * @return array<mixed>
      */
     public function __invoke(array $events, array $calendars, int $timeStart, int|null $timeEnd, Module $module): array
     {
