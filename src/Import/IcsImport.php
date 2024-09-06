@@ -68,7 +68,7 @@ class IcsImport extends AbstractImport
                 // create new from ical file
                 System::getContainer()
                     ->get('monolog.logger.contao.general')
-                    ->error('Reload iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.'): Triggered by '.time().' - '.$last_change.' = '.(time() - $last_change).' > '.$objCalendar->ical_cache)
+                    ->info('Reload iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.'): Triggered by '.time().' - '.$last_change.' = '.(time() - $last_change).' > '.$objCalendar->ical_cache)
                 ;
 
                 $startDate = !empty((string) $objCalendar->ical_source_start) ?
