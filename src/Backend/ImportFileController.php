@@ -109,14 +109,14 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
             foreach ($arrUploaded as $strFile) {
                 // Skip folders
                 if (is_dir($this->projectDir.'/'.$strFile)) {
-                    Message::addError(sprintf($GLOBALS['TL_LANG']['ERR']['importFolder'], basename((string) $strFile)));
+                    Message::addError(\sprintf($GLOBALS['TL_LANG']['ERR']['importFolder'], basename((string) $strFile)));
                     continue;
                 }
 
                 $objFile = new File($strFile);
 
                 if ('ics' !== $objFile->extension && 'csv' !== $objFile->extension) {
-                    Message::addError(sprintf($GLOBALS['TL_LANG']['ERR']['filetype'], $objFile->extension));
+                    Message::addError(\sprintf($GLOBALS['TL_LANG']['ERR']['filetype'], $objFile->extension));
                     continue;
                 }
 
@@ -196,14 +196,14 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
         $objTemplate->request_token = $this->csrfTokenManager->getToken($this->csrfTokenName)->getValue();
 
         if (!empty($tzimport)) {
-            $objTemplate->confirmationText = sprintf(
+            $objTemplate->confirmationText = \sprintf(
                 $GLOBALS['TL_LANG']['tl_calendar_events']['confirmationTimezone'],
                 $tzsystem,
                 $tzimport,
             );
             $objTemplate->correctTimezone = $this->getCorrectTimezoneWidget();
         } else {
-            $objTemplate->confirmationText = sprintf(
+            $objTemplate->confirmationText = \sprintf(
                 $GLOBALS['TL_LANG']['tl_calendar_events']['confirmationMissingTZ'],
                 $tzsystem,
             );

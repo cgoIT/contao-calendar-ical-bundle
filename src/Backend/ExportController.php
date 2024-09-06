@@ -104,7 +104,7 @@ class ExportController extends Backend
             ) {
                 System::getContainer()
                     ->get('monolog.logger.contao.general')
-                    ->error('delete file '.$objFile->filename)
+                    ->info('delete file '.$objFile->filename)
                 ;
 
                 $objFile->delete();

@@ -50,7 +50,7 @@ class CalendarHeaderCallback
                 ];
 
                 if (str_starts_with(ContaoCoreBundle::getVersion(), '5')) {
-                    $content = sprintf(
+                    $content = \sprintf(
                         '%s&nbsp;<a href="%s" target="_blank" title="%s" data-controller="contao--clipboard" data-contao--clipboard-content-value="%s" data-action="contao--clipboard#write:prevent">%s</a> ',
                         $file,
                         $clipboard['content'],
@@ -59,7 +59,7 @@ class CalendarHeaderCallback
                         Image::getHtml('share.svg', $GLOBALS['TL_LANG']['MSC']['copy_to_clipboard']),
                     );
                 } else {
-                    $content = sprintf(
+                    $content = \sprintf(
                         '%s&nbsp;<a href="%s" target="_blank" title="%s" data-to-clipboard="%s">%s</a> ',
                         $file,
                         $clipboard['content'],
