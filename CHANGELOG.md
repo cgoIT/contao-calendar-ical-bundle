@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.3.5](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.4...v5.3.5) (2024-09-06)
+
+
+### Bug Fixes
+
+* only write real errors with level error ([03ef59d](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/03ef59d5f178309affa22c22809ab6d382b41a16))
+
+
+### Miscellaneous Chores
+
+* fix ecs bugs ([b17d548](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/b17d5486d42f59026207d2f658beab56651c76fb))
+* fix phpstan bugs ([65168ca](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/65168ca05e070177d69fce460829fa64e6176526))
+
 ## [5.3.4](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.3...v5.3.4) (2024-06-07)
 
 
