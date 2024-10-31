@@ -9,6 +9,7 @@ use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
 use Contao\Config;
 use Contao\CoreBundle\InsertTag\InsertTagParser;
+use Contao\Date;
 use Contao\Model\Collection;
 use Contao\StringUtil;
 use Contao\System;
@@ -57,6 +58,8 @@ class IcsExport extends Backend
      */
     public function getVcalendar(Collection|array|null $arrCalendars, int $intStart, int $intEnd, string|null $title = null, string|null $description = null, string|null $prefix = null): Vcalendar|null
     {
+        global $objPage;
+
         if (null !== $arrCalendars && $arrCalendars instanceof Collection) {
             $arrCalendars = $arrCalendars->getModels();
         }
@@ -217,18 +220,34 @@ class IcsExport extends Backend
                             if (!empty($objEvent->repeatExceptions)) {
                                 $arrSkipDates = StringUtil::deserialize($objEvent->repeatExceptions, true);
 
-                                foreach ($arrSkipDates as $skipDate) {
-                                    $exTStamp = strtotime((string) $skipDate);
-                                    $exdate =
-                                        \DateTime::createFromFormat(DateTimeFactory::$YmdHis,
-                                            date('Y', $exTStamp).
-                                            date('m', $exTStamp).
-                                            date('d', $exTStamp).
-                                            date('H', $objEvent->startTime).
-                                            date('i', $objEvent->startTime).
-                                            date('s', $objEvent->startTime),
-                                        );
-                                    $vevent->setExdate($exdate);
+                                foreach ($arrSkipDates as $skipInfo) {
+                                    if ($skipInfo['exception'] && is_numeric($skipInfo['exception'])) {
+                                        $action = $skipInfo['action'];
+
+                                        if ('move' === $action) {
+                                            $startTime = (int) $skipInfo['exception'];
+
+                                            $dateChangeValue = (string) $skipInfo['new_exception'];
+
+                                            // only change the start and end time if addTime is set to true for the event
+                                            if (!empty($objEvent->addTime) && !empty($skipInfo['new_start']) && !empty($skipInfo['new_end'])) {
+                                                $newStartTime = strtotime($dateChangeValue,
+                                                    strtotime(Date::parse($objPage->dateFormat, $startTime).' '.$skipInfo['new_start']));
+                                            } else {
+                                                $newStartTime = strtotime($dateChangeValue, $startTime);
+                                            }
+                                            $exdate =
+                                                \DateTime::createFromFormat(DateTimeFactory::$YmdHis,
+                                                    date('Y', $newStartTime).
+                                                    date('m', $newStartTime).
+                                                    date('d', $newStartTime).
+                                                    date('H', $newStartTime).
+                                                    date('i', $newStartTime).
+                                                    date('s', $newStartTime),
+                                                );
+                                            $vevent->setExdate($exdate);
+                                        }
+                                    }
                                 }
                             }
                             /*
