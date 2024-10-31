@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.3.6](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.5...v5.3.6) (2024-10-31)
+
+
+### Bug Fixes
+
+* add support for updating event exceptions with new times ([f5d8e66](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/f5d8e66704ebf3de56d00baf4a90da8e311c554e))
+
 ## [5.3.5](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.4...v5.3.5) (2024-09-06)
 
 
