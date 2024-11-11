@@ -112,12 +112,14 @@ class IcsExport extends Backend
                             } else {
                                 $vevent->setDtstart(date(DateTimeFactory::$Ymd, $startDate), [IcalInterface::VALUE => IcalInterface::DATE]);
                                 if (!empty($endDate)) {
-                                    if ((int) $startDate < (int) $endDate) {
-                                        $vevent->setDtend(date(DateTimeFactory::$YmdTHis, $endDate),
-                                            [IcalInterface::VALUE => IcalInterface::DATE_TIME]);
+                                    if ((int) $startDate < (int) $objEvent->endTime) {
+                                        // add one second because in ICS the end date is exclusive, in Contao its inclusive
+                                        // and the time part is always 235959.
+                                        $vevent->setDtend(date(DateTimeFactory::$YmdTHis, $objEvent->endTime + 1),
+                                            [IcalInterface::VALUE => IcalInterface::DATE]);
                                     } else {
-                                        $vevent->setDtend(date(DateTimeFactory::$YmdTHis, $startDate + 60 * 60),
-                                            [IcalInterface::VALUE => IcalInterface::DATE_TIME]);
+                                        $vevent->setDtend(date(DateTimeFactory::$YmdTHis, $startDate + 24 * 60 * 60),
+                                            [IcalInterface::VALUE => IcalInterface::DATE]);
                                     }
                                 } else {
                                     $vevent->setDtend(date(DateTimeFactory::$Ymd, $startDate + 24 * 60 * 60),
