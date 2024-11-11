@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.3.7](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.6...v5.3.7) (2024-11-11)
+
+
+### Bug Fixes
+
+* fix date handling in ics export for events without time part ([ad674eb](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/ad674eb5c5321a1d3d6e7903b417fe0add5b85d7))
+
 ## [5.3.6](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.5...v5.3.6) (2024-10-31)
 
 
