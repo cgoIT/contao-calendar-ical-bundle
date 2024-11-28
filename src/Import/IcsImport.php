@@ -12,6 +12,7 @@ use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Slug\Slug;
 use Contao\Date;
 use Contao\File;
+use Contao\StringUtil;
 use Contao\System;
 use Doctrine\DBAL\Connection;
 use Kigkonsult\Icalcreator\IcalInterface;
@@ -263,37 +264,40 @@ class IcsImport extends AbstractImport
                 }
 
                 if (\is_array($rrule)) {
-                    $objEvent->recurrences = \array_key_exists('COUNT', $rrule) ? ((int) $rrule['COUNT']) - 1 : 0;
-
-                    if (\array_key_exists('BYDAY', $rrule) && \is_array($rrule['BYDAY']) && \in_array('recurringExt', $fieldNames, true)) {
+                    if (
+                        \array_key_exists('BYDAY', $rrule)
+                        && \is_array($rrule['BYDAY'])
+                        && \array_key_exists(0, $rrule['BYDAY'][0])
+                        && \array_key_exists('DAY', $rrule['BYDAY'][0])
+                        && \in_array('recurringExt', $fieldNames, true)
+                    ) {
                         $objEvent->recurringExt = true;
                         $objEvent->recurring = false;
 
                         $rruleByDay = $rrule['BYDAY'][0];
+
                         $repeatEachExt = [];
-                        if (\array_key_exists(0, $rruleByDay) && \array_key_exists('DAY', $rruleByDay)) {
-                            $repeatEachExt['value'] = match ($rruleByDay[0]) {
-                                1 => 'first',
-                                2 => 'second',
-                                3 => 'third',
-                                4 => 'fourth',
-                                5 => 'fifth',
-                                default => 'last',
-                            };
+                        $repeatEachExt['value'] = match ($rruleByDay[0]) {
+                            1 => 'first',
+                            2 => 'second',
+                            3 => 'third',
+                            4 => 'fourth',
+                            5 => 'fifth',
+                            default => 'last',
+                        };
 
-                            $repeatEachExt['unit'] = match ($rruleByDay['DAY']) {
-                                'MO' => 'monday',
-                                'TU' => 'tuesday',
-                                'WE' => 'wednesday',
-                                'TH' => 'thursday',
-                                'FR' => 'friday',
-                                'SA' => 'saturday',
-                                default => 'sunday',
-                            };
+                        $repeatEachExt['unit'] = match ($rruleByDay['DAY']) {
+                            'MO' => 'monday',
+                            'TU' => 'tuesday',
+                            'WE' => 'wednesday',
+                            'TH' => 'thursday',
+                            'FR' => 'friday',
+                            'SA' => 'saturday',
+                            default => 'sunday',
+                        };
 
-                            $objEvent->repeatEachExt = serialize($repeatEachExt);
-                            $objEvent->repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEachExt, $timezone, $timeshift, true);
-                        }
+                        $objEvent->repeatEachExt = serialize($repeatEachExt);
+                        $objEvent->repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEachExt, $timezone, $timeshift, true);
                     } else {
                         $objEvent->recurring = true;
                         if (\in_array('recurringExt', $fieldNames, true)) {
@@ -330,6 +334,14 @@ class IcsImport extends AbstractImport
                         $mapWeekdays = static fn (string $value): int|null => $weekdays[$value] ?? null;
                         $objEvent->repeatWeekday = serialize(array_map($mapWeekdays, $rrule['WKST']));
                     }
+
+                    $recurrences = 0;
+                    if (\array_key_exists('COUNT', $rrule)) {
+                        $recurrences = ((int) $rrule['COUNT']) - 1;
+                    } elseif (\array_key_exists('UNTIL', $rrule)) {
+                        $recurrences = $this->calculateRecurrenceCount($objEvent);
+                    }
+                    $objEvent->recurrences = $recurrences;
                 }
                 $this->handleRecurringExceptions($objEvent, $fieldNames, $vevent, $timezone, $timeshift);
 
@@ -497,6 +509,134 @@ class IcsImport extends AbstractImport
     }
 
     /**
+     * @throws \DateMalformedStringException
+     */
+    private function calculateRecurrenceCount(CalendarEventsModel $objEvent): int
+    {
+        if (empty($objEvent->repeatEnd)) {
+            return 0;
+        }
+
+        if (!empty($objEvent->recurring)) {
+            return $this->calculateRecurrenceCountDefault($objEvent);
+        }
+        if (!empty($objEvent->recurringExt)) {
+            return $this->calculateRecurrenceCountExtended($objEvent);
+        }
+
+        return 0;
+    }
+
+    private function calculateRecurrenceCountDefault(CalendarEventsModel $objEvent): int
+    {
+        if (empty($objEvent->repeatEnd)) {
+            return 0;
+        }
+
+        $arrRange = StringUtil::deserialize($objEvent->repeatEach, true);
+
+        if (empty($arrRange) || empty($arrRange['value']) || empty($arrRange['unit'])) {
+            return 0;
+        }
+
+        $intStart = strtotime(date('Y-m-d', $objEvent->startDate).' '.($objEvent->addTime ? date('H:i', $objEvent->startTime) : '00:00'));
+        $intEnd = strtotime(date('Y-m-d', $objEvent->endDate ?: $objEvent->startDate).' '.($objEvent->addTime ? date('H:i', $objEvent->endTime) : '23:59'));
+
+        // store the list of dates
+        $next = $intStart;
+        $nextEnd = $intEnd;
+
+        $repeatCount = 0;
+
+        // last date of the recurrences
+        $end = $objEvent->repeatEnd;
+
+        while ($next <= $end) {
+            $timetoadd = '+ '.$arrRange['value'].' '.$arrRange['unit'];
+            $next = strtotime($timetoadd, $next);
+            $nextEnd = strtotime($timetoadd, $nextEnd);
+
+            // Check if we are at the end
+            if (false === $next) {
+                break;
+            }
+
+            // check if we are at the end
+            if ($next >= $end) {
+                break;
+            }
+
+            $weekday = date('N', $next);
+            $arrWeekdays = StringUtil::deserialize($objEvent->repeatWeekday, true);
+            if (!empty($arrWeekdays) && 'days' === $arrRange['unit']) {
+                if (!\in_array($weekday, $arrWeekdays, true)) {
+                    continue;
+                }
+            }
+
+            if ($objEvent->hideOnWeekend) {
+                if ((int) $weekday >= 6) {
+                    continue;
+                }
+            }
+
+            ++$repeatCount;
+
+            // check if we reached the configured max value
+            if ($repeatCount === $this->maxRepeatCount) {
+                break;
+            }
+        }
+
+        return $repeatCount;
+    }
+
+    private function calculateRecurrenceCountExtended(CalendarEventsModel $objEvent): int
+    {
+        $repeatCount = 0;
+        $arrRange = StringUtil::deserialize($objEvent->repeatEachExt, true);
+
+        if (!empty($arrRange) && !empty($arrRange['value']) && !empty($arrRange['unit'])) {
+            $arg = $arrRange['value'];
+            $unit = $arrRange['unit'];
+
+            // next month of the event
+            $month = (int) date('n', $objEvent->startDate);
+            // year of the event
+            $year = (int) date('Y', $objEvent->startDate);
+            // search date for the next event
+            $next = strtotime(date('Y-m-d', $objEvent->startDate).' '.($objEvent->addTime ? date('H:i', $objEvent->startTime) : '00:00'));
+            $nextEnd = strtotime(date('Y-m-d', $objEvent->endDate).' '.($objEvent->addTime ? date('H:i', $objEvent->endTime) : '23:59'));
+
+            $end = $objEvent->repeatEnd;
+
+            while ($next <= $end) {
+                $timetoadd = $arg.' '.$unit.' of '.$GLOBALS['TL_LANG']['MONTHS'][$month - 1].' '.$year;
+                $strtotime = strtotime($timetoadd, $next);
+
+                if (false === $strtotime) {
+                    break;
+                }
+
+                $next = strtotime(date('Y-m-d', $strtotime).' '.date('H:i', $objEvent->startTime));
+
+                $strtotime = strtotime($timetoadd, $nextEnd);
+                $nextEnd = strtotime(date('Y-m-d', $strtotime).' '.date('H:i', $objEvent->endTime));
+                ++$repeatCount;
+
+                ++$month;
+
+                if (0 === $month % 13) {
+                    $month = 1;
+                    ++$year;
+                }
+            }
+        }
+
+        return $repeatCount;
+    }
+
+    /**
      * @param array<mixed> $rrule
      * @param array<mixed> $repeatEach
      *
@@ -504,19 +644,9 @@ class IcsImport extends AbstractImport
      */
     private function getRepeatEnd(CalendarEventsModel $objEvent, array $rrule, array $repeatEach, string $timezone, int $timeshift = 0, bool $blnExtended = false): int
     {
-        if (($until = $rrule[IcalInterface::UNTIL] ?? null) instanceof \DateTime) {
-            // convert UNTIL date to current timezone
-            $until = new \DateTime(
-                $until->format(DateTimeFactory::$YmdHis),
-                DateTimeZoneFactory::factory($timezone),
-            );
-
-            $timestamp = $until->getTimestamp();
-            if (0 !== $timeshift) {
-                $timestamp += $timeshift * 3600;
-            }
-
-            return $timestamp;
+        $repeatEnd = $this->getRecurringUntilDate($rrule, $timezone, $timeshift);
+        if (!empty($repeatEnd)) {
+            return $repeatEnd;
         }
 
         if (0 === $objEvent->recurrences) {
@@ -641,5 +771,30 @@ class IcsImport extends AbstractImport
         ksort($exDates);
         $objEvent->exceptionList = $exDates;
         $objEvent->repeatExceptions = array_values($exDates);
+    }
+
+    /**
+     * @param array<mixed> $rrule
+     *
+     * @throws \DateMalformedStringException
+     */
+    private function getRecurringUntilDate(array $rrule, string $timezone, int $timeshift): int|null
+    {
+        if (($until = $rrule[IcalInterface::UNTIL] ?? null) instanceof \DateTime) {
+            // convert UNTIL date to current timezone
+            $until = new \DateTime(
+                $until->format(DateTimeFactory::$YmdHis),
+                DateTimeZoneFactory::factory($timezone),
+            );
+
+            $timestamp = $until->getTimestamp();
+            if (0 !== $timeshift) {
+                $timestamp += $timeshift * 3600;
+            }
+
+            return $timestamp;
+        }
+
+        return null;
     }
 }
