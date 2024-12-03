@@ -329,7 +329,7 @@ class IcsImport extends AbstractImport
                         $repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEach, $timezone, $timeshift);
                     }
 
-                    if ($repeatEnd === false) {
+                    if (false === $repeatEnd) {
                         $objEvent->repeatEnd = 0;
                         $objEvent->recurring = false;
                         $objEvent->recurringExt = false;
@@ -649,16 +649,10 @@ class IcsImport extends AbstractImport
      *
      * @throws \Exception
      */
-    private function getRepeatEnd(
-        CalendarEventsModel $objEvent,
-        array $rrule,
-        array $repeatEach,
-        string $timezone,
-        int $timeshift = 0,
-        bool $blnExtended = false): int|bool
+    private function getRepeatEnd(CalendarEventsModel $objEvent, array $rrule, array $repeatEach, string $timezone, int $timeshift = 0, bool $blnExtended = false): bool|int
     {
         $repeatEnd = $this->getRecurringUntilDate($rrule, $timezone, $timeshift, $objEvent->startDate);
-        if ($repeatEnd === false) {
+        if (false === $repeatEnd) {
             return false;
         }
 
@@ -795,7 +789,7 @@ class IcsImport extends AbstractImport
      *
      * @throws \DateMalformedStringException
      */
-    private function getRecurringUntilDate(array $rrule, string $timezone, int $timeshift, int $eventStartTime): int|bool|null
+    private function getRecurringUntilDate(array $rrule, string $timezone, int $timeshift, int $eventStartTime): bool|int|null
     {
         if (($until = $rrule[IcalInterface::UNTIL] ?? null) instanceof \DateTime) {
             // convert UNTIL date to current timezone
