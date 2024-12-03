@@ -30,5 +30,5 @@ $GLOBALS['TL_DCA']['tl_calendar_events']['fields']['icssource'] = [
 $GLOBALS['TL_DCA']['tl_calendar_events']['fields']['ical_uuid'] = [
     'inputType' => 'text',
     'eval' => ['maxlength' => 255, 'tl_class' => 'long'],
-    'sql' => "varchar(255) NOT NULL default ''",
+    'sql' => ['type' => 'string', 'length' => 255, 'default' => ''],
 ];

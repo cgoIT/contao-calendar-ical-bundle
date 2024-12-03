@@ -16,7 +16,7 @@ $GLOBALS['TL_DCA']['tl_page']['fields']['ical_calendar'] = [
     'exclude' => true,
     'inputType' => 'checkbox',
     'eval' => ['mandatory' => true, 'multiple' => true],
-    'sql' => 'blob NULL',
+    'sql' => ['type' => 'blob', 'length' => 65535, 'notnull' => false],
 ];
 
 $GLOBALS['TL_DCA']['tl_page']['fields']['ical_title'] = [
@@ -24,7 +24,7 @@ $GLOBALS['TL_DCA']['tl_page']['fields']['ical_title'] = [
     'search' => true,
     'inputType' => 'text',
     'eval' => ['mandatory' => true, 'maxlength' => 255, 'tl_class' => 'w50 clr'],
-    'sql' => 'text NULL',
+    'sql' => ['type' => 'text', 'length' => 1000, 'notnull' => false],
 ];
 
 $GLOBALS['TL_DCA']['tl_page']['fields']['ical_description'] = [
@@ -32,7 +32,7 @@ $GLOBALS['TL_DCA']['tl_page']['fields']['ical_description'] = [
     'search' => true,
     'inputType' => 'textarea',
     'eval' => ['maxlength' => 1024, 'rows' => 4, 'allowHtml' => false, 'decodeEntities' => true, 'tl_class' => 'clr'],
-    'sql' => 'text NULL',
+    'sql' => ['type' => 'text', 'length' => 1024, 'notnull' => false],
 ];
 
 $GLOBALS['TL_DCA']['tl_page']['fields']['ical_prefix'] = [
@@ -40,7 +40,7 @@ $GLOBALS['TL_DCA']['tl_page']['fields']['ical_prefix'] = [
     'search' => true,
     'inputType' => 'text',
     'eval' => ['maxlength' => 128, 'tl_class' => 'w50 clr'],
-    'sql' => 'text NULL',
+    'sql' => ['type' => 'text', 'length' => 1000, 'notnull' => false],
 ];
 
 $GLOBALS['TL_DCA']['tl_page']['fields']['ical_start'] = [
@@ -50,7 +50,7 @@ $GLOBALS['TL_DCA']['tl_page']['fields']['ical_start'] = [
     'flag' => 8,
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'w50 clr'],
-    'sql' => "varchar(12) NOT NULL default ''",
+    'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],
 ];
 
 $GLOBALS['TL_DCA']['tl_page']['fields']['ical_end'] = [
@@ -60,5 +60,5 @@ $GLOBALS['TL_DCA']['tl_page']['fields']['ical_end'] = [
     'flag' => 8,
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'w50'],
-    'sql' => "varchar(12) NOT NULL default ''",
+    'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],
 ];
