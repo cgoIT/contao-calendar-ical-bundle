@@ -297,7 +297,7 @@ class IcsImport extends AbstractImport
                         };
 
                         $objEvent->repeatEachExt = serialize($repeatEachExt);
-                        $objEvent->repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEachExt, $timezone, $timeshift, true);
+                        $repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEachExt, $timezone, $timeshift, true);
                     } else {
                         $objEvent->recurring = true;
                         if (\in_array('recurringExt', $fieldNames, true)) {
@@ -326,22 +326,29 @@ class IcsImport extends AbstractImport
                             $repeatEach['value'] = $rrule['INTERVAL'] ?? 1;
                         }
                         $objEvent->repeatEach = serialize($repeatEach);
-                        $objEvent->repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEach, $timezone, $timeshift);
+                        $repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEach, $timezone, $timeshift);
                     }
 
-                    if (\in_array('repeatWeekday', $fieldNames, true) && isset($rrule['WKST']) && \is_array($rrule['WKST'])) {
-                        $weekdays = ['MO' => 1, 'TU' => 2, 'WE' => 3, 'TH' => 4, 'FR' => 5, 'SA' => 6, 'SU' => 0];
-                        $mapWeekdays = static fn (string $value): int|null => $weekdays[$value] ?? null;
-                        $objEvent->repeatWeekday = serialize(array_map($mapWeekdays, $rrule['WKST']));
-                    }
+                    if ($repeatEnd === false) {
+                        $objEvent->repeatEnd = 0;
+                        $objEvent->recurring = false;
+                        $objEvent->recurringExt = false;
+                        $objEvent->recurrences = 0;
+                    } else {
+                        if (\in_array('repeatWeekday', $fieldNames, true) && isset($rrule['WKST']) && \is_array($rrule['WKST'])) {
+                            $weekdays = ['MO' => 1, 'TU' => 2, 'WE' => 3, 'TH' => 4, 'FR' => 5, 'SA' => 6, 'SU' => 0];
+                            $mapWeekdays = static fn (string $value): int|null => $weekdays[$value] ?? null;
+                            $objEvent->repeatWeekday = serialize(array_map($mapWeekdays, $rrule['WKST']));
+                        }
 
-                    $recurrences = 0;
-                    if (\array_key_exists('COUNT', $rrule)) {
-                        $recurrences = ((int) $rrule['COUNT']) - 1;
-                    } elseif (\array_key_exists('UNTIL', $rrule)) {
-                        $recurrences = $this->calculateRecurrenceCount($objEvent);
+                        $recurrences = 0;
+                        if (\array_key_exists('COUNT', $rrule)) {
+                            $recurrences = ((int) $rrule['COUNT']) - 1;
+                        } elseif (\array_key_exists('UNTIL', $rrule)) {
+                            $recurrences = $this->calculateRecurrenceCount($objEvent);
+                        }
+                        $objEvent->recurrences = $recurrences;
                     }
-                    $objEvent->recurrences = $recurrences;
                 }
                 $this->handleRecurringExceptions($objEvent, $fieldNames, $vevent, $timezone, $timeshift);
 
@@ -642,9 +649,19 @@ class IcsImport extends AbstractImport
      *
      * @throws \Exception
      */
-    private function getRepeatEnd(CalendarEventsModel $objEvent, array $rrule, array $repeatEach, string $timezone, int $timeshift = 0, bool $blnExtended = false): int
+    private function getRepeatEnd(
+        CalendarEventsModel $objEvent,
+        array $rrule,
+        array $repeatEach,
+        string $timezone,
+        int $timeshift = 0,
+        bool $blnExtended = false): int|bool
     {
-        $repeatEnd = $this->getRecurringUntilDate($rrule, $timezone, $timeshift);
+        $repeatEnd = $this->getRecurringUntilDate($rrule, $timezone, $timeshift, $objEvent->startDate);
+        if ($repeatEnd === false) {
+            return false;
+        }
+
         if (!empty($repeatEnd)) {
             return $repeatEnd;
         }
@@ -778,7 +795,7 @@ class IcsImport extends AbstractImport
      *
      * @throws \DateMalformedStringException
      */
-    private function getRecurringUntilDate(array $rrule, string $timezone, int $timeshift): int|null
+    private function getRecurringUntilDate(array $rrule, string $timezone, int $timeshift, int $eventStartTime): int|bool|null
     {
         if (($until = $rrule[IcalInterface::UNTIL] ?? null) instanceof \DateTime) {
             // convert UNTIL date to current timezone
@@ -790,6 +807,10 @@ class IcsImport extends AbstractImport
             $timestamp = $until->getTimestamp();
             if (0 !== $timeshift) {
                 $timestamp += $timeshift * 3600;
+            }
+
+            if ($timestamp < $eventStartTime) {
+                return false;
             }
 
             return $timestamp;
