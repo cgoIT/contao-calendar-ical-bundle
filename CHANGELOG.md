@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.4.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.7...v5.4.0) (2024-12-03)
+
+
+### Features
+
+* handle recurring events with until date correctly ([28842c7](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/28842c775bdaf53e902dfc416ca6f705bbefbb6d))
+
+
+### Bug Fixes
+
+* handle case when UNTIL date is before event start date ([643a3d4](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/643a3d4f018bac4e1e94559ed271ec5bed7df91b))
+
+
+### Miscellaneous Chores
+
+* fix ecs errors ([d7a9905](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/d7a9905a0a57470d1f571e1b14020383a5f80612))
+* use Doctrine Schema Representation for db columns ([bc1da6f](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/bc1da6f07020dfbf3f3062bb73d5f0b14c96e324))
+
 ## [5.3.7](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.6...v5.3.7) (2024-11-11)
 
 
