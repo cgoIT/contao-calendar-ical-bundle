@@ -11,8 +11,6 @@ iCal support for calendar of Contao OpenSource CMS. Forked from https://github.c
 Installation
 ------------
 
-### Step 1: Download the Bundle
-
 Open a command console, enter your project directory and execute the
 following command to download the latest stable version of this bundle:
 
@@ -27,9 +25,25 @@ of the Composer documentation.
 Contao 5 support
 ----------------
 
-Starting with version 5 of this bundle Contao 5 is supported. Many things have been refactored in this version, many classes have been split or moved. Therefore, the chance that something does not yet work 100% is quite high. I therefore recommend that all Contao 4 users check very carefully whether version 5 works the way they want it to. Alternatively, version 4 can continue to be used for Contao 4.
+Starting with version 5 of this bundle Contao 5 is supported.
 
-#### Important
+Export single events as ics
+---------------------------
+
+To export a single event as ics (e.g. to give a user the ability to import it into his own calendar) you can add a link to the url
+`/_event/ics-export/{id}` where `id` is the id of the event you want to export. You can also use the route name `event_frontend_ics_export`
+in combination with the parameter `id` for that.
+
+For example you can add the following snippet to your `event_full.html5` template.
+
+```html
+<a href="<?= $this->route('event_frontend_ics_export', ['id' => $this->id]) ?>" class="ics-export" rel="nofollow" title="Export event as ics">
+  <img src="/bundles/cgoitcontaocalendarical/ics.svg" width="32" height="32" alt="">
+</a>
+```
+
+Important
+---------
 
 If you have overwritten the default difference between start and end date in your `localconfig.php` via setting a value for `$GLOBALS['calendar_ical']['endDateTimeDifferenceInDays']` you have to put this value now into your `config.yml`.
 

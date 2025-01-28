@@ -16,6 +16,7 @@ services:
             $calendarExport: '@Cgoit\ContaoCalendarIcalBundle\Backend\ExportController'
             $icsExport: '@Cgoit\ContaoCalendarIcalBundle\Export\IcsExport'
             $timezoneUtil: '@Cgoit\ContaoCalendarIcalBundle\Util\TimezoneUtil'
+            $responseUtil: '@Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil'
 
     _instanceof:
         Cgoit\ContaoCalendarIcalBundle\Util\TimezoneUtilAwareInterface:
