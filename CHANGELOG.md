@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.5.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.4.0...v5.5.0) (2025-01-28)
+
+
+### Features
+
+* add an option to export a single event as ics ([b7e166d](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/b7e166dea47a954ebd81ff323725b1ed9f5c6164))
+
 ## [5.4.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.3.7...v5.4.0) (2024-12-03)
 
 
