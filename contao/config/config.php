@@ -24,6 +24,6 @@ $GLOBALS['BE_MOD']['content']['calendar']['import'] = [ImportFileController::cla
 if (!array_key_exists('urlKeywords', $GLOBALS['TL_CONFIG'])) {
     $GLOBALS['TL_CONFIG'] += ['urlKeywords' => ''];
 }
-$GLOBALS['TL_CONFIG']['urlKeywords'] .= (strlen(trim((string) $GLOBALS['TL_CONFIG']['urlKeywords'])) ? ',' : '').'ical';
+$GLOBALS['TL_CONFIG']['urlKeywords'] .= (strlen(trim((string) $GLOBALS['TL_CONFIG']['urlKeywords'] ?? '')) ? ',' : '').'ical';
 
 $GLOBALS['TL_PURGE']['custom']['calendar_ical_regen_subscriptions'] = ['callback' => [Automator::class, 'generateIcsFiles']];
