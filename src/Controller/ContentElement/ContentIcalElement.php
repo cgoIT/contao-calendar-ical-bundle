@@ -13,21 +13,25 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Controller\ContentElement;
 
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
-use Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil;
 use Contao\CalendarModel;
 use Contao\ContentModel;
 use Contao\Controller;
 use Contao\CoreBundle\Controller\ContentElement\AbstractContentElementController;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsContentElement;
+use Contao\CoreBundle\Exception\ResponseException;
+use Contao\File;
 use Contao\FrontendTemplate;
 use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
 use Contao\Template;
 use Kigkonsult\Icalcreator\Vcalendar;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\File\File as SymfonyFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 #[AsContentElement(type: ContentIcalElement::TYPE, category: 'files')]
 class ContentIcalElement extends AbstractContentElementController
@@ -40,7 +44,7 @@ class ContentIcalElement extends AbstractContentElementController
 
     public function __construct(
         private readonly RequestStack $requestStack,
-        private readonly ResponseUtil $responseUtil,
+        private readonly string $projectDir,
         private readonly IcsExport $icsExport,
     ) {
     }
@@ -53,8 +57,13 @@ class ContentIcalElement extends AbstractContentElementController
         if (!empty($ical)) {
             if (!empty(Input::get('ical'))) {
                 $filename = StringUtil::sanitizeFileName($model->ical_title ?? $model->id).'.ics';
+                $file = new File('system/tmp/'.$filename);
+                $file->write($ical->createCalendar());
+                $file->close();
+                $binaryFileResponse = new BinaryFileResponse(new SymfonyFile($this->projectDir.'/'.$file->path));
+                $binaryFileResponse->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $filename);
 
-                return $this->responseUtil->returnMemoryFile($ical->createCalendar(), $filename);
+                throw new ResponseException($binaryFileResponse);
             }
 
             // Generate a general HTML output using the download template

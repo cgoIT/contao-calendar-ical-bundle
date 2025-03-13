@@ -10,7 +10,7 @@ declare(strict_types=1);
  * @license    LGPL-3.0-or-later
  */
 
-namespace Cgoit\ContaoCalendarIcalBundle\Controller;
+namespace Cgoit\ContaoCalendarIcalBundle\Controller\Route;
 
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
 use Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil;
@@ -23,7 +23,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/_event/ics-export/{id}', name: 'event_frontend_ics_export', defaults: ['_scope' => 'frontend'])]
-class FrontendController extends AbstractController
+class SingleEventIcsExportController extends AbstractController
 {
     public function __construct(
         private readonly ResponseUtil $responseUtil,
