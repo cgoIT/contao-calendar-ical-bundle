@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.5.1](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.5.0...v5.5.1) (2025-03-13)
+
+
+### Bug Fixes
+
+* fix iCal Download content element ([21fd72f](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/21fd72fde3d4c502127ef8caf01c922fd5bd5253))
+* fix phpstan errors ([4388edb](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/4388edb58ec8d3e04f3567d1805deedc40ed1c49))
+
 ## [5.5.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.4.0...v5.5.0) (2025-01-28)
 
 
