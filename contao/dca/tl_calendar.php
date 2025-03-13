@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace contao\dca;
 
 use Contao\CoreBundle\DataContainer\PaletteManipulator;
+use Contao\DataContainer;
 
 PaletteManipulator::create()->addLegend('ical_legend', 'comments_legend', PaletteManipulator::POSITION_AFTER)
     ->addField('make_ical', 'ical_legend', PaletteManipulator::POSITION_APPEND)
@@ -145,7 +146,7 @@ $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_cache'] = [
 $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_start'] = [
     'exclude' => true,
     'filter' => true,
-    'flag' => 8,
+    'flag' => DataContainer::SORT_MONTH_DESC,
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'clr w50 wizard'],
     'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],
@@ -154,7 +155,7 @@ $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_start'] = [
 $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_end'] = [
     'exclude' => true,
     'filter' => true,
-    'flag' => 8,
+    'flag' => DataContainer::SORT_MONTH_DESC,
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'w50 wizard'],
     'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],
@@ -165,7 +166,7 @@ $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_source_start'] = [
     'default' => time(),
     'exclude' => true,
     'filter' => true,
-    'flag' => 8,
+    'flag' => DataContainer::SORT_MONTH_DESC,
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'clr w50 wizard'],
     'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],
@@ -176,7 +177,7 @@ $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_source_end'] = [
     'default' => time() + 365 * 24 * 3600,
     'exclude' => true,
     'filter' => true,
-    'flag' => 8,
+    'flag' => DataContainer::SORT_MONTH_DESC,
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'w50 wizard'],
     'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],

@@ -9,6 +9,7 @@
  */
 
 use Cgoit\ContaoCalendarIcalBundle\Controller\Page\IcsFeedController;
+use Contao\DataContainer;
 
 $GLOBALS['TL_DCA']['tl_page']['palettes'][IcsFeedController::TYPE] = '{title_legend},title,type;{routing_legend},alias,routePath,routePriority,routeConflicts;{calendar_legend},ical_calendar,ical_title,ical_description,ical_prefix,ical_start,ical_end;{cache_legend:hide},includeCache;{expert_legend:hide},cssClass,sitemap,hide,noSearch;{publish_legend},published,start,stop';
 
@@ -47,7 +48,7 @@ $GLOBALS['TL_DCA']['tl_page']['fields']['ical_start'] = [
     'default' => time(),
     'exclude' => true,
     'filter' => true,
-    'flag' => 8,
+    'flag' => DataContainer::SORT_MONTH_DESC,
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'w50 clr'],
     'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],
@@ -57,7 +58,7 @@ $GLOBALS['TL_DCA']['tl_page']['fields']['ical_end'] = [
     'default' => time() + 365 * 24 * 3600,
     'exclude' => true,
     'filter' => true,
-    'flag' => 8,
+    'flag' => DataContainer::SORT_MONTH_DESC,
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'w50'],
     'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],

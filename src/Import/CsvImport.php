@@ -98,7 +98,7 @@ class CsvImport extends AbstractImport
         $parser = new CsvParser($data, !empty((string) $encoding) ? $encoding : 'utf8');
         $header = $parser->extractHeader();
 
-        for ($i = 0; $i < (is_countable($header) ? \count($header) : 0); ++$i) {
+        for ($i = 0; $i < (!empty($header) ? \count($header) : 0); ++$i) {
             $objCSV = $this->getFieldSelector($i, 'csvfield', $header,
                 \is_array($csvvalues) ? $csvvalues[$i] : $header[$i]);
             $objCal = $this->getFieldSelector($i, 'calfield', $calfields, $calvalues[$i] ?? null);

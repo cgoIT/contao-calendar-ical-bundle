@@ -419,13 +419,13 @@ class IcsImport extends AbstractImport
                     curl_setopt($ch, CURLOPT_PROXYUSERPWD, "$benutzerpw");
                 }
                 if (!empty($port)) {
-                    curl_setopt($ch, CURLOPT_PROXYPORT, "$port");
+                    curl_setopt($ch, CURLOPT_PROXYPORT, $port);
                 }
             }
 
             if (preg_match('/^https/', $url)) {
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
             }
 
             curl_setopt($ch, CURLOPT_HEADER, false);

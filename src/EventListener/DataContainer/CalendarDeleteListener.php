@@ -33,7 +33,7 @@ class CalendarDeleteListener
             return;
         }
 
-        $activeRecord = method_exists($dc, 'getCurrentRecord') ? (object) $dc->getCurrentRecord() : $dc->activeRecord;
+        $activeRecord = (object) $dc->getCurrentRecord();
 
         $objCalendar = CalendarModel::findById($activeRecord->id);
         $this->calendarExport->removeSubscriptions($objCalendar);

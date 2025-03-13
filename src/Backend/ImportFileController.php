@@ -249,7 +249,8 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
         }
 
         $tz = $cal->getXprop(IcalInterface::X_WR_TIMEZONE);
-        if (false === $tz && null !== $tzComponent = $cal->getComponent(IcalInterface::VTIMEZONE)) {
+        $tzComponent = $cal->getComponent(IcalInterface::VTIMEZONE);
+        if (false === $tz && !empty($tzComponent)) {
             $tz = $tzComponent->getXprop(IcalInterface::X_LIC_LOCATION);
         }
 
