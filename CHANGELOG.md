@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.6.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.5.1...v5.6.0) (2025-03-15)
+
+
+### Features
+
+* automatically add /_event/ to disallowed urls in robots.txt ([1711299](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/171129977df2076da571714c286d0a2a51786b4b))
+
 ## [5.5.1](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.5.0...v5.5.1) (2025-03-13)
 
 
