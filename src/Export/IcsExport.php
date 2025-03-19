@@ -287,6 +287,14 @@ class IcsExport extends Backend
             }
         }
 
+        // HOOK: modify the $vevent
+        if (isset($GLOBALS['TL_HOOKS']['icalModifyVevent']) && \is_array($GLOBALS['TL_HOOKS']['icalModifyVevent'])) {
+            foreach ($GLOBALS['TL_HOOKS']['icalModifyVevent'] as $callback) {
+                $this->import($callback[0]);
+                $vevent = $this->{$callback[0]}->{$callback[1]}($vevent, $objEvent, $objCalendar, $this);
+            }
+        }
+
         return $vevent;
     }
 }
