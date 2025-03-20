@@ -55,7 +55,7 @@ class ContentIcalElement extends AbstractContentElementController
         $ical = $this->getIcalFile($model);
 
         if (!empty($ical)) {
-            if (!empty(Input::get('ical'))) {
+            if ((string) $model->id === Input::get('ical')) {
                 $filename = StringUtil::sanitizeFileName($model->ical_title ?? $model->id).'.ics';
                 $file = new File('system/tmp/'.$filename);
                 $file->write($ical->createCalendar());
@@ -80,7 +80,7 @@ class ContentIcalElement extends AbstractContentElementController
             $tpl = new FrontendTemplate($downloadTemplate);
             $tpl->link = !empty($model->linkTitle) ? $model->linkTitle : $GLOBALS['TL_LANG']['tl_content']['ical_download_title'];
             $tpl->title = $GLOBALS['TL_LANG']['tl_content']['ical_download_title'];
-            $tpl->href = Controller::addToUrl('ical=1');
+            $tpl->href = Controller::addToUrl('ical='.$model->id);
             $tpl->filesize = System::getReadableSize(\strlen($ical->createCalendar()));
             $tpl->mime = 'text/calendar';
             $tpl->extension = 'ics';
