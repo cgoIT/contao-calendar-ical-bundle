@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.7.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.6.0...v5.7.0) (2025-03-20)
+
+
+### Features
+
+* add hook `icalModifyVevent` to be able to further adjust the exported VEvent ([1c177ea](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/1c177ea3ed7e3989be682d85e6c5833d53a0133d))
+
+
+### Bug Fixes
+
+* allow multiple download elements on one page ([14bbf38](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/14bbf381ee7cc2415c7ed346b2fdfcd35d91c1ef))
+* stream iCal without temporary file ([412e78f](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/412e78f4b72d6029878ccb95c247866a6bb17f3c))
+
 ## [5.6.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.5.1...v5.6.0) (2025-03-15)
 
 
