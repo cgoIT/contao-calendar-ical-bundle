@@ -19,15 +19,13 @@ use Contao\Controller;
 use Contao\CoreBundle\Controller\ContentElement\AbstractContentElementController;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsContentElement;
 use Contao\CoreBundle\Exception\ResponseException;
-use Contao\File;
 use Contao\FrontendTemplate;
 use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
 use Contao\Template;
 use Kigkonsult\Icalcreator\Vcalendar;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\HttpFoundation\File\File as SymfonyFile;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
@@ -44,7 +42,6 @@ class ContentIcalElement extends AbstractContentElementController
 
     public function __construct(
         private readonly RequestStack $requestStack,
-        private readonly string $projectDir,
         private readonly IcsExport $icsExport,
     ) {
     }
@@ -57,13 +54,12 @@ class ContentIcalElement extends AbstractContentElementController
         if (!empty($ical)) {
             if ((string) $model->id === Input::get('ical')) {
                 $filename = StringUtil::sanitizeFileName($model->ical_title ?? $model->id).'.ics';
-                $file = new File('system/tmp/'.$filename);
-                $file->write($ical->createCalendar());
-                $file->close();
-                $binaryFileResponse = new BinaryFileResponse(new SymfonyFile($this->projectDir.'/'.$file->path));
-                $binaryFileResponse->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $filename);
+                $icalResponse = new Response($ical->createCalendar());
+                $icalResponse->headers->set('Content-Type', 'text/calendar');
+                $icalResponse->headers->set('Content-Disposition',
+                    HeaderUtils::makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $filename, ''));
 
-                throw new ResponseException($binaryFileResponse);
+                throw new ResponseException($icalResponse);
             }
 
             // Generate a general HTML output using the download template
