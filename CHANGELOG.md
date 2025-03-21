@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.7.1](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.7.0...v5.7.1) (2025-03-21)
+
+
+### Bug Fixes
+
+* fix error 'The filename fallback must only contain ASCII characters' ([81580ec](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/81580ec4cbf55e6ddaa54917e1d2de89ab6e05d5))
+* fix error 'The filename fallback must only contain ASCII characters' ([846eb7c](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/846eb7ca96342ff377765e2f5062b691325d0687))
+
 ## [5.7.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.6.0...v5.7.0) (2025-03-20)
 
 
