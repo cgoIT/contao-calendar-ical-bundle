@@ -106,8 +106,8 @@ class ContentIcalElement extends AbstractContentElementController
 
     private function getFilenameFallback(string $filename): string
     {
-        $filenameFallback = $filename;
-        if ('' === $filenameFallback && (!preg_match('/^[\x20-\x7e]*$/', $filename) || str_contains($filename, '%'))) {
+        if (!preg_match('/^[\x20-\x7e]*$/', $filename) || str_contains($filename, '%')) {
+            $filenameFallback = '';
             $encoding = mb_detect_encoding($filename, null, true) ?: '8bit';
 
             for ($i = 0, $filenameLength = mb_strlen($filename, $encoding); $i < $filenameLength; ++$i) {
@@ -119,8 +119,10 @@ class ContentIcalElement extends AbstractContentElementController
                     $filenameFallback .= $char;
                 }
             }
+
+            return $filenameFallback;
         }
 
-        return $filenameFallback;
+        return $filename;
     }
 }
