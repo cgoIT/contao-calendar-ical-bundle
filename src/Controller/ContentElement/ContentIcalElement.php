@@ -57,7 +57,8 @@ class ContentIcalElement extends AbstractContentElementController
                 $icalResponse = new Response($ical->createCalendar());
                 $icalResponse->headers->set('Content-Type', 'text/calendar');
                 $icalResponse->headers->set('Content-Disposition',
-                    HeaderUtils::makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $filename, ''));
+                    HeaderUtils::makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $filename,
+                        $this->getFilenameFallback($filename)));
 
                 throw new ResponseException($icalResponse);
             }
@@ -101,5 +102,25 @@ class ContentIcalElement extends AbstractContentElementController
         }
 
         return null;
+    }
+
+    private function getFilenameFallback(string $filename): string
+    {
+        $filenameFallback = $filename;
+        if ('' === $filenameFallback && (!preg_match('/^[\x20-\x7e]*$/', $filename) || str_contains($filename, '%'))) {
+            $encoding = mb_detect_encoding($filename, null, true) ?: '8bit';
+
+            for ($i = 0, $filenameLength = mb_strlen($filename, $encoding); $i < $filenameLength; ++$i) {
+                $char = mb_substr($filename, $i, 1, $encoding);
+
+                if ('%' === $char || \ord($char) < 32 || \ord($char) > 126) {
+                    $filenameFallback .= '_';
+                } else {
+                    $filenameFallback .= $char;
+                }
+            }
+        }
+
+        return $filenameFallback;
     }
 }
