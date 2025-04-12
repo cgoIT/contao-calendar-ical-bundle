@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.7.2](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.7.1...v5.7.2) (2025-04-12)
+
+
+### Bug Fixes
+
+* fixes a Turbo.js error while csv-import ([f1857f2](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/f1857f2d38ead083edb73f5d6b7d1d66b264efc0))
+
 ## [5.7.1](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.7.0...v5.7.1) (2025-03-21)
 
 
