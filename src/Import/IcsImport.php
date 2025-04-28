@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Import;
 
+use Cgoit\ContaoCalendarIcalBundle\Event\AfterImportItemEvent;
 use Cgoit\ContaoCalendarIcalBundle\Event\BeforeImportItemEvent;
 use Contao\BackendUser;
 use Contao\CalendarEventsModel;
@@ -383,7 +384,7 @@ class IcsImport extends AbstractImport
 
                     $this->generateAlias($objEvent);
 
-                    $this->eventDispatcher->dispatch(new BeforeImportItemEvent(
+                    $this->eventDispatcher->dispatch(new AfterImportItemEvent(
                         $objEvent,
                         $vevent,
                         $objCalendar,

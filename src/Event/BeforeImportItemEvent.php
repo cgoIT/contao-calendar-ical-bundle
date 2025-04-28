@@ -20,6 +20,7 @@ use Symfony\Contracts\EventDispatcher\Event;
 class BeforeImportItemEvent extends Event
 {
     public bool $skip = false;
+
     public function __construct(
         public readonly CalendarEventsModel $calendarEventModel,
         public readonly Vevent $vevent,
