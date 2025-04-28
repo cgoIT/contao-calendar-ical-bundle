@@ -20,7 +20,7 @@ use Symfony\Contracts\EventDispatcher\Event;
 class AfterImportItemEvent extends Event
 {
     public function __construct(
-        public readonly CalendarEventsModel $calendarEventsModel,
+        public readonly CalendarEventsModel $calendarEventModel,
         public readonly Vevent $vevent,
         public readonly CalendarModel $calendarModel,
     ) {
