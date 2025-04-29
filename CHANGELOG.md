@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.8.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.7.2...v5.8.0) (2025-04-29)
+
+
+### Features
+
+* add AfterImportitem event ([ace9d36](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/ace9d36ffa159d5c3e7895f11a64e11dd74064ce))
+* add BeforeImportItemEvent ([d5c6bd9](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/d5c6bd9a85b8db662c8985bd1b517c4386e85c50))
+
 ## [5.7.2](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.7.1...v5.7.2) (2025-04-12)
 
 
