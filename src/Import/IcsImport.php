@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Import;
 
+use Cgoit\ContaoCalendarIcalBundle\Event\AfterImportItemEvent;
 use Contao\BackendUser;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
@@ -22,6 +23,7 @@ use Kigkonsult\Icalcreator\Util\DateTimeZoneFactory;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Kigkonsult\Icalcreator\Vevent;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class IcsImport extends AbstractImport
 {
@@ -37,6 +39,7 @@ class IcsImport extends AbstractImport
         Slug $slug,
         private readonly ContaoFramework $contaoFramework,
         private readonly int $defaultEndTimeDifference,
+        private readonly EventDispatcherInterface $eventDispatcher,
     ) {
         parent::__construct($slug);
 
@@ -368,6 +371,12 @@ class IcsImport extends AbstractImport
                     }
 
                     $this->generateAlias($objEvent);
+
+                    $this->eventDispatcher->dispatch(new AfterImportItemEvent(
+                        $objEvent,
+                        $vevent,
+                        $objCalendar,
+                    ));
                 }
             }
         }
