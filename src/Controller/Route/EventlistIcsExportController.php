@@ -21,6 +21,7 @@ use Contao\Environment;
 use Contao\Events;
 use Contao\Input;
 use Contao\ModuleModel;
+use Contao\PageModel;
 use Contao\StringUtil;
 use Contao\System;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,9 +31,9 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Requirement\Requirement;
 
 #[AsController]
-#[Route('/_eventlist/ics-export/{eventlistId}',
+#[Route('/_eventlist/ics-export/{id}',
     name: 'eventlist_frontend_ics_export',
-    requirements: ['eventlistId' => Requirement::POSITIVE_INT],
+    requirements: ['id' => Requirement::POSITIVE_INT],
     defaults: ['_scope' => 'frontend'])
 ]
 class EventlistIcsExportController extends Events
@@ -53,11 +54,11 @@ class EventlistIcsExportController extends Events
         return $this->arrData[$strKey] ?? parent::__get($strKey);
     }
 
-    public function __invoke(int $eventlistId): Response
+    public function __invoke(int $id): Response
     {
         System::getContainer()->get('contao.framework')->initialize();
 
-        return $this->exportEventlist($eventlistId);
+        return $this->exportEventlist($id);
     }
 
     protected function compile(): void
@@ -102,6 +103,13 @@ class EventlistIcsExportController extends Events
      */
     private function getEvents(ContentModel|ModuleModel $objEventlist): array
     {
+        global $objPage;
+
+        if (empty($objPage)) {
+            $dns = Environment::get('host');
+            $objPage = PageModel::findPublishedFallbackByHostname($dns, ['fallbackToEmpty' => true]);
+        }
+
         $cal_calendar = $this->sortOutProtected(StringUtil::deserialize($objEventlist->cal_calendar, true));
         if (empty($cal_calendar) || !\is_array($cal_calendar)) {
             return [];
