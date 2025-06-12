@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.8.0...v5.9.0) (2025-06-12)
+
+
+### Features
+
+* make an eventlist module exportable as ical file via custom frontend route ([8530b90](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/8530b9073f38853e0b5451908f10779443814cd6))
+
 ## [5.8.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.7.2...v5.8.0) (2025-04-29)
 
 
