@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.1](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.0...v5.9.1) (2025-06-12)
+
+
+### Bug Fixes
+
+* objPage is null ([694b3f4](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/694b3f48c7910f8702e5e8cbc43404a43faff98e))
+
 ## [5.9.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.8.0...v5.9.0) (2025-06-12)
 
 
