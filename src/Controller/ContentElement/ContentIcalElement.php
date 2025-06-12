@@ -13,23 +13,21 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Controller\ContentElement;
 
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
+use Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil;
 use Contao\CalendarModel;
 use Contao\ContentModel;
 use Contao\Controller;
 use Contao\CoreBundle\Controller\ContentElement\AbstractContentElementController;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsContentElement;
-use Contao\CoreBundle\Exception\ResponseException;
 use Contao\FrontendTemplate;
 use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
 use Contao\Template;
 use Kigkonsult\Icalcreator\Vcalendar;
-use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 #[AsContentElement(type: ContentIcalElement::TYPE, category: 'files')]
 class ContentIcalElement extends AbstractContentElementController
@@ -42,6 +40,7 @@ class ContentIcalElement extends AbstractContentElementController
 
     public function __construct(
         private readonly RequestStack $requestStack,
+        private readonly ResponseUtil $responseUtil,
         private readonly IcsExport $icsExport,
     ) {
     }
@@ -54,13 +53,10 @@ class ContentIcalElement extends AbstractContentElementController
         if (!empty($ical)) {
             if ((string) $model->id === Input::get('ical')) {
                 $filename = StringUtil::sanitizeFileName($model->ical_title ?? $model->id).'.ics';
-                $icalResponse = new Response($ical->createCalendar());
-                $icalResponse->headers->set('Content-Type', 'text/calendar');
-                $icalResponse->headers->set('Content-Disposition',
-                    HeaderUtils::makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $filename,
-                        $this->getFilenameFallback($filename)));
+                $this->responseUtil->sendFileForDownload($ical->createCalendar(), $filename);
 
-                throw new ResponseException($icalResponse);
+                // this statement is never reached
+                return new Response('', Response::HTTP_NO_CONTENT);
             }
 
             // Generate a general HTML output using the download template
@@ -102,27 +98,5 @@ class ContentIcalElement extends AbstractContentElementController
         }
 
         return null;
-    }
-
-    private function getFilenameFallback(string $filename): string
-    {
-        if (!preg_match('/^[\x20-\x7e]*$/', $filename) || str_contains($filename, '%')) {
-            $filenameFallback = '';
-            $encoding = mb_detect_encoding($filename, null, true) ?: '8bit';
-
-            for ($i = 0, $filenameLength = mb_strlen($filename, $encoding); $i < $filenameLength; ++$i) {
-                $char = mb_substr($filename, $i, 1, $encoding);
-
-                if ('%' === $char || \ord($char) < 32 || \ord($char) > 126) {
-                    $filenameFallback .= '_';
-                } else {
-                    $filenameFallback .= $char;
-                }
-            }
-
-            return $filenameFallback;
-        }
-
-        return $filename;
     }
 }

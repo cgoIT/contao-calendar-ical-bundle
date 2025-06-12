@@ -75,7 +75,7 @@
   },
   "scripts": {
     "all": [
-      "@cs-fixer",
+      "@ecs",
       "@rector",
       "@phpstan",
       "@depcheck"

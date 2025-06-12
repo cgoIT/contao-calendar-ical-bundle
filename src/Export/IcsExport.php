@@ -100,6 +100,32 @@ class IcsExport extends Backend
         return $ical;
     }
 
+    /**
+     * @param array<mixed> $arrEvents
+     */
+    public function exportEvents(array $arrEvents): Vcalendar
+    {
+        $ical = new Vcalendar();
+        $ical->setMethod(IcalInterface::PUBLISH);
+        $ical->setXprop(IcalInterface::X_WR_TIMEZONE, Config::get('timeZone'));
+
+        foreach ($arrEvents as $arrEvent) {
+            $objEvent = $arrEvent;
+            if (\is_array($arrEvent)) {
+                $objEvent = CalendarEventsModel::findById($arrEvent['id']);
+            }
+
+            if (!empty($objEvent)) {
+                $vevent = $this->getVevent($objEvent);
+                if (!empty($vevent)) {
+                    $ical->setComponent($vevent);
+                }
+            }
+        }
+
+        return $ical;
+    }
+
     public function exportEvent(CalendarEventsModel $objEvent): Vcalendar
     {
         $ical = new Vcalendar();
