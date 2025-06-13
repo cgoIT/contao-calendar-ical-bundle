@@ -53,10 +53,8 @@ class ContentIcalElement extends AbstractContentElementController
         if (!empty($ical)) {
             if ((string) $model->id === Input::get('ical')) {
                 $filename = StringUtil::sanitizeFileName($model->ical_title ?? $model->id).'.ics';
-                $this->responseUtil->sendFileForDownload($ical->createCalendar(), $filename);
 
-                // this statement is never reached
-                return new Response('', Response::HTTP_NO_CONTENT);
+                throw $this->responseUtil->sendFileForDownload($ical->createCalendar(), $filename);
             }
 
             // Generate a general HTML output using the download template

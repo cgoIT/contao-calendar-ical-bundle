@@ -92,10 +92,7 @@ class EventlistIcsExportController extends Events
         $iCal = $this->icsExport->exportEvents($arrEvents)->createCalendar();
         $filename = StringUtil::sanitizeFileName($objEventlist->name ?? $eventlistId).'.ics';
 
-        $this->responseUtil->sendFileForDownload($iCal, $filename);
-
-        // this statement is never reached
-        return new Response('', Response::HTTP_NO_CONTENT);
+        throw $this->responseUtil->sendFileForDownload($iCal, $filename);
     }
 
     /**

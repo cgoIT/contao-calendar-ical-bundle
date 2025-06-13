@@ -55,9 +55,6 @@ class SingleEventIcsExportController extends AbstractController
         $icsEvent = $this->icsExport->exportEvent($objEvent)->createCalendar();
         $filename = StringUtil::sanitizeFileName($objEvent->title ?? $eventId).'.ics';
 
-        $this->responseUtil->sendFileForDownload($icsEvent, $filename);
-
-        // this statement is never reached
-        return new Response('', Response::HTTP_NO_CONTENT);
+        throw $this->responseUtil->sendFileForDownload($icsEvent, $filename);
     }
 }

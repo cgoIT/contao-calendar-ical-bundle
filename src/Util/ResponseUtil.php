@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 class ResponseUtil
 {
-    public function sendFileForDownload(string $fileContent, string $fileName, string $contentType = 'text/calendar', string $contentDisposition = ResponseHeaderBag::DISPOSITION_ATTACHMENT): void
+    public function sendFileForDownload(string $fileContent, string $fileName, string $contentType = 'text/calendar', string $contentDisposition = ResponseHeaderBag::DISPOSITION_ATTACHMENT): ResponseException
     {
         $icalResponse = new Response($fileContent);
         $icalResponse->headers->set('Content-Type', $contentType);
@@ -27,7 +27,7 @@ class ResponseUtil
             HeaderUtils::makeDisposition($contentDisposition, $fileName, $this->getFilenameFallback($fileName)),
         );
 
-        throw new ResponseException($icalResponse);
+        return new ResponseException($icalResponse);
     }
 
     private function getFilenameFallback(string $filename): string
