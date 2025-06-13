@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.2](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.1...v5.9.2) (2025-06-13)
+
+
+### Bug Fixes
+
+* change implementation for file download response handling ([e28e23d](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/e28e23dea7b397f828cd4d600a4f4302f54aabc0))
+
 ## [5.9.1](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.0...v5.9.1) (2025-06-12)
 
 
