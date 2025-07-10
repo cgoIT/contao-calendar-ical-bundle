@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.3](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.2...v5.9.3) (2025-07-10)
+
+
+### Bug Fixes
+
+* disable RenameAttributeRector for route classes to support custom export routes on Contao 4 and 5 ([3bcc2ae](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/3bcc2aed124ad683fe191dd852f4504fdb51bcd7))
+
 ## [5.9.2](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.1...v5.9.2) (2025-06-13)
 
 
