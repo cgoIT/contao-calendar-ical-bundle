@@ -26,14 +26,16 @@ use Contao\StringUtil;
 use Contao\System;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Requirement\Requirement;
+use Symfony\Component\Routing\Annotation\Route;
 
+/**
+ * @noRector \Rector\PhpAttribute\Rector\Class_\RenameAttributeRector
+ */
 #[AsController]
 #[Route('/_eventlist/ics-export/{id}',
     name: 'eventlist_frontend_ics_export',
-    requirements: ['id' => Requirement::POSITIVE_INT],
     defaults: ['_scope' => 'frontend'])
 ]
 class EventlistIcsExportController extends Events
@@ -54,11 +56,15 @@ class EventlistIcsExportController extends Events
         return $this->arrData[$strKey] ?? parent::__get($strKey);
     }
 
-    public function __invoke(int $id): Response
+    public function __invoke(string $id): Response
     {
         System::getContainer()->get('contao.framework')->initialize();
 
-        return $this->exportEventlist($id);
+        if (!is_numeric($id)) {
+            throw new BadRequestHttpException('Parameter "id" has to be numeric');
+        }
+
+        return $this->exportEventlist((int) $id);
     }
 
     protected function compile(): void

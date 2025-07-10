@@ -20,8 +20,11 @@ use Contao\StringUtil;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Annotation\Route;
 
+/**
+ * @noRector RenameAttributeRector
+ */
 #[Route('/_event/ics-export/{id}', name: 'event_frontend_ics_export', defaults: ['_scope' => 'frontend'])]
 class SingleEventIcsExportController extends AbstractController
 {
