@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.4](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.3...v5.9.4) (2025-08-19)
+
+
+### Miscellaneous Chores
+
+* update version contraints ([86e23e8](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/86e23e8f95814d35a70917ff62d1da79c9c910ed))
+
 ## [5.9.3](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.2...v5.9.3) (2025-07-10)
 
 
