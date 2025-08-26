@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.5](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.4...v5.9.5) (2025-08-26)
+
+
+### Bug Fixes
+
+* Fix error on deleting Calendar in Version 4.13 ([#88](https://github.com/cgoIT/contao-calendar-ical-bundle/issues/88)) ([9fe8633](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/9fe8633104724aa92b3048f9f7ce41373595f728))
+
 ## [5.9.4](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.3...v5.9.4) (2025-08-19)
 
 
