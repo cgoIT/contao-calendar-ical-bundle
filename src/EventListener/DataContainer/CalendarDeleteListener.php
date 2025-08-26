@@ -36,8 +36,7 @@ class CalendarDeleteListener
 
         $activeRecord = null;
         $contaoVersion = ContaoCoreBundle::getVersion();
-        if(version_compare($contaoVersion, '5.0.0') >= 0)
-        {
+        if (version_compare($contaoVersion, '5.0.0') >= 0) {
             $activeRecord = (object) $dc->getCurrentRecord();
         } else {
             $activeRecord = (object) $dc->activeRecord;
