@@ -225,36 +225,38 @@ class IcsExport extends Backend
 
             if ($objEvent->recurring) {
                 $arrRepeat = StringUtil::deserialize($objEvent->repeatEach, true);
-                $arg = $arrRepeat['value'];
+                if (!empty($arrRepeat)) {
+                    $arg = $arrRepeat['value'];
 
-                $freq = Vcalendar::YEARLY;
+                    $freq = Vcalendar::YEARLY;
 
-                switch ($arrRepeat['unit']) {
-                    case 'days':
-                        $freq = Vcalendar::DAILY;
-                        break;
-                    case 'weeks':
-                        $freq = Vcalendar::WEEKLY;
-                        break;
-                    case 'months':
-                        $freq = Vcalendar::MONTHLY;
-                        break;
-                    case 'years':
-                        $freq = Vcalendar::YEARLY;
-                        break;
+                    switch ($arrRepeat['unit']) {
+                        case 'days':
+                            $freq = Vcalendar::DAILY;
+                            break;
+                        case 'weeks':
+                            $freq = Vcalendar::WEEKLY;
+                            break;
+                        case 'months':
+                            $freq = Vcalendar::MONTHLY;
+                            break;
+                        case 'years':
+                            $freq = Vcalendar::YEARLY;
+                            break;
+                    }
+
+                    $rrule = [Vcalendar::FREQ => $freq];
+
+                    if ($objEvent->recurrences > 0) {
+                        $rrule[Vcalendar::COUNT] = $objEvent->recurrences;
+                    }
+
+                    if ($arg > 1) {
+                        $rrule[Vcalendar::INTERVAL] = $arg;
+                    }
+
+                    $vevent->setRrule($rrule);
                 }
-
-                $rrule = [Vcalendar::FREQ => $freq];
-
-                if ($objEvent->recurrences > 0) {
-                    $rrule[Vcalendar::COUNT] = $objEvent->recurrences;
-                }
-
-                if ($arg > 1) {
-                    $rrule[Vcalendar::INTERVAL] = $arg;
-                }
-
-                $vevent->setRrule($rrule);
             } elseif (!empty($objEvent->recurringExt)) {
                 $arrRepeat = StringUtil::deserialize($objEvent->repeatEachExt, true);
                 $unit = $arrRepeat['unit']; // thursday
