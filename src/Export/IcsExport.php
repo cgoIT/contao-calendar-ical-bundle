@@ -155,33 +155,33 @@ class IcsExport extends Backend
             $vevent = new Vevent();
 
             if (!empty($objEvent->addTime)) {
-                $vevent->setDtstart(date(DateTimeFactory::$YmdTHis, $objEvent->startTime), [IcalInterface::VALUE => IcalInterface::DATE_TIME]);
+                $vevent->setDtstart(date(DateTimeFactory::$YmdTHis, (int) $objEvent->startTime), [IcalInterface::VALUE => IcalInterface::DATE_TIME]);
                 if (!empty($objEvent->endTime)) {
                     if ((int) $objEvent->startTime < (int) $objEvent->endTime) {
-                        $vevent->setDtend(date(DateTimeFactory::$YmdTHis, $objEvent->endTime),
+                        $vevent->setDtend(date(DateTimeFactory::$YmdTHis, (int) $objEvent->endTime),
                             [IcalInterface::VALUE => IcalInterface::DATE_TIME]);
                     } else {
-                        $vevent->setDtend(date(DateTimeFactory::$YmdTHis, $objEvent->startTime + 60 * 60),
+                        $vevent->setDtend(date(DateTimeFactory::$YmdTHis, ((int) $objEvent->startTime) + 60 * 60),
                             [IcalInterface::VALUE => IcalInterface::DATE_TIME]);
                     }
                 } else {
-                    $vevent->setDtend(date(DateTimeFactory::$YmdTHis, $objEvent->startTime + 60 * 60),
+                    $vevent->setDtend(date(DateTimeFactory::$YmdTHis, ((int) $objEvent->startTime) + 60 * 60),
                         [IcalInterface::VALUE => IcalInterface::DATE_TIME]);
                 }
             } else {
-                $vevent->setDtstart(date(DateTimeFactory::$Ymd, $startDate), [IcalInterface::VALUE => IcalInterface::DATE]);
+                $vevent->setDtstart(date(DateTimeFactory::$Ymd, (int) $startDate), [IcalInterface::VALUE => IcalInterface::DATE]);
                 if (!empty($endDate)) {
                     if ((int) $startDate < (int) $objEvent->endTime) {
                         // add one second because in ICS the end date is exclusive, in Contao its inclusive
                         // and the time part is always 235959.
-                        $vevent->setDtend(date(DateTimeFactory::$YmdTHis, $objEvent->endTime + 1),
+                        $vevent->setDtend(date(DateTimeFactory::$YmdTHis, ((int) $objEvent->endTime) + 1),
                             [IcalInterface::VALUE => IcalInterface::DATE]);
                     } else {
-                        $vevent->setDtend(date(DateTimeFactory::$YmdTHis, $startDate + 24 * 60 * 60),
+                        $vevent->setDtend(date(DateTimeFactory::$YmdTHis, ((int) $startDate) + 24 * 60 * 60),
                             [IcalInterface::VALUE => IcalInterface::DATE]);
                     }
                 } else {
-                    $vevent->setDtend(date(DateTimeFactory::$Ymd, $startDate + 24 * 60 * 60),
+                    $vevent->setDtend(date(DateTimeFactory::$Ymd, ((int) $startDate) + 24 * 60 * 60),
                         [IcalInterface::VALUE => IcalInterface::DATE]);
                 }
             }
@@ -225,36 +225,39 @@ class IcsExport extends Backend
 
             if ($objEvent->recurring) {
                 $arrRepeat = StringUtil::deserialize($objEvent->repeatEach, true);
-                $arg = $arrRepeat['value'];
 
-                $freq = Vcalendar::YEARLY;
+                if (!empty($arrRepeat)) {
+                    $arg = $arrRepeat['value'];
 
-                switch ($arrRepeat['unit']) {
-                    case 'days':
-                        $freq = Vcalendar::DAILY;
-                        break;
-                    case 'weeks':
-                        $freq = Vcalendar::WEEKLY;
-                        break;
-                    case 'months':
-                        $freq = Vcalendar::MONTHLY;
-                        break;
-                    case 'years':
-                        $freq = Vcalendar::YEARLY;
-                        break;
+                    $freq = Vcalendar::YEARLY;
+
+                    switch ($arrRepeat['unit']) {
+                        case 'days':
+                            $freq = Vcalendar::DAILY;
+                            break;
+                        case 'weeks':
+                            $freq = Vcalendar::WEEKLY;
+                            break;
+                        case 'months':
+                            $freq = Vcalendar::MONTHLY;
+                            break;
+                        case 'years':
+                            $freq = Vcalendar::YEARLY;
+                            break;
+                    }
+
+                    $rrule = [Vcalendar::FREQ => $freq];
+
+                    if ($objEvent->recurrences > 0) {
+                        $rrule[Vcalendar::COUNT] = $objEvent->recurrences;
+                    }
+
+                    if ($arg > 1) {
+                        $rrule[Vcalendar::INTERVAL] = $arg;
+                    }
+
+                    $vevent->setRrule($rrule);
                 }
-
-                $rrule = [Vcalendar::FREQ => $freq];
-
-                if ($objEvent->recurrences > 0) {
-                    $rrule[Vcalendar::COUNT] = $objEvent->recurrences;
-                }
-
-                if ($arg > 1) {
-                    $rrule[Vcalendar::INTERVAL] = $arg;
-                }
-
-                $vevent->setRrule($rrule);
             } elseif (!empty($objEvent->recurringExt)) {
                 $arrRepeat = StringUtil::deserialize($objEvent->repeatEachExt, true);
                 $unit = $arrRepeat['unit']; // thursday
