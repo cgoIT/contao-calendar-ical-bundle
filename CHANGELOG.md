@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.9.6](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.5...v5.9.6) (2025-09-12)
+
+
+### Bug Fixes
+
+* add empty check for arrRepeat ([2900025](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/290002572e85f58bf8c1ace0f6c87747632d9ca4))
+* add int typecasts for date() ([a222f05](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/a222f0514a9663a56e49533cfc4dbe626fe5ab93))
+
 ## [5.9.5](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.4...v5.9.5) (2025-08-26)
 
 
