@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.7](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.6...v5.9.7) (2025-09-15)
+
+
+### Bug Fixes
+
+* fix route registration in contao 5 ([454ccd7](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/454ccd73df9c54aa08f10dfef5b90ac19978c366))
+
 ## [5.9.6](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.5...v5.9.6) (2025-09-12)
 
 
