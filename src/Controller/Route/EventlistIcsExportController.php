@@ -25,7 +25,6 @@ use Contao\PageModel;
 use Contao\StringUtil;
 use Contao\System;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Annotation\Route;
@@ -33,7 +32,6 @@ use Symfony\Component\Routing\Annotation\Route;
 /**
  * @noRector \Rector\PhpAttribute\Rector\Class_\RenameAttributeRector
  */
-#[AsController]
 #[Route('/_eventlist/ics-export/{id}',
     name: 'eventlist_frontend_ics_export',
     defaults: ['_scope' => 'frontend'])

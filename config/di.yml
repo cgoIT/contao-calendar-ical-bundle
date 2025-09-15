@@ -32,3 +32,9 @@ services:
 
     Cgoit\ContaoCalendarIcalBundle\Backend\Automator:
         public: true
+
+    Cgoit\ContaoCalendarIcalBundle\Controller\Route\EventlistIcsExportController:
+        public: true
+
+    Cgoit\ContaoCalendarIcalBundle\Controller\Route\SingleEventIcsExportController:
+        public: true
