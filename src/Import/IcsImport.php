@@ -360,6 +360,7 @@ class IcsImport extends AbstractImport
                         if (\array_key_exists('COUNT', $rrule)) {
                             $recurrences = ((int) $rrule['COUNT']) - 1;
                         } elseif (\array_key_exists('UNTIL', $rrule)) {
+                            $objEvent->repeatEnd = $repeatEnd;
                             $recurrences = $this->calculateRecurrenceCount($objEvent);
                         }
                         $objEvent->recurrences = $recurrences;
