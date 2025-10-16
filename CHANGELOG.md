@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.8](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.7...v5.9.8) (2025-10-16)
+
+
+### Bug Fixes
+
+* recurrence count calculation ([#96](https://github.com/cgoIT/contao-calendar-ical-bundle/issues/96)) ([67e4493](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/67e449365b24c35060a8f75fda59228ca9abf959))
+
 ## [5.9.7](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.6...v5.9.7) (2025-09-15)
 
 
