@@ -103,7 +103,7 @@ class CsvReader implements \Iterator
             $this->currentLine = null;
         }
         if (0 !== strcmp($this->encoding, 'utf8') && null !== $this->currentLine) {
-            $this->currentLine = utf8_encode($this->currentLine);
+            $this->currentLine = mb_convert_encoding($this->currentLine, 'UTF-8', 'ISO-8859-1');
         }
         if (!empty($this->currentLine)) {
             $this->currentArray = Csv::parseString($this->currentLine, $this->separator);

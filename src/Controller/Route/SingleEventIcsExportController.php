@@ -20,9 +20,15 @@ use Contao\StringUtil;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Annotation\Route;
 
-#[Route('/_event/ics-export/{id}', name: 'event_frontend_ics_export', defaults: ['_scope' => 'frontend'])]
+/**
+ * @noRector RenameAttributeRector
+ */
+#[Route('/_event/ics-export/{id}',
+    name: 'event_frontend_ics_export',
+    defaults: ['_scope' => 'frontend'])
+]
 class SingleEventIcsExportController extends AbstractController
 {
     public function __construct(
@@ -55,6 +61,6 @@ class SingleEventIcsExportController extends AbstractController
         $icsEvent = $this->icsExport->exportEvent($objEvent)->createCalendar();
         $filename = StringUtil::sanitizeFileName($objEvent->title ?? $eventId).'.ics';
 
-        return $this->responseUtil->returnMemoryFile($icsEvent, $filename);
+        throw $this->responseUtil->sendFileForDownload($icsEvent, $filename);
     }
 }

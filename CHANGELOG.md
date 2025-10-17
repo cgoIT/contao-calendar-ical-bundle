@@ -1,5 +1,77 @@
 # Changelog
 
+## [5.9.8](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.7...v5.9.8) (2025-10-16)
+
+
+### Bug Fixes
+
+* recurrence count calculation ([#96](https://github.com/cgoIT/contao-calendar-ical-bundle/issues/96)) ([67e4493](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/67e449365b24c35060a8f75fda59228ca9abf959))
+
+## [5.9.7](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.6...v5.9.7) (2025-09-15)
+
+
+### Bug Fixes
+
+* fix route registration in contao 5 ([454ccd7](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/454ccd73df9c54aa08f10dfef5b90ac19978c366))
+
+## [5.9.6](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.5...v5.9.6) (2025-09-12)
+
+
+### Bug Fixes
+
+* add empty check for arrRepeat ([2900025](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/290002572e85f58bf8c1ace0f6c87747632d9ca4))
+* add int typecasts for date() ([a222f05](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/a222f0514a9663a56e49533cfc4dbe626fe5ab93))
+
+## [5.9.5](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.4...v5.9.5) (2025-08-26)
+
+
+### Bug Fixes
+
+* Fix error on deleting Calendar in Version 4.13 ([#88](https://github.com/cgoIT/contao-calendar-ical-bundle/issues/88)) ([9fe8633](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/9fe8633104724aa92b3048f9f7ce41373595f728))
+
+## [5.9.4](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.3...v5.9.4) (2025-08-19)
+
+
+### Miscellaneous Chores
+
+* update version contraints ([86e23e8](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/86e23e8f95814d35a70917ff62d1da79c9c910ed))
+
+## [5.9.3](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.2...v5.9.3) (2025-07-10)
+
+
+### Bug Fixes
+
+* disable RenameAttributeRector for route classes to support custom export routes on Contao 4 and 5 ([3bcc2ae](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/3bcc2aed124ad683fe191dd852f4504fdb51bcd7))
+
+## [5.9.2](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.1...v5.9.2) (2025-06-13)
+
+
+### Bug Fixes
+
+* change implementation for file download response handling ([e28e23d](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/e28e23dea7b397f828cd4d600a4f4302f54aabc0))
+
+## [5.9.1](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.0...v5.9.1) (2025-06-12)
+
+
+### Bug Fixes
+
+* objPage is null ([694b3f4](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/694b3f48c7910f8702e5e8cbc43404a43faff98e))
+
+## [5.9.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.8.0...v5.9.0) (2025-06-12)
+
+
+### Features
+
+* make an eventlist module exportable as ical file via custom frontend route ([8530b90](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/8530b9073f38853e0b5451908f10779443814cd6))
+
+## [5.8.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.7.2...v5.8.0) (2025-04-29)
+
+
+### Features
+
+* add AfterImportitem event ([ace9d36](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/ace9d36ffa159d5c3e7895f11a64e11dd74064ce))
+* add BeforeImportItemEvent ([d5c6bd9](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/d5c6bd9a85b8db662c8985bd1b517c4386e85c50))
+
 ## [5.7.2](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.7.1...v5.7.2) (2025-04-12)
 
 

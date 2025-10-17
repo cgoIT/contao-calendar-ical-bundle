@@ -38,6 +38,21 @@ For example you can add the following snippet to your `event_full.html5` templat
 
 ```html
 <a href="<?= $this->route('event_frontend_ics_export', ['id' => $this->id]) ?>" class="ics-export" rel="nofollow" title="Export event as ics">
+    <img src="/bundles/cgoitcontaocalendarical/ics.svg" width="32" height="32" alt="">
+</a>
+```
+
+Export eventlist as ics
+---------------------------
+
+To export an eventlist (module) as ics (e.g. to give a user the ability to import it into his own calendar) you can add a link to the url
+`/_eventlist/ics-export/{id}` where `id` is the id of the eventlist module you want to export. You can also use the route name `eventlist_frontend_ics_export`
+in combination with the parameter `id` for that.
+
+For example you can add the following snippet to your `mod_eventlist.html5` template.
+
+```html
+<a href="<?= $this->route('eventlist_frontend_ics_export', ['id' => $this->id]) ?>" class="ics-export" rel="nofollow" title="Export as ics">
   <img src="/bundles/cgoitcontaocalendarical/ics.svg" width="32" height="32" alt="">
 </a>
 ```

@@ -34,8 +34,9 @@ class Plugin implements BundlePluginInterface, RoutingPluginInterface
 
     public function getRouteCollection(LoaderResolverInterface $resolver, KernelInterface $kernel)
     {
-        $file = __DIR__.'/../../config/routes.yml';
-
-        return $resolver->resolve($file)->load($file);
+        return $resolver
+            ->resolve('@CgoitContaoCalendarIcalBundle/src/Controller/Route')
+            ->load('@CgoitContaoCalendarIcalBundle/src/Controller/Route')
+        ;
     }
 }
