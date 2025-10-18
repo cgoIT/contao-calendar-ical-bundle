@@ -350,17 +350,16 @@ class IcsImport extends AbstractImport
                         $objEvent->recurringExt = false;
                         $objEvent->recurrences = 0;
                     } else {
+                        $objEvent->repeatEnd = $repeatEnd;
                         if (\in_array('repeatWeekday', $fieldNames, true) && isset($rrule['WKST']) && \is_array($rrule['WKST'])) {
                             $weekdays = ['MO' => 1, 'TU' => 2, 'WE' => 3, 'TH' => 4, 'FR' => 5, 'SA' => 6, 'SU' => 0];
                             $mapWeekdays = static fn (string $value): int|null => $weekdays[$value] ?? null;
                             $objEvent->repeatWeekday = serialize(array_map($mapWeekdays, $rrule['WKST']));
                         }
-
                         $recurrences = 0;
                         if (\array_key_exists('COUNT', $rrule)) {
                             $recurrences = ((int) $rrule['COUNT']) - 1;
                         } elseif (\array_key_exists('UNTIL', $rrule)) {
-                            $objEvent->repeatEnd = $repeatEnd;
                             $recurrences = $this->calculateRecurrenceCount($objEvent);
                         }
                         $objEvent->recurrences = $recurrences;
