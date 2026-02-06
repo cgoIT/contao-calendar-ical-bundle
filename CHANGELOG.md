@@ -1,5 +1,42 @@
 # Changelog
 
+## [5.9.9](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.8...v5.9.9) (2025-10-18)
+
+
+### Bug Fixes
+
+* recurrence count calculation ([5dfd11c](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/5dfd11c12121f29ab1f35563bbda62ef8776d9af))
+* set repeat until for repeating event correctly ([388fee6](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/388fee676040af3af63a9e0f19052808bc07f10e))
+
+## [5.9.8](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.7...v5.9.8) (2025-10-16)
+
+
+### Bug Fixes
+
+* recurrence count calculation ([#96](https://github.com/cgoIT/contao-calendar-ical-bundle/issues/96)) ([67e4493](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/67e449365b24c35060a8f75fda59228ca9abf959))
+
+## [5.9.7](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.6...v5.9.7) (2025-09-15)
+
+
+### Bug Fixes
+
+* fix route registration in contao 5 ([454ccd7](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/454ccd73df9c54aa08f10dfef5b90ac19978c366))
+
+## [5.9.6](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.5...v5.9.6) (2025-09-12)
+
+
+### Bug Fixes
+
+* add empty check for arrRepeat ([2900025](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/290002572e85f58bf8c1ace0f6c87747632d9ca4))
+* add int typecasts for date() ([a222f05](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/a222f0514a9663a56e49533cfc4dbe626fe5ab93))
+
+## [5.9.5](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.4...v5.9.5) (2025-08-26)
+
+
+### Bug Fixes
+
+* Fix error on deleting Calendar in Version 4.13 ([#88](https://github.com/cgoIT/contao-calendar-ical-bundle/issues/88)) ([9fe8633](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/9fe8633104724aa92b3048f9f7ce41373595f728))
+
 ## [5.9.4](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.3...v5.9.4) (2025-08-19)
 
 

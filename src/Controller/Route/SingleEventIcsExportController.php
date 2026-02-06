@@ -25,7 +25,10 @@ use Symfony\Component\Routing\Annotation\Route;
 /**
  * @noRector RenameAttributeRector
  */
-#[Route('/_event/ics-export/{id}', name: 'event_frontend_ics_export', defaults: ['_scope' => 'frontend'])]
+#[Route('/_event/ics-export/{id}',
+    name: 'event_frontend_ics_export',
+    defaults: ['_scope' => 'frontend'])
+]
 class SingleEventIcsExportController extends AbstractController
 {
     public function __construct(
