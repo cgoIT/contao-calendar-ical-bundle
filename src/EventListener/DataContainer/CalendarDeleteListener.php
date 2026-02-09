@@ -14,7 +14,6 @@ namespace Cgoit\ContaoCalendarIcalBundle\EventListener\DataContainer;
 
 use Cgoit\ContaoCalendarIcalBundle\Backend\ExportController;
 use Contao\CalendarModel;
-use Contao\CoreBundle\ContaoCoreBundle;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 
@@ -34,13 +33,8 @@ class CalendarDeleteListener
             return;
         }
 
-        $activeRecord = null;
-        $contaoVersion = ContaoCoreBundle::getVersion();
-        if (version_compare($contaoVersion, '5.0.0') >= 0) {
-            $activeRecord = (object) $dc->getCurrentRecord();
-        } else {
-            $activeRecord = (object) $dc->activeRecord;
-        }
+        // @phpstan-ignore-next-line
+        $activeRecord = method_exists($dc, 'getCurrentRecord') ? (object) $dc->getCurrentRecord() : $dc->activeRecord;
 
         $objCalendar = CalendarModel::findById($activeRecord->id);
         $this->calendarExport->removeSubscriptions($objCalendar);
