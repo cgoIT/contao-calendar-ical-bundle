@@ -616,6 +616,12 @@ class IcsImport extends AbstractImport
             }
         }
 
+        if ($repeatCount === 0) {
+            // in this case the end date is before the first recurrence
+            // we need to set the event to non-recurring as 0 would mean that the event recurs infinitely
+            $objEvent->recurring = false;
+        }
+
         return $repeatCount;
     }
 
