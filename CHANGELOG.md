@@ -1,5 +1,19 @@
 # Changelog
 
+## [5.9.10](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.9...v5.9.10) (2026-02-09)
+
+
+### Bug Fixes
+
+* don't rely on any contao version just check if the method getCurrentRecord exists in DataContainer to get the active record ([376830c](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/376830ccca473008eb6daaf80d6b8b7c103c015c))
+* rename field in translation file ([90e7483](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/90e7483477913fed31bc14dc11b74235d01fe0a7))
+
+
+### Miscellaneous Chores
+
+* run build-tools with php 8.3 ([7161268](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/7161268993053e92bc6f7073754cfe2302561131))
+* update file header ([22ae606](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/22ae606750dc644ddaba825d6f5860838aff7d59))
+
 ## [5.9.9](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.8...v5.9.9) (2025-10-18)
 
 
