@@ -110,7 +110,7 @@ class CsvImport extends AbstractImport
             $objTemplate = new BackendTemplate('be_import_calendar_csv_headers');
             $objTemplate->request_token = $this->csrfTokenManager->getToken($this->csrfTokenName)->getValue();
 
-            $objTemplate->lngFields = $GLOBALS['TL_LANG']['tl_calendar_events']['fields'];
+            $objTemplate->lngFields = $GLOBALS['TL_LANG']['tl_calendar_events']['ical_bundle_fields'];
             $objTemplate->lngPreview = $GLOBALS['TL_LANG']['tl_calendar_events']['preview'];
             $objTemplate->check = $GLOBALS['TL_LANG']['tl_calendar_events']['check'];
             $objTemplate->header = $header;
