@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.9.11](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.10...v5.9.11) (2026-02-10)
+
+
+### Bug Fixes
+
+* Fix recurrence count calculation on edge cases ([b915e50](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/b915e5025353c2c259e7c84592d4e36dee18cc61))
+* recurrence count calculation on edge cases ([f82f2f8](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/f82f2f8eefbdba5e8b973d8b3d8d5a632fa81ef8))
+
 ## [5.9.10](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.9...v5.9.10) (2026-02-09)
 
 
