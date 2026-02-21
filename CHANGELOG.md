@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.12](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.11...v5.9.12) (2026-02-21)
+
+
+### Bug Fixes
+
+* Merge pull request [#106](https://github.com/cgoIT/contao-calendar-ical-bundle/issues/106) from jdwiese/feature/ical-export ([aef2897](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/aef289743ff65d8091dabe7d38d1c7a9c3a1c2d1))
+
 ## [5.9.11](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.10...v5.9.11) (2026-02-10)
 
 
