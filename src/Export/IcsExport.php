@@ -166,7 +166,7 @@ class IcsExport extends Backend
             } else {
                 // add one second because in ICS the end date is exclusive, in Contao its inclusive
                 // and the time part is always 235959.
-                $tsEnd = ($startDate < (int) $objEvent->endTime)
+                $tsEnd = $startDate < (int) $objEvent->endTime
                     ? (int) $objEvent->endTime + 1
                     : $startDate + 24 * 60 * 60;
                 $dtEnd = new \DateTimeImmutable("@{$tsEnd}");
@@ -176,7 +176,7 @@ class IcsExport extends Backend
             $tsStart = (int) $objEvent->startTime;
             $dtStart = new \DateTimeImmutable("@{$tsStart}");
             $dtStart = $dtStart->setTimezone($timezone);
-            $tsEnd = (!empty($objEvent->endTime) and $tsStart < (int) $objEvent->endTime)
+            $tsEnd = (!empty($objEvent->endTime) && $tsStart < (int) $objEvent->endTime)
                 ? (int) $objEvent->endTime
                 : $tsStart + 60 * 60;
             $dtEnd = new \DateTimeImmutable("@{$tsEnd}");
@@ -292,40 +292,42 @@ class IcsExport extends Backend
 
                 foreach ($arrSkipPeriods as $skipInfo) {
                     if (
-                        !$skipInfo['exception'] or !is_numeric($skipInfo['exception']) or
-                        !$skipInfo['exceptionTo'] or !is_numeric($skipInfo['exceptionTo'])
+                        !$skipInfo['exception'] || !is_numeric($skipInfo['exception'])
+                        || !$skipInfo['exceptionTo'] || !is_numeric($skipInfo['exceptionTo'])
                     ) {
                         continue;
                     }
 
-                    $tsStart = (int)$skipInfo['exception'];
-                    $tsEnd = (int)$skipInfo['exceptionTo'] + 24 * 60 * 60;
+                    $tsStart = (int) $skipInfo['exception'];
+                    $tsEnd = (int) $skipInfo['exceptionTo'] + 24 * 60 * 60;
 
                     $affectedDates = array_filter(
-                        $arrDates, fn (int $tsDate) => $tsDate >= $tsStart and $tsDate <= $tsEnd
+                        $arrDates, static fn (int $tsDate) => $tsDate >= $tsStart && $tsDate <= $tsEnd,
                     );
                     if (!empty($affectedDates)) {
                         switch ($skipInfo['action']) {
                             // Termin nicht anzeigen
                             case 'hide':
                                 $exDates = array_map(
-                                    function (int $tsDate) use($objEvent, $timezone) {
+                                    static function (int $tsDate) use ($objEvent, $timezone) {
                                         $exDate = new \DateTimeImmutable("@{$tsDate}");
                                         $exDate = $exDate->setTimezone($timezone);
                                         if (!$objEvent->addTime) {
                                             $exDate = $exDate->setTime(0, 0);
                                         }
+
                                         return $exDate;
                                     },
-                                    $affectedDates
+                                    $affectedDates,
                                 );
                                 $hideDates = array_merge($hideDates, $exDates);
                                 break;
-                            //
-                            /**
-                             * Termin verschieben
-                             * @todo Hier muss ein weiteres VEvent mit dem neuen Termin erzeugt werden
-                             */
+
+                                /**
+                                 * Termin verschieben.
+                                 *
+                                 * @todo Hier muss ein weiteres VEvent mit dem neuen Termin erzeugt werden
+                                 */
                             case 'move':
                                 break;
                         }
@@ -338,11 +340,12 @@ class IcsExport extends Backend
                 $arrSkipDates = StringUtil::deserialize($objEvent->repeatExceptions, true);
 
                 foreach ($arrSkipDates as $skipInfo) {
-                    if (!$skipInfo['exception'] or !is_numeric($skipInfo['exception'])) {
+                    if (!$skipInfo['exception'] || !is_numeric($skipInfo['exception'])) {
                         continue;
                     }
 
                     $startTime = (int) $skipInfo['exception'];
+
                     switch ($skipInfo['action']) {
                         // Termin nicht anzeigen
                         case 'hide':
@@ -353,11 +356,12 @@ class IcsExport extends Backend
                             }
                             $hideDates[] = $exDate;
                             break;
-                        //
-                        /**
-                         * Termin verschieben
-                         * @todo Hier muss ein weiteres VEvent mit dem neuen Termin erzeugt werden
-                         */
+
+                            /**
+                             * Termin verschieben.
+                             *
+                             * @todo Hier muss ein weiteres VEvent mit dem neuen Termin erzeugt werden
+                             */
                         case 'move':
                             $dateChangeValue = (string) $skipInfo['new_exception'];
 
