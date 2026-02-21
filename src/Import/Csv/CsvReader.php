@@ -25,7 +25,9 @@ class CsvReader implements \Iterator
 
     protected string|null $currentLine = null;
 
-    /** @var array<mixed>|null */
+    /**
+     * @var array<mixed>|null
+     */
     protected array|null $currentArray = null;
 
     public function __construct(
