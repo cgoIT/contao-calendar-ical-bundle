@@ -176,7 +176,7 @@ class IcsExport extends Backend
             $tsStart = (int) $objEvent->startTime;
             $dtStart = new \DateTimeImmutable("@{$tsStart}");
             $dtStart = $dtStart->setTimezone($timezone);
-            $tsEnd = (!empty($objEvent->endTime) && $tsStart < (int) $objEvent->endTime)
+            $tsEnd = !empty($objEvent->endTime) && $tsStart < (int) $objEvent->endTime
                 ? (int) $objEvent->endTime
                 : $tsStart + 60 * 60;
             $dtEnd = new \DateTimeImmutable("@{$tsEnd}");
