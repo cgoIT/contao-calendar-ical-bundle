@@ -30,7 +30,7 @@ class CgoitContaoCalendarIcalExtension extends Extension
         $config = $this->processConfiguration($configuration, $configs);
 
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../../config'));
-        $loader->load('di.yml');
+        $loader->load('services.yml');
 
         // Configuration
         $container->setParameter('calendar_ical.end_date_time_difference_in_days', (int) $config['end_date_time_difference_in_days']);
