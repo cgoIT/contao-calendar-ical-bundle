@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.13](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.12...v5.9.13) (2026-03-27)
+
+
+### Miscellaneous Chores
+
+* rename di.yml to services.yml ([3715264](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/371526444e53e5d3235493b80ef24e51f5027a94))
+
 ## [5.9.12](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.11...v5.9.12) (2026-02-21)
 
 
