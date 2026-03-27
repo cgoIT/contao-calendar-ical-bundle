@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.14](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.13...v5.9.14) (2026-03-27)
+
+
+### Miscellaneous Chores
+
+* integrate twig-cs-fixer ([16c5309](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/16c530987ed49262bbfc14276d38a76936e0ffb4))
+
 ## [5.9.13](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.12...v5.9.13) (2026-03-27)
 
 
