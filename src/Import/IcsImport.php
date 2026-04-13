@@ -335,6 +335,18 @@ class IcsImport extends AbstractImport
                                 break;
                         }
 
+                        if (
+                            \array_key_exists('BYDAY', $rrule)
+                            && \is_array($rrule['BYDAY'])
+                            && \in_array('repeatWeekday', $fieldNames, true)
+                        ) {
+                            $weekdays = ['MO' => 1, 'TU' => 2, 'WE' => 3, 'TH' => 4, 'FR' => 5, 'SA' => 6, 'SU' => 0];
+                            $mapWeekdays = static fn (array $value): int|null => \array_key_exists('DAY', $value)
+                                ? $weekdays[$value['DAY']] ?? null
+                                : null;
+                            $objEvent->repeatWeekday = serialize(array_map($mapWeekdays, $rrule['BYDAY']));
+                        }
+
                         if (\array_key_exists('BYMONTHDAY', $rrule) && !\array_key_exists('INTERVAL', $rrule)) {
                             $repeatEach['value'] = 1;
                         } else {
@@ -351,11 +363,7 @@ class IcsImport extends AbstractImport
                         $objEvent->recurrences = 0;
                     } else {
                         $objEvent->repeatEnd = $repeatEnd;
-                        if (\in_array('repeatWeekday', $fieldNames, true) && isset($rrule['WKST']) && \is_array($rrule['WKST'])) {
-                            $weekdays = ['MO' => 1, 'TU' => 2, 'WE' => 3, 'TH' => 4, 'FR' => 5, 'SA' => 6, 'SU' => 0];
-                            $mapWeekdays = static fn (string $value): int|null => $weekdays[$value] ?? null;
-                            $objEvent->repeatWeekday = serialize(array_map($mapWeekdays, $rrule['WKST']));
-                        }
+
                         $recurrences = 0;
                         if (\array_key_exists('COUNT', $rrule)) {
                             $recurrences = ((int) $rrule['COUNT']) - 1;
@@ -627,6 +635,7 @@ class IcsImport extends AbstractImport
 
     private function calculateRecurrenceCountExtended(CalendarEventsModel $objEvent): int
     {
+        $englishMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         $repeatCount = 0;
         $arrRange = StringUtil::deserialize($objEvent->repeatEachExt, true);
 
@@ -645,7 +654,7 @@ class IcsImport extends AbstractImport
             $end = $objEvent->repeatEnd;
 
             while ($next <= $end) {
-                $timetoadd = $arg.' '.$unit.' of '.$GLOBALS['TL_LANG']['MONTHS'][$month - 1].' '.$year;
+                $timetoadd = $arg.' '.$unit.' of '.$englishMonthNames[$month - 1].' '.$year;
                 $strtotime = strtotime($timetoadd, $next);
 
                 if (false === $strtotime) {
@@ -768,9 +777,9 @@ class IcsImport extends AbstractImport
     private function handleRecurringExceptions(CalendarEventsModel $objEvent, array $fieldNames, $vevent, $timezone, $timeshift): void
     {
         if (
-            !\array_key_exists('useExceptions', $fieldNames)
-            && !\array_key_exists('repeatExceptions', $fieldNames)
-            && !\array_key_exists('exceptionList', $fieldNames)
+            !\in_array('useExceptions', $fieldNames)
+            || !\in_array('repeatExceptions', $fieldNames)
+            || !\in_array('exceptionList', $fieldNames)
         ) {
             return;
         }
