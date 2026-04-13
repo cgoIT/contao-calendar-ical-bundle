@@ -777,9 +777,9 @@ class IcsImport extends AbstractImport
     private function handleRecurringExceptions(CalendarEventsModel $objEvent, array $fieldNames, $vevent, $timezone, $timeshift): void
     {
         if (
-            !\in_array('useExceptions', $fieldNames)
-            || !\in_array('repeatExceptions', $fieldNames)
-            || !\in_array('exceptionList', $fieldNames)
+            !\in_array('useExceptions', $fieldNames, true)
+            || !\in_array('repeatExceptions', $fieldNames, true)
+            || !\in_array('exceptionList', $fieldNames, true)
         ) {
             return;
         }

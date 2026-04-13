@@ -19,9 +19,8 @@ class Automator extends System
 {
     private readonly ContaoAutomator $contaoAutomator;
 
-    public function __construct(
-        private readonly ExportController $calendarExport,
-    ) {
+    public function __construct(private readonly ExportController $calendarExport)
+    {
         parent::__construct();
         $this->contaoAutomator = new ContaoAutomator();
     }

@@ -30,9 +30,8 @@ class IcsExport extends Backend
      */
     private readonly array $posMap;
 
-    public function __construct(
-        private readonly InsertTagParser $insertTagParser,
-    ) {
+    public function __construct(private readonly InsertTagParser $insertTagParser)
+    {
         $this->dayMap = [
             'monday' => Vcalendar::MO,
             'tuesday' => Vcalendar::TU,
