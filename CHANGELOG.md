@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.9.15](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.14...v5.9.15) (2026-04-14)
+
+
+### Bug Fixes
+
+* ecs fixes ([a5f0ef0](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/a5f0ef0573706575035a0b7d949a6c0016bc3920))
+* ecs fixes ([1bd4a4b](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/1bd4a4bbdccc55e1109d5a94f68a0a5de81f9625))
+* header callbacks for list view ([865280b](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/865280b0b888ae6d14f0dbd6dfc812dd9e75f1d2))
+* incorrect handling of BYDAY recurrences and recurrence exceptions ([54597d9](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/54597d92762a4847ba88a000725aeaff47127821))
+
 ## [5.9.14](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.13...v5.9.14) (2026-03-27)
 
 
