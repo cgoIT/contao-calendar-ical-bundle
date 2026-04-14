@@ -59,3 +59,7 @@ $GLOBALS['TL_LANG']['tl_calendar']['ical_start']['1'] = 'Bitte geben Sie das Sta
 
 $GLOBALS['TL_LANG']['tl_calendar']['ical_end']['0'] = 'Enddatum';
 $GLOBALS['TL_LANG']['tl_calendar']['ical_end']['1'] = 'Bitte geben Sie das Endatum ein, bis zu dem Contao Termine aus den ausgewählten Kalendern extrahieren soll.  Wenn Sie kein Datum angeben, wird das Datum in einem Jahr als Enddatum verwendet.';
+
+// Used for calendar list view
+$GLOBALS['TL_LANG']['tl_calendar']['ical_export'] = 'iCal-Export URL';
+$GLOBALS['TL_LANG']['tl_calendar']['ical_import'] = 'iCal-Import URL';

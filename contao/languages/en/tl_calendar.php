@@ -59,3 +59,7 @@ $GLOBALS['TL_LANG']['tl_calendar']['ical_start']['1'] = 'Please enter the start 
 
 $GLOBALS['TL_LANG']['tl_calendar']['ical_end']['0'] = 'End date';
 $GLOBALS['TL_LANG']['tl_calendar']['ical_end']['1'] = 'Please enter the end date of the calendar. If you do not enter a date, the date in one year will be taken as end date.';
+
+// Used for calendar list view
+$GLOBALS['TL_LANG']['tl_calendar']['ical_export'] = 'iCal-Export URL';
+$GLOBALS['TL_LANG']['tl_calendar']['ical_import'] = 'iCal-Import URL';
