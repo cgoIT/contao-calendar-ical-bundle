@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.16](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.15...v5.9.16) (2026-04-24)
+
+
+### Bug Fixes
+
+* fix some bugs in ics list export ([d458c84](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/d458c841f9a7b74d4928a24314f9fa9f57615d3c))
+
 ## [5.9.15](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.14...v5.9.15) (2026-04-14)
 
 
