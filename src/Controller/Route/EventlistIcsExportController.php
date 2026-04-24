@@ -16,6 +16,7 @@ use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
 use Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil;
 use Contao\ContentModel;
 use Contao\CoreBundle\Exception\PageNotFoundException;
+use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\Date;
 use Contao\Environment;
 use Contao\Events;
@@ -24,6 +25,7 @@ use Contao\ModuleModel;
 use Contao\PageModel;
 use Contao\StringUtil;
 use Contao\System;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -46,6 +48,8 @@ class EventlistIcsExportController extends Events
     public function __construct(
         private readonly ResponseUtil $responseUtil,
         private readonly IcsExport $icsExport,
+        private readonly ContaoFramework $contaoFramework,
+        private readonly RequestStack $requestStack,
     ) {
     }
 
@@ -56,8 +60,6 @@ class EventlistIcsExportController extends Events
 
     public function __invoke(string $id): Response
     {
-        System::getContainer()->get('contao.framework')->initialize();
-
         if (!is_numeric($id)) {
             throw new BadRequestHttpException('Parameter "id" has to be numeric');
         }
@@ -74,6 +76,11 @@ class EventlistIcsExportController extends Events
      */
     private function exportEventlist(int $eventlistId): Response
     {
+        $this->contaoFramework->initialize();
+        System::loadLanguageFile('default');
+        System::loadLanguageFile('tl_calendar');
+        System::loadLanguageFile('tl_calendar_events');
+
         // The id could be of an Module or a ContentElement
         $objEventlist = ModuleModel::findById($eventlistId);
         if (empty($objEventlist)) {
@@ -109,6 +116,11 @@ class EventlistIcsExportController extends Events
         if (empty($objPage)) {
             $dns = Environment::get('host');
             $objPage = PageModel::findPublishedFallbackByHostname($dns, ['fallbackToEmpty' => true]);
+        }
+
+        $originalPageModelInRequest = $this->requestStack->getCurrentRequest()?->attributes->get('pageModel');
+        if (null === $originalPageModelInRequest) {
+            $this->requestStack->getCurrentRequest()?->attributes->set('pageModel', $objPage);
         }
 
         $cal_calendar = $this->sortOutProtected(StringUtil::deserialize($objEventlist->cal_calendar, true));
@@ -171,7 +183,12 @@ class EventlistIcsExportController extends Events
         [$intStart, $intEnd] = $this->getDatesFromFormat($date, $objEventlist->cal_format);
 
         // Get all events
-        return $this->getAllEvents($cal_calendar, $intStart, $intEnd, $blnFeatured);
+        $arrEvents = $this->getAllEvents($cal_calendar, $intStart, $intEnd, $blnFeatured);
+
+        // reset pageModel in request
+        $this->requestStack->getCurrentRequest()?->attributes->set('pageModel', $originalPageModelInRequest);
+
+        return $arrEvents;
     }
 
     /**
