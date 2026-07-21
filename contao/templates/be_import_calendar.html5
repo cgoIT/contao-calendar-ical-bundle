@@ -1,12 +1,12 @@
 
 <div id="tl_buttons">
-    <a href="<?= $this->hrefBack; ?>" class="header_back" title="<?= $this->goBack; ?>" accesskey="b" onclick="Backend.getScrollOffset();"><?= $this->goBack; ?></a>
+    <a href="<?= $this->hrefBack ?>" class="header_back" title="<?= $this->goBack ?>" accesskey="b" onclick="Backend.getScrollOffset();"><?= $this->goBack ?></a>
 </div>
 
-<h2 class="sub_headline"><?= $this->headline; ?></h2>
-<?= $this->message; ?>
+<h2 class="sub_headline"><?= $this->headline ?></h2>
+<?= $this->message ?>
 
-<form action="<?= $this->request; ?>" id="tl_import_calendar" class="tl_form" method="post" data-turbo="false" enctype="multipart/form-data">
+<form action="<?= $this->request ?>" id="tl_import_calendar" class="tl_form" method="post" data-turbo="false" enctype="multipart/form-data">
     <div class="tl_formbody_edit">
         <input type="hidden" name="FORM_SUBMIT" value="tl_import_calendar" />
         <input type="hidden" name="REQUEST_TOKEN" value="<?= $this->request_token ?>" />
@@ -33,7 +33,7 @@
             <h3><?= $this->endDate->generateLabel() ?></h3>
             <?= $this->endDate->generateWithError() ?>
             <?php if ($this->endDate->help): ?>
-                <p class="tl_help"><?= $this->endDate->help; ?></p>
+                <p class="tl_help"><?= $this->endDate->help ?></p>
             <?php endif; ?>
           </div>
 

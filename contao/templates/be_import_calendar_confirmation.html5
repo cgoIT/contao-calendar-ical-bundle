@@ -1,11 +1,11 @@
 
 <div id="tl_buttons">
-    <a href="<?= $this->hrefBack; ?>" class="header_back" title="<?= $this->goBack; ?>" accesskey="b" onclick="Backend.getScrollOffset();"><?= $this->goBack; ?></a>
+    <a href="<?= $this->hrefBack ?>" class="header_back" title="<?= $this->goBack ?>" accesskey="b" onclick="Backend.getScrollOffset();"><?= $this->goBack ?></a>
 </div>
 
-<h2 class="sub_headline"><?= $this->headline; ?></h2>
+<h2 class="sub_headline"><?= $this->headline ?></h2>
 
-<form action="<?= $this->request; ?>" id="tl_import_calendar_confirmation" class="tl_form" method="post">
+<form action="<?= $this->request ?>" id="tl_import_calendar_confirmation" class="tl_form" method="post">
     <div class="tl_formbody_edit">
         <input type="hidden" name="icssource" value="<?= $this->icssource ?>" />
         <input type="hidden" name="startDate" value="<?= $this->startDate ?>" />

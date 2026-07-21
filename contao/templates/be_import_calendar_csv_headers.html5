@@ -1,11 +1,11 @@
 
 <div id="tl_buttons">
-    <a href="<?= $this->hrefBack; ?>" class="header_back" title="<?= $this->goBack; ?>" accesskey="b" onclick="Backend.getScrollOffset();"><?= $this->goBack; ?></a>
+    <a href="<?= $this->hrefBack ?>" class="header_back" title="<?= $this->goBack ?>" accesskey="b" onclick="Backend.getScrollOffset();"><?= $this->goBack ?></a>
 </div>
 
-<h2 class="sub_headline"><?= $this->headline; ?></h2>
+<h2 class="sub_headline"><?= $this->headline ?></h2>
 
-<form action="<?= $this->request; ?>" id="tl_csv_headers" class="tl_form" method="post">
+<form action="<?= $this->request ?>" id="tl_csv_headers" class="tl_form" method="post">
     <div class="tl_formbody_edit">
         <input type="hidden" name="FORM_SUBMIT" value="tl_csv_headers" />
         <input type="hidden" name="REQUEST_TOKEN" value="<?= $this->request_token ?>" />
@@ -13,7 +13,7 @@
         <fieldset id="pal_configuration" class="tl_tbox">
             <legend>Konfiguration</legend>
             <div class="clr widget">
-                <h3><?= $this->lngFields; ?></h3>
+                <h3><?= $this->lngFields ?></h3>
                 <table>
                     <?php foreach ($this->fields as $fieldArray): ?>
                         <tr>
@@ -28,43 +28,43 @@
             <legend>Einstellungen</legend>
             <?php if (is_object($this->dateFormat)): ?>
                 <div class="w50 widget">
-                    <h3><?= $this->dateFormat->generateLabel(); ?></h3>
-                    <?= $this->dateFormat->generateWithError(); ?>
+                    <h3><?= $this->dateFormat->generateLabel() ?></h3>
+                    <?= $this->dateFormat->generateWithError() ?>
                     <?php if ($this->dateFormat->help): ?>
-                        <p class="tl_help"><?= $this->dateFormat->help; ?></p>
+                        <p class="tl_help"><?= $this->dateFormat->help ?></p>
                     <?php endif; ?>
                 </div>
                 <div class="w50 widget">
-                    <h3><?= $this->timeFormat->generateLabel(); ?></h3>
-                    <?= $this->timeFormat->generateWithError(); ?>
+                    <h3><?= $this->timeFormat->generateLabel() ?></h3>
+                    <?= $this->timeFormat->generateWithError() ?>
                     <?php if ($this->timeFormat->help): ?>
-                        <p class="tl_help"><?= $this->timeFormat->help; ?></p>
+                        <p class="tl_help"><?= $this->timeFormat->help ?></p>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
             <div class="w50 clr widget">
-                <h3><?= $this->encoding->generateLabel(); ?></h3>
-                <?= $this->encoding->generateWithError(); ?>
+                <h3><?= $this->encoding->generateLabel() ?></h3>
+                <?= $this->encoding->generateWithError() ?>
                 <?php if ($this->encoding->help): ?>
-                    <p class="tl_help"><?= $this->encoding->help; ?></p>
+                    <p class="tl_help"><?= $this->encoding->help ?></p>
                 <?php endif; ?>
             </div>
         </fieldset>
         <fieldset id="pal_preview" class="tl_tbox">
             <legend>Vorschau</legend>
             <div class="clr widget">
-                <h3><?= $this->lngPreview; ?></h3>
+                <h3><?= $this->lngPreview ?></h3>
                 <?php if (is_array($this->header) && count($this->header) > 0): ?>
                     <table id="tl_versions" class="tl_listing">
                         <thead>
                         <tr>
-                            <?php foreach ($this->header as $t): ?><th><?= $t; ?></th><?php endforeach; ?>
+                            <?php foreach ($this->header as $t): ?><th><?= $t ?></th><?php endforeach; ?>
                         </tr>
                         </thead>
                         <tbody>
                         <?php foreach ($this->preview as $line): ?>
                             <tr>
-                                <?php foreach ($line as $t): ?><td><?= $t; ?></td><?php endforeach; ?>
+                                <?php foreach ($line as $t): ?><td><?= $t ?></td><?php endforeach; ?>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -76,8 +76,8 @@
 
     <div class="tl_formbody_submit">
         <div class="tl_submit_container">
-            <input type="submit" name="check" id="check" class="tl_submit" alt="<?= $this->check; ?>" accesskey="s" value="<?= $this->check; ?>" />
-            <input type="submit" name="import" id="save" class="tl_submit" alt="<?= $this->submit; ?>" accesskey="s" value="<?= $this->submit; ?>" />
+            <input type="submit" name="check" id="check" class="tl_submit" alt="<?= $this->check ?>" accesskey="s" value="<?= $this->check ?>" />
+            <input type="submit" name="import" id="save" class="tl_submit" alt="<?= $this->submit ?>" accesskey="s" value="<?= $this->submit ?>" />
         </div>
     </div>
 </form>

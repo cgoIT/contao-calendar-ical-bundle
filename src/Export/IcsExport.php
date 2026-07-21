@@ -171,6 +171,8 @@ class IcsExport extends Backend
                 $dtEnd = new \DateTimeImmutable("@{$tsEnd}");
                 $dtEnd = $dtEnd->setTimezone($timezone);
             }
+
+            $valueType = IcalInterface::DATE;
         } else {
             $tsStart = (int) $objEvent->startTime;
             $dtStart = new \DateTimeImmutable("@{$tsStart}");
@@ -180,9 +182,11 @@ class IcsExport extends Backend
                 : $tsStart + 60 * 60;
             $dtEnd = new \DateTimeImmutable("@{$tsEnd}");
             $dtEnd = $dtEnd->setTimezone($timezone);
+
+            $valueType = IcalInterface::DATE_TIME;
         }
-        $vevent->setDtstart($dtStart, [IcalInterface::VALUE => IcalInterface::DATE_TIME]);
-        $vevent->setDtend($dtEnd, [IcalInterface::VALUE => IcalInterface::DATE_TIME]);
+        $vevent->setDtstart($dtStart, [IcalInterface::VALUE => $valueType]);
+        $vevent->setDtend($dtEnd, [IcalInterface::VALUE => $valueType]);
 
         $summary = $objEvent->title;
         if (!empty($prefix)) {
