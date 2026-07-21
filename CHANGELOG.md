@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.9.17](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.16...v5.9.17) (2026-07-21)
+
+
+### Bug Fixes
+
+* events without start and end time should be exported as dates and not datetimes in ics ([99b3e84](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/99b3e8451d469247e502cca84cf03693102c369c))
+
 ## [5.9.16](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.15...v5.9.16) (2026-04-24)
 
 
