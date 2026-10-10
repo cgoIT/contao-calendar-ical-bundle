@@ -3,7 +3,7 @@
 [![Installations via composer per month](http://img.shields.io/packagist/dm/cgoit/contao-calendar-ical-bundle.svg?style=flat)](https://packagist.org/packages/cgoit/contao-calendar-ical-bundle)
 [![Installations via composer total](http://img.shields.io/packagist/dt/cgoit/contao-calendar-ical-bundle.svg?style=flat)](https://packagist.org/packages/cgoit/contao-calendar-ical-bundle)
 
-Contao 4 and Contao 5 Calendar iCal Bundle
+Contao 5 Calendar iCal Bundle
 =======================
 
 iCal support for calendar of Contao OpenSource CMS. Forked from https://github.com/Craffft/contao-calendar-ical-bundle. PHP-8 ready.
@@ -25,7 +25,7 @@ of the Composer documentation.
 Contao 5 support
 ----------------
 
-Starting with version 5 of this bundle Contao 5 is supported.
+Starting with version 5 of this bundle Contao 5 is supported. Contao 4.13 is no longer supported; use an older release of this bundle for Contao 4.
 
 Export single events as ics
 ---------------------------

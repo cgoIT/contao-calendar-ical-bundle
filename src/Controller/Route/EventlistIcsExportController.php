@@ -29,11 +29,8 @@ use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * @noRector \Rector\PhpAttribute\Rector\Class_\RenameAttributeRector
- */
 #[Route('/_eventlist/ics-export/{id}',
     name: 'eventlist_frontend_ics_export',
     defaults: ['_scope' => 'frontend'])
