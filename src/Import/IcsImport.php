@@ -2,6 +2,14 @@
 
 declare(strict_types=1);
 
+/*
+ * This file is part of cgoit\contao-calendar-ical-bundle for Contao Open Source CMS.
+ *
+ * @copyright  Copyright (c), cgoIT
+ * @author     cgoIT <https://cgo-it.de>
+ * @license    LGPL-3.0-or-later
+ */
+
 namespace Cgoit\ContaoCalendarIcalBundle\Import;
 
 use Cgoit\ContaoCalendarIcalBundle\Event\AfterImportItemEvent;
@@ -259,7 +267,7 @@ class IcsImport extends AbstractImport
                 if (!empty($dtend)) {
                     [$eDate, $timezone] = $this->getDateFromPc($dtend, $tz[1]);
 
-                    if (true === $objEvent->addTime) {
+                    if ($objEvent->addTime) {
                         $objEvent->endDate = $eDate->getTimestamp();
                         $objEvent->endTime = $eDate->getTimestamp();
                     } else {
@@ -375,9 +383,7 @@ class IcsImport extends AbstractImport
                 }
                 $this->handleRecurringExceptions($objEvent, $fieldNames, $vevent, $timezone, $timeshift);
 
-                if (!isset($foundevents[$uid])) {
-                    $foundevents[$uid] = 0;
-                }
+                $foundevents[$uid] ??= 0;
                 ++$foundevents[$uid];
 
                 if ($foundevents[$uid] <= 1) {
