@@ -12,22 +12,21 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Controller\Route;
 
+use Cgoit\ContaoCalendarIcalBundle\Export\EventlistModule;
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
 use Cgoit\ContaoCalendarIcalBundle\Security\ExportAccessChecker;
 use Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil;
+use Contao\CalendarBundle\Generator\CalendarEventsGenerator;
 use Contao\CalendarModel;
 use Contao\ContentModel;
 use Contao\CoreBundle\Exception\PageNotFoundException;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\Date;
-use Contao\Environment;
-use Contao\Events;
-use Contao\Input;
 use Contao\ModuleModel;
 use Contao\PageModel;
 use Contao\StringUtil;
 use Contao\System;
-use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -37,44 +36,30 @@ use Symfony\Component\Routing\Attribute\Route;
     name: 'eventlist_frontend_ics_export',
     defaults: ['_scope' => 'frontend'])
 ]
-class EventlistIcsExportController extends Events
+class EventlistIcsExportController
 {
-    /**
-     * @var array<mixed>
-     */
-    protected $arrData = [];
-
     public function __construct(
         private readonly ResponseUtil $responseUtil,
         private readonly IcsExport $icsExport,
         private readonly ContaoFramework $contaoFramework,
-        private readonly RequestStack $requestStack,
         private readonly ExportAccessChecker $accessChecker,
+        private readonly CalendarEventsGenerator $eventsGenerator,
     ) {
     }
 
-    public function __get($strKey): mixed
-    {
-        return $this->arrData[$strKey] ?? parent::__get($strKey);
-    }
-
-    public function __invoke(string $id): Response
+    public function __invoke(Request $request, string $id): Response
     {
         if (!is_numeric($id)) {
             throw new BadRequestHttpException('Parameter "id" has to be numeric');
         }
 
-        return $this->exportEventlist((int) $id);
-    }
-
-    protected function compile(): void
-    {
+        return $this->exportEventlist($request, (int) $id);
     }
 
     /**
      * @throws \Exception
      */
-    private function exportEventlist(int $eventlistId): Response
+    private function exportEventlist(Request $request, int $eventlistId): Response
     {
         $this->contaoFramework->initialize();
         System::loadLanguageFile('default');
@@ -96,16 +81,12 @@ class EventlistIcsExportController extends Events
             throw new NotFoundHttpException('Eventlist not found');
         }
 
-        $this->arrData = $objEventlist->row();
-
-        $arrEvents = $this->getEvents($objEventlist);
+        $arrEvents = $this->getEvents($request, $objEventlist);
         if (empty($arrEvents)) {
             return new Response(null, Response::HTTP_NO_CONTENT);
         }
 
-        $arrEvents = $this->flatten($arrEvents);
-
-        $iCal = $this->icsExport->exportEvents($arrEvents)->createCalendar();
+        $iCal = $this->icsExport->exportEvents($this->flatten($arrEvents))->createCalendar();
         $filename = StringUtil::sanitizeFileName($objEventlist->name ?? $eventlistId).'.ics';
 
         $response = $this->responseUtil->createDownloadResponse($iCal, $filename);
@@ -129,86 +110,112 @@ class EventlistIcsExportController extends Events
     /**
      * @return array<mixed>
      */
-    private function getEvents(ContentModel|ModuleModel $objEventlist): array
+    private function getEvents(Request $request, ContentModel|ModuleModel $objEventlist): array
     {
-        global $objPage;
+        $calendarIds = array_map(
+            static fn (CalendarModel $calendar): int => (int) $calendar->id,
+            $this->accessChecker->filterCalendars(CalendarModel::findMultipleByIds(StringUtil::deserialize($objEventlist->cal_calendar, true))),
+        );
 
-        if (empty($objPage)) {
-            $dns = Environment::get('host');
-            $objPage = PageModel::findPublishedFallbackByHostname($dns, ['fallbackToEmpty' => true]);
-        }
-
-        $originalPageModelInRequest = $this->requestStack->getCurrentRequest()?->attributes->get('pageModel');
-        if (null === $originalPageModelInRequest) {
-            $this->requestStack->getCurrentRequest()?->attributes->set('pageModel', $objPage);
-        }
-
-        $cal_calendar = $this->sortOutProtected(StringUtil::deserialize($objEventlist->cal_calendar, true));
-        if (empty($cal_calendar) || !\is_array($cal_calendar)) {
+        if ([] === $calendarIds) {
             return [];
         }
 
-        $this->arrData['cal_calendar'] = $cal_calendar;
-
-        $intYear = (int) Input::get('year');
-        $intMonth = (int) Input::get('month');
-        $intDay = (int) Input::get('day');
+        $format = (string) $objEventlist->cal_format;
+        $year = (int) $request->query->get('year');
+        $month = (int) $request->query->get('month');
+        $day = (int) $request->query->get('day');
 
         // Handle featured events
-        $blnFeatured = null;
-
-        if ('featured' === $objEventlist->cal_featured) {
-            $blnFeatured = true;
-        } elseif ('unfeatured' === $objEventlist->cal_featured) {
-            $blnFeatured = false;
-        }
+        $featured = match ($objEventlist->cal_featured) {
+            'featured' => true,
+            'unfeatured' => false,
+            default => null,
+        };
 
         // Jump to the current period
-        if (null === Input::get('year') && null === Input::get('month') && null === Input::get('day')) {
-            switch ($objEventlist->cal_format) {
+        if (!$request->query->has('year') && !$request->query->has('month') && !$request->query->has('day')) {
+            switch ($format) {
                 case 'cal_year':
-                    $intYear = date('Y');
+                    $year = (int) date('Y');
                     break;
 
                 case 'cal_month':
-                    $intMonth = date('Ym');
+                    $month = (int) date('Ym');
                     break;
 
                 case 'cal_day':
-                    $intDay = date('Ymd');
+                    $day = (int) date('Ymd');
                     break;
             }
         }
 
-        $blnDynamicFormat = !$objEventlist->cal_ignoreDynamic && \in_array($objEventlist->cal_format, ['cal_day', 'cal_month', 'cal_year'], true);
+        $dynamicFormat = !$objEventlist->cal_ignoreDynamic && \in_array($format, ['cal_day', 'cal_month', 'cal_year'], true);
 
         // Create the date object
         $date = new Date();
 
         try {
-            if ($blnDynamicFormat && $intYear) {
-                $date = new Date($intYear, 'Y');
-                $objEventlist->cal_format = 'cal_year';
-            } elseif ($blnDynamicFormat && $intMonth) {
-                $date = new Date($intMonth, 'Ym');
-                $objEventlist->cal_format = 'cal_month';
-            } elseif ($blnDynamicFormat && $intDay) {
-                $date = new Date($intDay, 'Ymd');
-                $objEventlist->cal_format = 'cal_day';
+            if ($dynamicFormat && $year) {
+                $date = new Date($year, 'Y');
+                $format = 'cal_year';
+            } elseif ($dynamicFormat && $month) {
+                $date = new Date($month, 'Ym');
+                $format = 'cal_month';
+            } elseif ($dynamicFormat && $day) {
+                $date = new Date($day, 'Ymd');
+                $format = 'cal_day';
             }
         } catch (\OutOfBoundsException) {
-            throw new PageNotFoundException('Page not found: '.Environment::get('uri'));
+            throw new PageNotFoundException('Page not found: '.$request->getUri());
         }
 
-        [$intStart, $intEnd] = $this->getDatesFromFormat($date, $objEventlist->cal_format);
+        $row = $objEventlist->row();
+        $row['cal_calendar'] = $calendarIds;
+        $row['cal_format'] = $format;
+        $module = new EventlistModule($row);
 
-        // Get all events
-        $arrEvents = $this->getAllEvents($cal_calendar, $intStart, $intEnd, $blnFeatured);
+        [$start, $end] = $module->getPeriod($date, $format);
 
-        // reset pageModel in request
-        $this->requestStack->getCurrentRequest()?->attributes->set('pageModel', $originalPageModelInRequest);
+        return $this->withPageContext($request, fn (): array => $this->eventsGenerator->getAllEvents(
+            $calendarIds,
+            (new \DateTime())->setTimestamp($start),
+            (new \DateTime())->setTimestamp($end),
+            $featured,
+            (bool) $module->cal_noSpan,
+            null,
+            $module,
+        ));
+    }
 
-        return $arrEvents;
+    /**
+     * The events generator (and the hooks) rely on the current page, which is not set on this route.
+     *
+     * @template T
+     *
+     * @param callable(): T $callback
+     *
+     * @return T
+     */
+    private function withPageContext(Request $request, callable $callback): mixed
+    {
+        $originalGlobalPage = $GLOBALS['objPage'] ?? null;
+        $originalRequestPage = $request->attributes->get('pageModel');
+
+        $page = $originalGlobalPage ?: PageModel::findPublishedFallbackByHostname($request->getHost(), ['fallbackToEmpty' => true]);
+
+        $GLOBALS['objPage'] = $page;
+
+        if (null === $originalRequestPage) {
+            $request->attributes->set('pageModel', $page);
+        }
+
+        try {
+            return $callback();
+        } finally {
+            $GLOBALS['objPage'] = $originalGlobalPage;
+            $request->attributes->set('pageModel', $originalRequestPage);
+        }
     }
 
     /**

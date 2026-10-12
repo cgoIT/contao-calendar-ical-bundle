@@ -20,6 +20,7 @@ use Contao\ContentModel;
 use Contao\Controller;
 use Contao\CoreBundle\Controller\ContentElement\AbstractContentElementController;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsContentElement;
+use Contao\CoreBundle\Routing\ScopeMatcher;
 use Contao\FrontendTemplate;
 use Contao\Input;
 use Contao\Model\Collection;
@@ -45,6 +46,7 @@ class ContentIcalElement extends AbstractContentElementController
         private readonly ResponseUtil $responseUtil,
         private readonly IcsExport $icsExport,
         private readonly ExportAccessChecker $accessChecker,
+        private readonly ScopeMatcher $scopeMatcher,
     ) {
     }
 
@@ -67,7 +69,7 @@ class ContentIcalElement extends AbstractContentElementController
                 $request = $this->requestStack->getCurrentRequest();
 
                 // Use the custom template unless it is a back end request
-                if (!$request || !System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request)) {
+                if (!$request || !$this->scopeMatcher->isBackendRequest($request)) {
                     $downloadTemplate = $model->ical_download_template;
                 }
             }

@@ -18,14 +18,19 @@ use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\Environment;
 use Contao\Idna;
-use Contao\StringUtil;
 use Contao\System;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Filesystem\Path;
 
 #[AsCallback(table: 'tl_calendar_events', target: 'list.sorting.header')]
 class CalendarHeaderCallback
 {
-    public function __construct(private readonly ExportController $calendarExport)
-    {
+    public function __construct(
+        private readonly ExportController $calendarExport,
+        #[Autowire('%contao.web_dir%')]
+        private readonly string $webDir,
+        private readonly string $projectDir,
+    ) {
     }
 
     /**
@@ -45,7 +50,7 @@ class CalendarHeaderCallback
         if (null !== $objCalendar) {
             // No subscription file is generated for protected calendars
             if (!empty($objCalendar->make_ical) && !$objCalendar->protected) {
-                $shareDir = StringUtil::stripRootDir(System::getContainer()->getParameter('contao.web_dir').'/share');
+                $shareDir = Path::makeRelative($this->webDir.'/share', $this->projectDir);
                 $file = $shareDir.'/'.$this->calendarExport->getSubscriptionFileName($objCalendar).'.ics';
                 $icsUrl = Idna::decode(Environment::get('base')).str_replace($shareDir, 'share', $file);
 
