@@ -11,7 +11,7 @@ services:
 
     Cgoit\ContaoCalendarIcalBundle\:
         resource: ../src/*
-        exclude: '../src/{ContaoManager,DependencyInjection,Event,Widgets}'
+        exclude: '../src/{ContaoManager,DependencyInjection,Event,Export/EventlistModule.php,Import/Csv,Widgets}'
 
     Cgoit\ContaoCalendarIcalBundle\Backend\ImportFileController:
         public: true
