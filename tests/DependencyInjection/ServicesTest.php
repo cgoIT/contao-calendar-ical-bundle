@@ -81,7 +81,7 @@ final class ServicesTest extends TestCase
             $container->setDefinition($id, (new Definition($class))->setSynthetic(true)->setPublic(true));
         }
 
-        (new YamlFileLoader($container, new FileLocator(__DIR__.'/../../config')))->load('services.yml');
+        (new YamlFileLoader($container, new FileLocator(__DIR__.'/../../config')))->load('services.yaml');
 
         // Keep the unused services, the compiler would remove everything that is private and not referenced
         $container->getCompilerPassConfig()->setRemovingPasses([]);
