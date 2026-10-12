@@ -40,6 +40,8 @@ class IcsImport extends AbstractImport
      */
     private readonly array $arrMonths;
 
+    private const IMPORT_LOCK_TIMEOUT = 120;
+
     private readonly int $maxRepeatCount;
 
     public function __construct(
@@ -65,39 +67,57 @@ class IcsImport extends AbstractImport
         }
     }
 
+    /**
+     * Imports the web source of a calendar if the cache time ("ical_cache") is over or the import is forced.
+     * A running import of the same calendar is never started twice in parallel.
+     */
     public function importIcsForCalendar(CalendarModel $objCalendar, bool $force_import = false): void
     {
-        if (!empty($objCalendar->ical_source) && !empty($objCalendar->ical_url)) {
-            $last_change = (int) $objCalendar->ical_last_sync;
-            if (empty($last_change)) {
-                $last_change = time();
-                $force_import = true;
-            }
+        if (empty($objCalendar->ical_source) || empty($objCalendar->ical_url)) {
+            return;
+        }
 
-            if (((time() - $last_change > $objCalendar->ical_cache) && (1 !== $objCalendar->ical_importing || (time() - $objCalendar->tstamp) > 120)) || $force_import) {
-                $objCalendar->ical_importing = true;
-                $objCalendar->save();
+        $lastSync = (int) $objCalendar->ical_last_sync;
+        $cacheExpired = 0 === $lastSync || (time() - $lastSync) > (int) $objCalendar->ical_cache;
 
-                // create new from ical file
-                System::getContainer()
-                    ->get('monolog.logger.contao.general')
-                    ->info('Reload iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.'): Triggered by '.time().' - '.$last_change.' = '.(time() - $last_change).' > '.$objCalendar->ical_cache)
-                ;
+        if (!$force_import && !$cacheExpired) {
+            return;
+        }
 
-                $startDate = !empty((string) $objCalendar->ical_source_start) ?
-                    new Date($objCalendar->ical_source_start, Config::get('dateFormat')) :
-                    new Date(time(), Config::get('dateFormat'));
-                $endDate = !empty((string) $objCalendar->ical_source_end) ?
-                    new Date($objCalendar->ical_source_end, Config::get('dateFormat')) :
-                    new Date(time() + $this->defaultEndTimeDifference * 24 * 3600, Config::get('dateFormat'));
-                $tz = [$objCalendar->ical_timezone, $objCalendar->ical_timezone];
-                $this->importFromWebICS($objCalendar, $startDate, $endDate, $tz);
+        $logger = System::getContainer()->get('monolog.logger.contao.general');
 
-                $objCalendar->tstamp = time();
-                $objCalendar->ical_importing = false;
+        // "tstamp" holds the start of a running import; an older lock is left over from a crashed process
+        if (!empty($objCalendar->ical_importing) && (time() - (int) $objCalendar->tstamp) <= self::IMPORT_LOCK_TIMEOUT) {
+            $logger->info('Skip reload of iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.'): The import is already running');
+
+            return;
+        }
+
+        $objCalendar->ical_importing = '1';
+        $objCalendar->tstamp = time();
+        $objCalendar->save();
+
+        try {
+            $logger->info('Reload iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.')'.($force_import ? ' (forced)' : ''));
+
+            $startDate = !empty((string) $objCalendar->ical_source_start) ?
+                new Date($objCalendar->ical_source_start, Config::get('dateFormat')) :
+                new Date(time(), Config::get('dateFormat'));
+            $endDate = !empty((string) $objCalendar->ical_source_end) ?
+                new Date($objCalendar->ical_source_end, Config::get('dateFormat')) :
+                new Date(time() + $this->defaultEndTimeDifference * 24 * 3600, Config::get('dateFormat'));
+            $tz = [$objCalendar->ical_timezone, $objCalendar->ical_timezone];
+
+            // Without a successful import the next run retries, it does not wait for the cache time
+            if ($this->importFromWebICS($objCalendar, $startDate, $endDate, $tz)) {
                 $objCalendar->ical_last_sync = time();
-                $objCalendar->save();
             }
+        } catch (\Throwable $e) {
+            $logger->error('Could not import iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.'): '.$e->getMessage());
+        } finally {
+            $objCalendar->tstamp = time();
+            $objCalendar->ical_importing = '';
+            $objCalendar->save();
         }
     }
 
@@ -466,11 +486,13 @@ class IcsImport extends AbstractImport
 
     /**
      * @param array<mixed> $timezone
+     *
+     * @return bool True if the source could be downloaded and parsed
      */
-    private function importFromWebICS(CalendarModel $objCalendar, Date $startDate, Date $endDate, array $timezone): void
+    private function importFromWebICS(CalendarModel $objCalendar, Date $startDate, Date $endDate, array $timezone): bool
     {
         if (empty($objCalendar->ical_url)) {
-            return;
+            return false;
         }
 
         $cal = new Vcalendar();
@@ -480,7 +502,7 @@ class IcsImport extends AbstractImport
 
         $content = $this->downloader->download($objCalendar->ical_url, $objCalendar->ical_proxy, $objCalendar->ical_bnpw, $objCalendar->ical_port ? (int) $objCalendar->ical_port : null);
         if (null === $content) {
-            return;
+            return false;
         }
 
         try {
@@ -491,7 +513,7 @@ class IcsImport extends AbstractImport
                 ->error('Could not import ics file from URL "'.$objCalendar->ical_url.'": '.$e->getMessage())
             ;
 
-            return;
+            return false;
         }
 
         $tz = $cal->getProperty(IcalInterface::X_WR_TIMEZONE);
@@ -504,6 +526,8 @@ class IcsImport extends AbstractImport
         }
 
         $this->importFromIcsFile($cal, $objCalendar, $startDate, $endDate, $tz, $objCalendar->ical_filter_event_title, $objCalendar->ical_pattern_event_title, $objCalendar->ical_replacement_event_title, true);
+
+        return true;
     }
 
     /**

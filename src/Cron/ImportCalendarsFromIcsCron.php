@@ -16,13 +16,17 @@ use Cgoit\ContaoCalendarIcalBundle\Import\IcsImport;
 use Contao\CalendarModel;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCronJob;
 use Contao\CoreBundle\Framework\ContaoFramework;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
-#[AsCronJob('daily')]
+#[AsCronJob('hourly')]
 class ImportCalendarsFromIcsCron
 {
     public function __construct(
         private readonly IcsImport $icsImport,
         private readonly ContaoFramework $contaoFramework,
+        #[Autowire(service: 'monolog.logger.contao.general')]
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -32,9 +36,17 @@ class ImportCalendarsFromIcsCron
 
         $arrCalendars = CalendarModel::findBy(['ical_source != ?'], ['']);
 
-        if (!empty($arrCalendars)) {
-            foreach ($arrCalendars as $arrCalendar) {
-                $this->icsImport->importIcsForCalendar($arrCalendar, true);
+        if (empty($arrCalendars)) {
+            return;
+        }
+
+        foreach ($arrCalendars as $arrCalendar) {
+            // Only calendars whose cache time ("ical_cache") is over are imported
+            try {
+                $this->icsImport->importIcsForCalendar($arrCalendar);
+            } catch (\Throwable $e) {
+                // A broken source must not prevent the import of the other calendars
+                $this->logger->error('Could not import the web calendar "'.$arrCalendar->title.'" ('.$arrCalendar->id.'): '.$e->getMessage());
             }
         }
     }

@@ -37,7 +37,8 @@ class CalendarSubmitListener
         if (!empty($objCalendar)) {
             $objCalendar->refresh();
 
-            $this->icsImport->importIcsForCalendar($objCalendar);
+            // Saving a calendar in the back end applies changed source settings (URL, filter, timezone, ...) at once
+            $this->icsImport->importIcsForCalendar($objCalendar, true);
             $this->calendarExport->generateSubscriptions($objCalendar);
         }
     }

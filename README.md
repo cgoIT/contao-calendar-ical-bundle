@@ -74,8 +74,15 @@ geschützte Kalender nicht zur Verfügung; verwenden Sie stattdessen eine Seite 
 Kalender aus einer Web-Quelle importieren
 -----------------------------------------
 
-Ein Kalender kann seine Termine regelmäßig aus einer ICS-URL übernehmen („Web-Quelle“). Der Download ist ab Version 6.0
-abgesichert:
+Ein Kalender kann seine Termine regelmäßig aus einer ICS-URL übernehmen („Web-Quelle“).
+
+Ab Version 6.0 werden Web-Quellen **nicht mehr beim Seitenaufruf**, sondern nur noch im Hintergrund aktualisiert: Der
+Contao-Cron (stündlich) importiert jeden Kalender, dessen Cache-Dauer („Cache-Dauer in Sekunden“, Standard 86400)
+abgelaufen ist. Der Contao-Cron muss daher eingerichtet sein (Systemcron oder Poor-Man's-Cron). Beim Speichern des
+Kalenders im Backend wird die Quelle sofort abgerufen, damit geänderte Einstellungen (URL, Filter, Zeitzone, ...) gleich
+wirksam werden. Ein fehlgeschlagener Abruf wird beim nächsten Cron-Lauf erneut versucht.
+
+Der Download ist ab Version 6.0 abgesichert:
 
 - Erlaubt sind nur `http://`, `https://` und `webcal://`. `webcal://` wird immer als `https://` abgerufen; Quellen, die
   nur per HTTP erreichbar sind, tragen Sie bitte mit `http://` ein.
