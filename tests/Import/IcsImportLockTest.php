@@ -16,17 +16,22 @@ use Cgoit\ContaoCalendarIcalBundle\Import\IcsImport;
 use Cgoit\ContaoCalendarIcalBundle\Import\RemoteIcsDownloader;
 use Cgoit\ContaoCalendarIcalBundle\Tests\ContaoTestCase;
 use Contao\CalendarModel;
+use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\Date;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DriverManager;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Psr\Log\NullLogger;
 
 /**
- * Covers the cache time and the lock of the web import. The database access of the model and of
- * the actual import is replaced.
+ * Covers the cache time and the lock of the web import with a real (SQLite) database for the lock columns.
+ * The import of the events itself is replaced.
  */
 final class IcsImportLockTest extends ContaoTestCase
 {
     private const ICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:test\r\nEND:VCALENDAR\r\n";
+
+    private Connection $db;
 
     protected function setUp(): void
     {
@@ -34,6 +39,9 @@ final class IcsImportLockTest extends ContaoTestCase
 
         $container = $this->bootContao();
         $container->set('monolog.logger.contao.general', new NullLogger());
+
+        $this->db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
+        $this->db->executeStatement("CREATE TABLE tl_calendar (id INTEGER PRIMARY KEY, tstamp INTEGER NOT NULL DEFAULT 0, title TEXT, ical_importing TEXT NOT NULL DEFAULT '', ical_last_sync INTEGER DEFAULT NULL, ical_cache INTEGER NOT NULL DEFAULT 0)");
     }
 
     public function testDoesNothingWhileCacheIsValid(): void
@@ -41,22 +49,24 @@ final class IcsImportLockTest extends ContaoTestCase
         $calendar = $this->calendar(['ical_last_sync' => time() - 60, 'ical_cache' => 3600]);
         $import = $this->import();
 
-        $import->importIcsForCalendar($calendar);
+        $this->assertFalse($import->importIcsForCalendar($calendar));
 
         $this->assertSame(0, $import->imports);
-        $this->assertSame(0, $calendar->saves);
+        $this->assertSame('', $this->row()['ical_importing']);
     }
 
     public function testImportsWhenCacheIsOver(): void
     {
-        $calendar = $this->calendar(['ical_last_sync' => time() - 7200, 'ical_cache' => 3600]);
+        $lastSync = time() - 7200;
+        $calendar = $this->calendar(['ical_last_sync' => $lastSync, 'ical_cache' => 3600]);
         $import = $this->import();
 
-        $import->importIcsForCalendar($calendar);
+        $this->assertTrue($import->importIcsForCalendar($calendar));
 
         $this->assertSame(1, $import->imports);
+        $this->assertGreaterThan(time() - 5, (int) $this->row()['ical_last_sync']);
+        $this->assertSame('', $this->row()['ical_importing']);
         $this->assertGreaterThan(time() - 5, (int) $calendar->ical_last_sync);
-        $this->assertSame('', $calendar->ical_importing);
     }
 
     public function testImportsNewSourceWithoutLastSync(): void
@@ -83,13 +93,25 @@ final class IcsImportLockTest extends ContaoTestCase
         $calendar = $this->calendar(['ical_importing' => '1', 'tstamp' => time() - 10]);
         $import = $this->import();
 
-        $import->importIcsForCalendar($calendar, true);
+        $this->assertFalse($import->importIcsForCalendar($calendar, true));
 
         $this->assertSame(0, $import->imports);
-        $this->assertSame('1', $calendar->ical_importing, 'The lock of the other process must stay untouched');
+        $this->assertSame('1', $this->row()['ical_importing'], 'The lock of the other process must stay untouched');
     }
 
-    public function testStaleLockIsIgnored(): void
+    public function testLockIsTakenAtomicallyInTheDatabase(): void
+    {
+        // Two processes loaded the calendar before one of them took the lock
+        $first = $this->calendar();
+        $second = $this->calendar();
+        $import = $this->import();
+
+        $this->assertTrue($import->acquire($first));
+        $this->assertFalse($import->acquire($second), 'The second process must not get the lock although its model says "not importing"');
+        $this->assertSame('1', $this->row()['ical_importing']);
+    }
+
+    public function testStaleLockIsTakenOver(): void
     {
         $calendar = $this->calendar(['ical_importing' => '1', 'tstamp' => time() - 3600]);
         $import = $this->import();
@@ -97,41 +119,81 @@ final class IcsImportLockTest extends ContaoTestCase
         $import->importIcsForCalendar($calendar, true);
 
         $this->assertSame(1, $import->imports);
-        $this->assertSame('', $calendar->ical_importing);
+        $this->assertSame('', $this->row()['ical_importing']);
     }
 
     public function testLockIsReleasedAfterFailureAndNextRunRetries(): void
     {
-        $calendar = $this->calendar(['ical_last_sync' => time() - 7200, 'ical_cache' => 3600]);
-        $lastSync = $calendar->ical_last_sync;
+        $lastSync = time() - 7200;
+        $calendar = $this->calendar(['ical_last_sync' => $lastSync, 'ical_cache' => 3600]);
         $import = $this->import(throw: true);
 
-        $import->importIcsForCalendar($calendar);
+        $this->assertTrue($import->importIcsForCalendar($calendar));
 
-        $this->assertSame('', $calendar->ical_importing);
-        $this->assertSame($lastSync, $calendar->ical_last_sync);
+        $this->assertSame('', $this->row()['ical_importing']);
+        $this->assertSame($lastSync, (int) $this->row()['ical_last_sync']);
     }
 
     public function testFailedDownloadDoesNotUpdateLastSync(): void
     {
-        $calendar = $this->calendar(['ical_last_sync' => time() - 7200, 'ical_cache' => 3600]);
-        $lastSync = $calendar->ical_last_sync;
+        $lastSync = time() - 7200;
+        $calendar = $this->calendar(['ical_last_sync' => $lastSync, 'ical_cache' => 3600]);
         $import = $this->import(content: null);
 
         $import->importIcsForCalendar($calendar);
 
         $this->assertSame(0, $import->imports);
-        $this->assertSame($lastSync, $calendar->ical_last_sync);
-        $this->assertSame('', $calendar->ical_importing);
+        $this->assertSame($lastSync, (int) $this->row()['ical_last_sync']);
+        $this->assertSame('', $this->row()['ical_importing']);
+    }
+
+    public function testOnlyLockColumnsAreWritten(): void
+    {
+        $calendar = $this->calendar(['ical_last_sync' => time() - 7200, 'ical_cache' => 3600]);
+        $import = $this->import();
+
+        // An editor changes the title while the import is running
+        $import->beforeImport = fn () => $this->db->executeStatement("UPDATE tl_calendar SET title = 'Changed by editor' WHERE id = 1");
+
+        $import->importIcsForCalendar($calendar);
+
+        $this->assertSame('Changed by editor', $this->row()['title']);
     }
 
     public function testCalendarWithoutSourceIsIgnored(): void
     {
         $import = $this->import();
 
-        $import->importIcsForCalendar($this->calendar(['ical_source' => '']), true);
+        $this->assertFalse($import->importIcsForCalendar($this->calendar(['ical_source' => '']), true));
 
         $this->assertSame(0, $import->imports);
+    }
+
+    public function testEventsAreImportedInOneTransaction(): void
+    {
+        $this->calendar();
+        $import = $this->import();
+        $now = new Date(time(), 'Y-m-d');
+
+        try {
+            $import->importFromIcsFileUsingRealTransaction(new Vcalendar(), $this->calendar(), $now, $now, true);
+            $this->fail('The error must not be swallowed');
+        } catch (\RuntimeException) {
+        }
+
+        $this->assertSame(0, (int) $this->db->fetchOne('SELECT COUNT(*) FROM tl_calendar WHERE id = 2'), 'a failing import is rolled back');
+
+        $import->importFromIcsFileUsingRealTransaction(new Vcalendar(), $this->calendar(), $now, $now, false);
+
+        $this->assertSame(1, (int) $this->db->fetchOne('SELECT COUNT(*) FROM tl_calendar WHERE id = 2'), 'a successful import is committed');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function row(): array
+    {
+        return $this->db->fetchAssociative('SELECT * FROM tl_calendar WHERE id = 1') ?: [];
     }
 
     /**
@@ -139,17 +201,6 @@ final class IcsImportLockTest extends ContaoTestCase
      */
     private function calendar(array $data = []): CalendarModel
     {
-        $calendar = new class() extends CalendarModel {
-            public int $saves = 0;
-
-            public function save(): static
-            {
-                ++$this->saves;
-
-                return $this;
-            }
-        };
-
         $values = array_merge(
             [
                 'id' => 1,
@@ -165,6 +216,19 @@ final class IcsImportLockTest extends ContaoTestCase
             $data,
         );
 
+        if (0 === (int) $this->db->fetchOne('SELECT COUNT(*) FROM tl_calendar WHERE id = 1')) {
+            $this->db->insert('tl_calendar', [
+                'id' => 1,
+                'title' => $values['title'],
+                'tstamp' => $values['tstamp'],
+                'ical_importing' => $values['ical_importing'],
+                'ical_last_sync' => $values['ical_last_sync'],
+                'ical_cache' => $values['ical_cache'],
+            ]);
+        }
+
+        $calendar = new CalendarModel();
+
         foreach ($values as $key => $value) {
             $calendar->{$key} = $value;
         }
@@ -172,10 +236,7 @@ final class IcsImportLockTest extends ContaoTestCase
         return $calendar;
     }
 
-    /**
-     * @return IcsImport&object{imports: int}
-     */
-    private function import(bool $throw = false, string|null $content = self::ICS): IcsImport
+    private function import(bool $throw = false, string|null $content = self::ICS): TestableIcsImport
     {
         $downloader = $this->createStub(RemoteIcsDownloader::class);
         $downloader
@@ -183,26 +244,14 @@ final class IcsImportLockTest extends ContaoTestCase
             ->willReturn($content)
         ;
 
-        $import = new class($throw) extends IcsImport {
-            public int $imports = 0;
-
-            public function __construct(private readonly bool $throw)
-            {
-            }
-
-            public function importFromIcsFile(Vcalendar $cal, CalendarModel $objCalendar, Date $startDate, Date $endDate, array|bool $tz, string|null $filterEventTitle, string|null $patternEventTitle, string|null $replacementEventTitle, bool $deleteCalendar = false, int $timeshift = 0): void
-            {
-                if ($this->throw) {
-                    throw new \RuntimeException('import failed');
-                }
-
-                ++$this->imports;
-            }
-        };
+        $import = new TestableIcsImport($throw);
 
         $reflection = new \ReflectionClass(IcsImport::class);
         $reflection->getProperty('downloader')->setValue($import, $downloader);
         $reflection->getProperty('defaultEndTimeDifference')->setValue($import, 365);
+        $reflection->getProperty('db')->setValue($import, $this->db);
+        $import->connection = $this->db;
+        $reflection->getProperty('contaoFramework')->setValue($import, $this->createStub(ContaoFramework::class));
 
         return $import;
     }

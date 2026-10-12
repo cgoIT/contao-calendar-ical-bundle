@@ -34,3 +34,4 @@ $GLOBALS['TL_LANG']['ERR']['ics_parse_error'] = 'The uploaded ics file could not
 $GLOBALS['TL_LANG']['ERR']['ical_protected_calendar'] = 'No iCal subscription can be generated for protected calendars because the file would be publicly available in the "share" directory. Use an "iCal feed" page instead.';
 $GLOBALS['TL_LANG']['ERR']['ical_invalid_pattern'] = 'The regular expression for rewriting the title is invalid (it needs delimiters, e.g. /pattern/): %s';
 $GLOBALS['TL_LANG']['ERR']['csv_records_skipped'] = '%d records were not imported because the date or time does not match the selected format (record no.: %s).';
+$GLOBALS['TL_LANG']['MSC']['ical_import_running'] = 'The iCal source is already being imported. The changed settings are applied by the next import.';

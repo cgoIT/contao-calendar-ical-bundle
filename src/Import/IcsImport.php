@@ -55,32 +55,33 @@ class IcsImport extends AbstractImport
     /**
      * Imports the web source of a calendar if the cache time ("ical_cache") is over or the import is forced.
      * A running import of the same calendar is never started twice in parallel.
+     *
+     * @return bool True if the import was started (and not skipped because of the cache time or a running import)
      */
-    public function importIcsForCalendar(CalendarModel $objCalendar, bool $force_import = false): void
+    public function importIcsForCalendar(CalendarModel $objCalendar, bool $force_import = false): bool
     {
         if (empty($objCalendar->ical_source) || empty($objCalendar->ical_url)) {
-            return;
+            return false;
         }
 
         $lastSync = (int) $objCalendar->ical_last_sync;
         $cacheExpired = 0 === $lastSync || (time() - $lastSync) > (int) $objCalendar->ical_cache;
 
         if (!$force_import && !$cacheExpired) {
-            return;
+            return false;
         }
+
+        $this->contaoFramework->initialize();
 
         $logger = System::getContainer()->get('monolog.logger.contao.general');
 
-        // "tstamp" holds the start of a running import; an older lock is left over from a crashed process
-        if (!empty($objCalendar->ical_importing) && (time() - (int) $objCalendar->tstamp) <= self::IMPORT_LOCK_TIMEOUT) {
+        if (!$this->acquireImportLock($objCalendar)) {
             $logger->info('Skip reload of iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.'): The import is already running');
 
-            return;
+            return false;
         }
 
-        $objCalendar->ical_importing = '1';
-        $objCalendar->tstamp = time();
-        $objCalendar->save();
+        $synced = false;
 
         try {
             $logger->info('Reload iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.')'.($force_import ? ' (forced)' : ''));
@@ -94,16 +95,147 @@ class IcsImport extends AbstractImport
             $tz = [$objCalendar->ical_timezone, $objCalendar->ical_timezone];
 
             // Without a successful import the next run retries, it does not wait for the cache time
-            if ($this->importFromWebICS($objCalendar, $startDate, $endDate, $tz)) {
-                $objCalendar->ical_last_sync = time();
-            }
+            $synced = $this->importFromWebICS($objCalendar, $startDate, $endDate, $tz);
         } catch (\Throwable $e) {
             $logger->error('Could not import iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.'): '.$e->getMessage());
         } finally {
-            $objCalendar->tstamp = time();
-            $objCalendar->ical_importing = '';
-            $objCalendar->save();
+            $this->releaseImportLock($objCalendar, $synced);
         }
+
+        return true;
+    }
+
+    /**
+     * Imports the events of the ics file. Everything or nothing is imported, also if the events of
+     * the calendar are replaced.
+     *
+     * @param array<mixed>|bool $tz
+     *
+     * @throws \Exception
+     */
+    public function importFromIcsFile(Vcalendar $cal, CalendarModel $objCalendar, Date $startDate, Date $endDate, array|bool $tz, string|null $filterEventTitle, string|null $patternEventTitle, string|null $replacementEventTitle, bool $deleteCalendar = false, int $timeshift = 0): void
+    {
+        $this->db->beginTransaction();
+
+        try {
+            $this->importEvents($cal, $objCalendar, $startDate, $endDate, $tz, $filterEventTitle, $patternEventTitle, $replacementEventTitle, $deleteCalendar, $timeshift);
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+
+            throw $e;
+        }
+    }
+
+    /**
+     * @return array<mixed>
+     *
+     * @throws \Exception
+     */
+    public function getDateFromPc(Pc $pc, string $tz): array
+    {
+        if ($pc->hasParamKey(IcalInterface::TZID)) {
+            $timezone = $pc->getParams(IcalInterface::TZID);
+            $date = $pc->getValue();
+        } elseif ($this->isWithoutTimezone($pc)) {
+            // Date values and floating times carry no time zone; iCalcreator returns them as UTC.
+            // They have to be read as wall-clock time of the calendar.
+            $timezone = $tz;
+            $date = new \DateTime(
+                $pc->getValue()->format(DateTimeFactory::$YmdHis),
+                DateTimeZoneFactory::factory($tz),
+            );
+        } else {
+            if ($pc->getValue()->getTimezone()) {
+                $timezone = $pc->getValue()->getTimezone()->getName();
+                $date = new \DateTime(
+                    $pc->getValue()->format(DateTimeFactory::$YmdHis),
+                    $pc->getValue()->getTimezone(),
+                );
+            } else {
+                $timezone = $tz;
+                $date = new \DateTime(
+                    $pc->getValue()->format(DateTimeFactory::$YmdHis),
+                    DateTimeZoneFactory::factory($tz),
+                );
+            }
+        }
+
+        return [$date, $timezone];
+    }
+
+    /**
+     * Date values and floating times carry no time zone; iCalcreator returns them as UTC.
+     */
+    public function isWithoutTimezone(Pc $pc): bool
+    {
+        return $pc->hasParamValue(IcalInterface::DATE) || $pc->hasParamKey(IcalInterface::ISLOCALTIME);
+    }
+
+    /**
+     * Calculates "endDate" and "endTime" of a Contao event from the (exclusive) end of an ics event.
+     * Contao stores the end of an all day event as 23:59:59 of its last day.
+     *
+     * @return array{0: int, 1: int}
+     */
+    public function getEndTimestamps(\DateTimeInterface $end, bool $addTime): array
+    {
+        if ($addTime) {
+            return [$end->getTimestamp(), $end->getTimestamp()];
+        }
+
+        // The end of a DATE value is exclusive, so the last day is the day before
+        $end = \DateTime::createFromInterface($end);
+
+        return [
+            (clone $end)->modify('- 1 day')->getTimestamp(),
+            (clone $end)->modify('- 1 second')->getTimestamp(),
+        ];
+    }
+
+    /**
+     * Takes the lock of the import atomically in the database. "tstamp" holds the start of a running
+     * import; an older lock is left over from a crashed process and can be taken over.
+     */
+    protected function acquireImportLock(CalendarModel $objCalendar): bool
+    {
+        $now = time();
+
+        $affected = $this->db->executeStatement(
+            "UPDATE tl_calendar SET ical_importing = '1', tstamp = :now WHERE id = :id AND (ical_importing = '' OR ical_importing IS NULL OR tstamp < :stale)",
+            ['now' => $now, 'id' => (int) $objCalendar->id, 'stale' => $now - self::IMPORT_LOCK_TIMEOUT],
+        );
+
+        if ($affected < 1) {
+            return false;
+        }
+
+        $objCalendar->ical_importing = '1';
+        $objCalendar->tstamp = $now;
+
+        return true;
+    }
+
+    /**
+     * Releases the lock and stores the time of the last successful import. Only these columns are written,
+     * changes of the calendar settings that were made in the meantime stay untouched.
+     */
+    protected function releaseImportLock(CalendarModel $objCalendar, bool $synced): void
+    {
+        $now = time();
+        $set = "ical_importing = '', tstamp = :now";
+        $params = ['now' => $now, 'id' => (int) $objCalendar->id];
+
+        if ($synced) {
+            $set .= ', ical_last_sync = :sync';
+            $params['sync'] = $now;
+            $objCalendar->ical_last_sync = $now;
+        }
+
+        $this->db->executeStatement('UPDATE tl_calendar SET '.$set.' WHERE id = :id', $params);
+
+        $objCalendar->ical_importing = '';
+        $objCalendar->tstamp = $now;
     }
 
     /**
@@ -111,7 +243,7 @@ class IcsImport extends AbstractImport
      *
      * @throws \Exception
      */
-    public function importFromIcsFile(Vcalendar $cal, CalendarModel $objCalendar, Date $startDate, Date $endDate, array|bool $tz, string|null $filterEventTitle, string|null $patternEventTitle, string|null $replacementEventTitle, bool $deleteCalendar = false, int $timeshift = 0): void
+    protected function importEvents(Vcalendar $cal, CalendarModel $objCalendar, Date $startDate, Date $endDate, array|bool $tz, string|null $filterEventTitle, string|null $patternEventTitle, string|null $replacementEventTitle, bool $deleteCalendar = false, int $timeshift = 0): void
     {
         $this->contaoFramework->initialize();
         System::loadLanguageFile('default');
@@ -402,72 +534,6 @@ class IcsImport extends AbstractImport
         if ($deleteCalendar) {
             $this->deleteEvents($eventsDictionary);
         }
-    }
-
-    /**
-     * @return array<mixed>
-     *
-     * @throws \Exception
-     */
-    public function getDateFromPc(Pc $pc, string $tz): array
-    {
-        if ($pc->hasParamKey(IcalInterface::TZID)) {
-            $timezone = $pc->getParams(IcalInterface::TZID);
-            $date = $pc->getValue();
-        } elseif ($this->isWithoutTimezone($pc)) {
-            // Date values and floating times carry no time zone; iCalcreator returns them as UTC.
-            // They have to be read as wall-clock time of the calendar.
-            $timezone = $tz;
-            $date = new \DateTime(
-                $pc->getValue()->format(DateTimeFactory::$YmdHis),
-                DateTimeZoneFactory::factory($tz),
-            );
-        } else {
-            if ($pc->getValue()->getTimezone()) {
-                $timezone = $pc->getValue()->getTimezone()->getName();
-                $date = new \DateTime(
-                    $pc->getValue()->format(DateTimeFactory::$YmdHis),
-                    $pc->getValue()->getTimezone(),
-                );
-            } else {
-                $timezone = $tz;
-                $date = new \DateTime(
-                    $pc->getValue()->format(DateTimeFactory::$YmdHis),
-                    DateTimeZoneFactory::factory($tz),
-                );
-            }
-        }
-
-        return [$date, $timezone];
-    }
-
-    /**
-     * Date values and floating times carry no time zone; iCalcreator returns them as UTC.
-     */
-    public function isWithoutTimezone(Pc $pc): bool
-    {
-        return $pc->hasParamValue(IcalInterface::DATE) || $pc->hasParamKey(IcalInterface::ISLOCALTIME);
-    }
-
-    /**
-     * Calculates "endDate" and "endTime" of a Contao event from the (exclusive) end of an ics event.
-     * Contao stores the end of an all day event as 23:59:59 of its last day.
-     *
-     * @return array{0: int, 1: int}
-     */
-    public function getEndTimestamps(\DateTimeInterface $end, bool $addTime): array
-    {
-        if ($addTime) {
-            return [$end->getTimestamp(), $end->getTimestamp()];
-        }
-
-        // The end of a DATE value is exclusive, so the last day is the day before
-        $end = \DateTime::createFromInterface($end);
-
-        return [
-            (clone $end)->modify('- 1 day')->getTimestamp(),
-            (clone $end)->modify('- 1 second')->getTimestamp(),
-        ];
     }
 
     /**

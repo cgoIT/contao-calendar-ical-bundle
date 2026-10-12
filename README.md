@@ -104,7 +104,10 @@ Ab Version 6.0 werden Web-Quellen **nicht mehr beim Seitenaufruf**, sondern nur 
 Contao-Cron (stündlich) importiert jeden Kalender, dessen Cache-Dauer („Cache-Dauer in Sekunden“, Standard 86400)
 abgelaufen ist. Der Contao-Cron muss daher eingerichtet sein (Systemcron oder Poor-Man's-Cron). Beim Speichern des
 Kalenders im Backend wird die Quelle sofort abgerufen, damit geänderte Einstellungen (URL, Filter, Zeitzone, ...) gleich
-wirksam werden. Ein fehlgeschlagener Abruf wird beim nächsten Cron-Lauf erneut versucht.
+wirksam werden. Ein fehlgeschlagener Abruf wird beim nächsten Cron-Lauf erneut versucht. Ein Import läuft nie doppelt (Sperre in der
+Datenbank, eine verwaiste Sperre verfällt nach zwei Minuten) und ersetzt die Termine des Kalenders in einer Transaktion:
+Bei einem Fehler bleiben die bisherigen Termine erhalten. Hat der Kalender ein Abonnement, wird auch dessen Datei neu
+erzeugt.
 
 Der Download ist ab Version 6.0 abgesichert:
 
