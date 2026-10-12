@@ -47,7 +47,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
     requirements: ['id' => '\d+'],
     defaults: ['_scope' => 'backend'])
 ]
-final class ImportBackendController extends AbstractBackendController
+class ImportBackendController extends AbstractBackendController
 {
     public const string ROUTE_NAME = 'cgoit_calendar_ical_import';
 
@@ -69,14 +69,13 @@ final class ImportBackendController extends AbstractBackendController
         $this->denyAccessUnlessGranted(ContaoCorePermissions::USER_CAN_ACCESS_MODULE, 'calendar');
         $this->denyAccessUnlessGranted(ContaoCalendarPermissions::USER_CAN_EDIT_CALENDAR, $id);
 
-        $calendar = CalendarModel::findById($id);
+        $calendar = $this->findCalendar($id);
 
         if (null === $calendar) {
             throw new NotFoundHttpException('Calendar not found');
         }
 
-        System::loadLanguageFile('tl_calendar_events');
-        System::loadLanguageFile('tl_files');
+        $this->loadLanguageFiles();
 
         $session = $request->getSession();
         $state = $session->get(self::SESSION_KEY.$id);
@@ -97,6 +96,17 @@ final class ImportBackendController extends AbstractBackendController
         return 'csv' === $state['type']
             ? $this->handleCsvStep($request, $calendar, $state)
             : $this->handleTimezoneStep($request, $calendar, $state);
+    }
+
+    protected function findCalendar(int $id): CalendarModel|null
+    {
+        return CalendarModel::findById($id);
+    }
+
+    protected function loadLanguageFiles(): void
+    {
+        System::loadLanguageFile('tl_calendar_events');
+        System::loadLanguageFile('tl_files');
     }
 
     private function handleUploadStep(Request $request, CalendarModel $calendar): Response

@@ -55,6 +55,7 @@
   "require-dev": {
     "contao/manager-plugin": "^2.0",
     "psr/container": "^1.1 || ^2.0",
+    "symfony/security-core": "^6.4 || ^7.3",
     "terminal42/contao-build-tools": "dev-main",
     "phpunit/phpunit": "^10.5 || ^11.5"
   },
