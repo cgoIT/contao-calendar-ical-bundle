@@ -6,7 +6,7 @@
 Contao 5 Calendar iCal Bundle
 =============================
 
-iCal-Unterstützung für den Kalender von Contao Open Source CMS. Fork von https://github.com/Craffft/contao-calendar-ical-bundle. PHP-8-ready.
+iCal-Unterstützung für den Kalender von Contao Open Source CMS. Fork von https://github.com/Craffft/contao-calendar-ical-bundle.
 
 Installation
 ------------
@@ -21,10 +21,10 @@ $ composer require cgoit/contao-calendar-ical-bundle
 Dafür muss Composer global installiert sein, wie im
 [Installationskapitel](https://getcomposer.org/doc/00-intro.md) der Composer-Dokumentation beschrieben.
 
-Unterstützte Contao-Versionen
------------------------------
+Unterstützte Versionen
+----------------------
 
-Das Bundle unterstützt Contao 5 (ab 5.3) und Symfony 6.4 bzw. 7.3 oder neuer. Contao 4.13 und Symfony 5.4 werden nicht
+Das Bundle benötigt PHP 8.3 oder neuer und unterstützt Contao 5 (ab 5.3) und Symfony 6.4 bzw. 7.3 oder neuer. Contao 4.13 und Symfony 5.4 werden nicht
 mehr unterstützt; für Contao 4 verwenden Sie bitte eine ältere Version des Bundles.
 
 Einzelne Termine als ICS exportieren
