@@ -51,7 +51,8 @@ class ExportController extends Backend
         }
 
         foreach ($arrCalendars as $calendar) {
-            if (empty($calendar->make_ical)) {
+            // Subscription files are public, so a protected calendar must never be written to disk
+            if (empty($calendar->make_ical) || $calendar->protected) {
                 continue;
             }
 

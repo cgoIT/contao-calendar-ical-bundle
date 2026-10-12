@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Controller\Route;
 
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
+use Cgoit\ContaoCalendarIcalBundle\Security\ExportAccessChecker;
 use Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil;
 use Contao\ContentModel;
 use Contao\CoreBundle\Exception\PageNotFoundException;
@@ -47,6 +48,7 @@ class EventlistIcsExportController extends Events
         private readonly IcsExport $icsExport,
         private readonly ContaoFramework $contaoFramework,
         private readonly RequestStack $requestStack,
+        private readonly ExportAccessChecker $accessChecker,
     ) {
     }
 
@@ -78,14 +80,19 @@ class EventlistIcsExportController extends Events
         System::loadLanguageFile('tl_calendar');
         System::loadLanguageFile('tl_calendar_events');
 
-        // The id could be of an Module or a ContentElement
+        // The id could be of a module or a content element. Only eventlists the current visitor
+        // is allowed to see can be exported.
         $objEventlist = ModuleModel::findById($eventlistId);
-        if (empty($objEventlist)) {
+        if (null === $objEventlist || !$this->isEventlist($objEventlist)) {
             $objEventlist = ContentModel::findById($eventlistId);
 
-            if (empty($objEventlist)) {
+            if (null === $objEventlist || !$this->isEventlist($objEventlist)) {
                 throw new NotFoundHttpException('Eventlist not found');
             }
+        }
+
+        if (!$this->accessChecker->isElementVisible($objEventlist)) {
+            throw new NotFoundHttpException('Eventlist not found');
         }
 
         $this->arrData = $objEventlist->row();
@@ -101,6 +108,11 @@ class EventlistIcsExportController extends Events
         $filename = StringUtil::sanitizeFileName($objEventlist->name ?? $eventlistId).'.ics';
 
         throw $this->responseUtil->sendFileForDownload($iCal, $filename);
+    }
+
+    private function isEventlist(ContentModel|ModuleModel $element): bool
+    {
+        return str_starts_with((string) $element->type, 'eventlist') && !empty($element->cal_calendar);
     }
 
     /**

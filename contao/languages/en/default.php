@@ -31,3 +31,4 @@ $GLOBALS['TL_LANG']['tl_maintenance_jobs']['calendar_ical_regen_subscriptions'][
 
 $GLOBALS['TL_LANG']['ERR']['only_one_file'] = 'Please choose only one file for upload!';
 $GLOBALS['TL_LANG']['ERR']['ics_parse_error'] = 'The uploaded ics file could not be processed due to a format error.';
+$GLOBALS['TL_LANG']['ERR']['ical_protected_calendar'] = 'No iCal subscription can be generated for protected calendars because the file would be publicly available in the "share" directory. Use an "iCal feed" page instead.';

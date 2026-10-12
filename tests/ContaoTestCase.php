@@ -15,7 +15,9 @@ namespace Cgoit\ContaoCalendarIcalBundle\Tests;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
 use Contao\Config;
+use Contao\ContentModel;
 use Contao\Model\Registry;
+use Contao\ModuleModel;
 use Contao\System;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -67,13 +69,13 @@ abstract class ContaoTestCase extends TestCase
         // An empty DCA extract per table is enough for models that are filled by hand
         $filesystem = new Filesystem();
 
-        foreach (['tl_calendar', 'tl_calendar_events'] as $table) {
+        foreach (['tl_calendar', 'tl_calendar_events', 'tl_content', 'tl_module'] as $table) {
             $filesystem->dumpFile($cacheDir.'/contao/sql/'.$table.'.php', "<?php\n");
         }
 
         // Column cast types are normally read from the database schema; values are set typed by hand
         (new Filesystem())->mkdir($cacheDir.'/contao/config');
-        $filesystem->dumpFile($cacheDir.'/contao/config/column-types.php', "<?php return ['tl_calendar' => [], 'tl_calendar_events' => []];\n");
+        $filesystem->dumpFile($cacheDir.'/contao/config/column-types.php', "<?php return ['tl_calendar' => [], 'tl_calendar_events' => [], 'tl_content' => [], 'tl_module' => []];\n");
 
         $container = new ContainerBuilder();
         $container->setParameter('kernel.cache_dir', $cacheDir);
@@ -93,6 +95,8 @@ abstract class ContaoTestCase extends TestCase
         $GLOBALS['TL_CONFIG']['timeZone'] = 'Europe/Berlin';
         $GLOBALS['TL_MODELS']['tl_calendar'] = CalendarModel::class;
         $GLOBALS['TL_MODELS']['tl_calendar_events'] = CalendarEventsModel::class;
+        $GLOBALS['TL_MODELS']['tl_content'] = ContentModel::class;
+        $GLOBALS['TL_MODELS']['tl_module'] = ModuleModel::class;
 
         return $container;
     }

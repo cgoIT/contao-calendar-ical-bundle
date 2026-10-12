@@ -13,8 +13,10 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Controller\Route;
 
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
+use Cgoit\ContaoCalendarIcalBundle\Security\ExportAccessChecker;
 use Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil;
 use Contao\CalendarEventsModel;
+use Contao\CalendarModel;
 use Contao\CoreBundle\Controller\AbstractController;
 use Contao\StringUtil;
 use Symfony\Component\HttpFoundation\Response;
@@ -31,6 +33,7 @@ class SingleEventIcsExportController extends AbstractController
     public function __construct(
         private readonly ResponseUtil $responseUtil,
         private readonly IcsExport $icsExport,
+        private readonly ExportAccessChecker $accessChecker,
     ) {
     }
 
@@ -50,8 +53,15 @@ class SingleEventIcsExportController extends AbstractController
      */
     private function exportEvent(int $eventId): Response
     {
+        // Only published events (respecting start/stop and the preview mode) of an accessible calendar
         $objEvent = CalendarEventsModel::findById($eventId);
-        if (empty($objEvent)) {
+        if (null !== $objEvent) {
+            $objEvent = CalendarEventsModel::findPublishedByParentAndIdOrAlias((string) $objEvent->id, [(int) $objEvent->pid]);
+        }
+
+        $objCalendar = null !== $objEvent ? CalendarModel::findById($objEvent->pid) : null;
+
+        if (null === $objEvent || null === $objCalendar || !$this->accessChecker->canExportCalendar($objCalendar)) {
             throw new NotFoundHttpException('Event not found');
         }
 

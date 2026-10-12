@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Controller\Page;
 
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
+use Cgoit\ContaoCalendarIcalBundle\Security\ExportAccessChecker;
 use Contao\CalendarModel;
 use Contao\CoreBundle\Controller\AbstractController;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsPage;
@@ -32,6 +33,7 @@ class IcsFeedController extends AbstractController
 
     public function __construct(
         private readonly IcsExport $icsExport,
+        private readonly ExportAccessChecker $accessChecker,
         private readonly int $defaultEndTimeDifference,
     ) {
     }
@@ -44,7 +46,8 @@ class IcsFeedController extends AbstractController
         $endDate = !empty($pageModel->ical_end) ? (int) $pageModel->ical_end :
             time() + $this->defaultEndTimeDifference * 24 * 3600;
 
-        $arrCalendars = CalendarModel::findMultipleByIds(StringUtil::deserialize($pageModel->ical_calendar, true));
+        $arrAllCalendars = CalendarModel::findMultipleByIds(StringUtil::deserialize($pageModel->ical_calendar, true));
+        $arrCalendars = $this->accessChecker->filterCalendars($arrAllCalendars);
         $vCalendar = $this->icsExport->getVcalendar($arrCalendars, $startDate, $endDate,
             $pageModel->ical_title, $pageModel->ical_description, $pageModel->ical_prefix);
 
@@ -53,7 +56,14 @@ class IcsFeedController extends AbstractController
         $response = new Response($vCalendar->createCalendar());
         $response->headers->set('Content-Type', self::MIME_TYPE);
 
-        $this->setCacheHeaders($response, $pageModel);
+        if ($this->accessChecker->hasProtectedCalendar($arrAllCalendars)) {
+            // The content depends on the logged in member and must never be stored in a shared cache
+            $response->setPrivate();
+            $response->headers->addCacheControlDirective('no-store');
+            $response->headers->addCacheControlDirective('must-revalidate');
+        } else {
+            $this->setCacheHeaders($response, $pageModel);
+        }
 
         return $response;
     }

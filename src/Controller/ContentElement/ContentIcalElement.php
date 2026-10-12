@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Controller\ContentElement;
 
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
+use Cgoit\ContaoCalendarIcalBundle\Security\ExportAccessChecker;
 use Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil;
 use Contao\CalendarModel;
 use Contao\ContentModel;
@@ -42,6 +43,7 @@ class ContentIcalElement extends AbstractContentElementController
         private readonly RequestStack $requestStack,
         private readonly ResponseUtil $responseUtil,
         private readonly IcsExport $icsExport,
+        private readonly ExportAccessChecker $accessChecker,
     ) {
     }
 
@@ -90,7 +92,9 @@ class ContentIcalElement extends AbstractContentElementController
         $startDate = !empty($model->ical_start) ? (int) $model->ical_start : time();
         $endDate = !empty($model->ical_end) ? (int) $model->ical_end : time() + 365 * 24 * 3600;
 
-        $arrCalendars = CalendarModel::findMultipleByIds(StringUtil::deserialize($model->ical_calendar, true));
+        $arrCalendars = $this->accessChecker->filterCalendars(
+            CalendarModel::findMultipleByIds(StringUtil::deserialize($model->ical_calendar, true)),
+        );
         if (!empty($arrCalendars)) {
             return $this->icsExport->getVcalendar($arrCalendars, $startDate, $endDate, $model->ical_title, $model->ical_description, $model->ical_prefix);
         }

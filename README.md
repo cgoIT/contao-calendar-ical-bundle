@@ -58,6 +58,16 @@ Zum Beispiel können Sie das folgende Snippet in Ihr Template `mod_eventlist.htm
 </a>
 ```
 
+Geschützte Kalender
+-------------------
+
+Geschützte Kalender (`protected` mit Mitgliedergruppen) werden nur an Frontend-Mitglieder der erlaubten Gruppen
+exportiert. Das gilt für den Export einzelner Termine, den Eventlisten-Export, die Seite vom Typ `ics_feed` und das
+Inhaltselement „iCal“. Unveröffentlichte Termine werden nie exportiert.
+
+Die Option „iCal Abonnement erstellen“ schreibt eine **öffentliche** Datei nach `share/`. Sie steht daher für
+geschützte Kalender nicht zur Verfügung; verwenden Sie stattdessen eine Seite vom Typ `ics_feed`.
+
 Wichtig
 -------
 
