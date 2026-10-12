@@ -105,6 +105,17 @@ Der Download ist ab Version 6.0 abgesichert:
 
 Die PHP-Erweiterung `ext-curl` wird nicht mehr benötigt, stattdessen `symfony/http-client`.
 
+CSV-Import
+----------
+
+Der CSV-Import im Backend erkennt das Trennzeichen (`,` oder `;`) anhand der Kopfzeile, überspringt Leerzeilen und
+unterstützt Felder mit Zeilenumbrüchen in Anführungszeichen. Ein UTF-8-BOM wird entfernt. Die Auswahl „ISO-8859-1
+(Windows)“ liest Windows-1252 (damit auch z. B. das Euro-Zeichen).
+
+Datum und Uhrzeit werden streng nach dem gewählten Format geprüft. Datensätze mit einem ungültigen Datum oder einer
+ungültigen Uhrzeit werden nicht importiert; nach dem Import zeigt eine Meldung die Nummern dieser Datensätze. Der Import
+läuft in einer Transaktion: Bei einem Fehler bleibt der Kalender unverändert, auch wenn „Kalender leeren“ gewählt war.
+
 Importierte Inhalte
 -------------------
 

@@ -33,7 +33,7 @@ class CsvParser
     {
         $this->reader->rewind();
 
-        return $this->reader->current();
+        return $this->reader->current() ?? [];
     }
 
     /**
@@ -44,7 +44,7 @@ class CsvParser
         if (1 === $lines) {
             $this->reader->next();
             if ($this->reader->valid()) {
-                return $this->reader->current();
+                return $this->reader->current() ?? [];
             }
 
             return false;
@@ -68,24 +68,31 @@ class CsvParser
         return false;
     }
 
-    protected function determineSeparator(): string|null
+    /**
+     * The separator is the one ("," or ";") that occurs more often outside of quotes in the header line.
+     */
+    protected function determineSeparator(): string
     {
-        $separators = [',', ';'];
-        $file = fopen($this->filename, 'r');
-        $string = fgets($file);
-        fclose($file);
-        $matched = [];
+        $file = @fopen($this->filename, 'r');
 
-        foreach ($separators as $separator) {
-            if (preg_match("/$separator/", $string)) {
-                $matched[] = $separator;
+        if (false === $file) {
+            return ',';
+        }
+
+        $line = (string) fgets($file);
+        fclose($file);
+
+        $counts = [',' => 0, ';' => 0];
+        $quoted = false;
+
+        foreach (str_split($line) as $char) {
+            if ('"' === $char) {
+                $quoted = !$quoted;
+            } elseif (!$quoted && isset($counts[$char])) {
+                ++$counts[$char];
             }
         }
 
-        if (1 === \count($matched)) {
-            return $matched[0];
-        }
-
-        return null;
+        return $counts[';'] > $counts[','] ? ';' : ',';
     }
 }
