@@ -44,6 +44,13 @@ final class ResponseUtilTest extends TestCase
         $this->assertStringContainsString("filename*=utf-8''Termine%20K%C3%B6ln.ics", $disposition);
     }
 
+    public function testInvalidUtf8InFileNameDoesNotBreakTheFallback(): void
+    {
+        $response = (new ResponseUtil())->createDownloadResponse('x', "Termine\xE4.ics");
+
+        $this->assertStringContainsString('filename=Termine_.ics', (string) $response->headers->get('Content-Disposition'));
+    }
+
     public function testWrapsDownloadResponseInException(): void
     {
         $exception = (new ResponseUtil())->sendFileForDownload('x', 'calendar.ics');

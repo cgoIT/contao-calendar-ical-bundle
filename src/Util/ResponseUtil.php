@@ -38,25 +38,13 @@ class ResponseUtil
         return new ResponseException($this->createDownloadResponse($fileContent, $fileName, $contentType, $contentDisposition));
     }
 
+    /**
+     * The header needs an ASCII fallback for file names with special characters; every one is replaced by "_".
+     */
     private function getFilenameFallback(string $filename): string
     {
-        if (!preg_match('/^[\x20-\x7e]*$/', $filename) || str_contains($filename, '%')) {
-            $filenameFallback = '';
-            $encoding = mb_detect_encoding($filename, null, true) ?: '8bit';
-
-            for ($i = 0, $filenameLength = mb_strlen($filename, $encoding); $i < $filenameLength; ++$i) {
-                $char = mb_substr($filename, $i, 1, $encoding);
-
-                if ('%' === $char || \ord($char) < 32 || \ord($char) > 126) {
-                    $filenameFallback .= '_';
-                } else {
-                    $filenameFallback .= $char;
-                }
-            }
-
-            return $filenameFallback;
-        }
-
-        return $filename;
+        return preg_replace('/[^\x20-\x7e]|%/u', '_', $filename)
+            ?? preg_replace('/[^\x20-\x7e]|%/', '_', $filename)
+            ?? '_';
     }
 }
