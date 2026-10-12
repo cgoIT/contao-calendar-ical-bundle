@@ -43,6 +43,19 @@ final class EventlistModule extends Events
         return $this->getDatesFromFormat($date, $format);
     }
 
+    /**
+     * Collects the events of the period. The legacy method works for all Contao versions: it passes the module to
+     * the "getAllEvents" hooks and, where available, delegates to the events generator of the calendar bundle.
+     *
+     * @param array<int> $calendarIds
+     *
+     * @return array<mixed> The events grouped by day and time
+     */
+    public function findEvents(array $calendarIds, int $start, int $end, bool|null $featured): array
+    {
+        return $this->getAllEvents($calendarIds, $start, $end, $featured);
+    }
+
     protected function compile(): void
     {
     }

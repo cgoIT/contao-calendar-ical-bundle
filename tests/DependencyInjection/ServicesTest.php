@@ -16,7 +16,6 @@ use Cgoit\ContaoCalendarIcalBundle\Backend\Automator;
 use Cgoit\ContaoCalendarIcalBundle\Controller\Route\EventlistIcsExportController;
 use Cgoit\ContaoCalendarIcalBundle\Export\EventlistModule;
 use Cgoit\ContaoCalendarIcalBundle\Import\IcsImport;
-use Contao\CalendarBundle\Generator\CalendarEventsGenerator;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\InsertTag\InsertTagParser;
 use Contao\CoreBundle\Routing\ScopeMatcher;
@@ -72,7 +71,6 @@ final class ServicesTest extends TestCase
             RequestStack::class, Connection::class, ContaoFramework::class, InsertTagParser::class, Slug::class,
             CsrfTokenManagerInterface::class, LoggerInterface::class, EventDispatcherInterface::class,
             ParameterBagInterface::class, HttpClientInterface::class, ScopeMatcher::class, Security::class,
-            CalendarEventsGenerator::class,
         ];
 
         foreach ($external as $id) {

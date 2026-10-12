@@ -16,7 +16,6 @@ use Cgoit\ContaoCalendarIcalBundle\Export\EventlistModule;
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
 use Cgoit\ContaoCalendarIcalBundle\Security\ExportAccessChecker;
 use Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil;
-use Contao\CalendarBundle\Generator\CalendarEventsGenerator;
 use Contao\CalendarModel;
 use Contao\ContentModel;
 use Contao\CoreBundle\Exception\PageNotFoundException;
@@ -43,7 +42,6 @@ class EventlistIcsExportController
         private readonly IcsExport $icsExport,
         private readonly ContaoFramework $contaoFramework,
         private readonly ExportAccessChecker $accessChecker,
-        private readonly CalendarEventsGenerator $eventsGenerator,
     ) {
     }
 
@@ -54,6 +52,16 @@ class EventlistIcsExportController
         }
 
         return $this->exportEventlist($request, (int) $id);
+    }
+
+    /**
+     * @param array<int> $calendarIds
+     *
+     * @return array<mixed>
+     */
+    protected function findEvents(EventlistModule $module, array $calendarIds, int $start, int $end, bool|null $featured): array
+    {
+        return $module->findEvents($calendarIds, $start, $end, $featured);
     }
 
     protected function findFallbackPage(Request $request): PageModel|null
@@ -203,15 +211,7 @@ class EventlistIcsExportController
 
         [$start, $end] = $module->getPeriod($date, $format);
 
-        return $this->withPageContext($request, fn (): array => $this->eventsGenerator->getAllEvents(
-            $calendarIds,
-            (new \DateTime())->setTimestamp($start),
-            (new \DateTime())->setTimestamp($end),
-            $featured,
-            (bool) $module->cal_noSpan,
-            null,
-            $module,
-        ));
+        return $this->withPageContext($request, fn (): array => $this->findEvents($module, $calendarIds, $start, $end, $featured));
     }
 
     /**

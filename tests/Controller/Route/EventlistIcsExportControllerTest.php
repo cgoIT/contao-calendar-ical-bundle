@@ -18,7 +18,6 @@ use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
 use Cgoit\ContaoCalendarIcalBundle\Security\ExportAccessChecker;
 use Cgoit\ContaoCalendarIcalBundle\Tests\ContaoTestCase;
 use Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil;
-use Contao\CalendarBundle\Generator\CalendarEventsGenerator;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
 use Contao\ContentModel;
@@ -53,50 +52,49 @@ final class EventlistIcsExportControllerTest extends ContaoTestCase
     public function testExportsTheEventsOfTheEventlist(): void
     {
         $event = $this->event();
-        $generator = $this->createMock(CalendarEventsGenerator::class);
-        $generator
-            ->expects($this->once())
-            ->method('getAllEvents')
-            ->with([1], $this->anything(), $this->anything(), null, true, null, $this->isInstanceOf(EventlistModule::class))
-            ->willReturn([20240501 => [0 => [$event]]])
-        ;
+        $calls = [];
 
-        $response = $this->controller($generator, $this->module(['cal_noSpan' => '1']))(new Request(), '5');
+        $source = static function (EventlistModule $module, array $calendarIds, bool|null $featured) use ($event, &$calls): array {
+            $calls[] = [$module, $calendarIds, $featured];
+
+            return [20240501 => [0 => [$event]]];
+        };
+
+        $response = $this->controller($source, $this->module(['cal_noSpan' => '1', 'cal_featured' => 'featured']))(new Request(), '5');
 
         $this->assertSame(Response::HTTP_OK, $response->getStatusCode());
         $this->assertStringContainsString('SUMMARY:Training', (string) $response->getContent());
         $this->assertTrue($response->headers->hasCacheControlDirective('private'));
         $this->assertFalse($response->headers->hasCacheControlDirective('no-store'));
+
+        $this->assertCount(1, $calls);
+        $this->assertSame([1], $calls[0][1]);
+        $this->assertTrue($calls[0][2]);
+        $this->assertSame('1', $calls[0][0]->cal_noSpan, 'The module hands the settings of the list to the hooks');
     }
 
     public function testRestoresThePageContextAfterwards(): void
     {
         $request = new Request();
-        $generator = $this->createStub(CalendarEventsGenerator::class);
-        $generator
-            ->method('getAllEvents')
-            ->willReturn([])
-        ;
 
-        $this->controller($generator, $this->module())($request, '5');
+        $this->controller(static fn (): array => [], $this->module())($request, '5');
 
         $this->assertArrayNotHasKey('objPage', $GLOBALS);
         $this->assertFalse($request->attributes->has('pageModel'));
     }
 
-    public function testRestoresThePageContextIfTheGeneratorFails(): void
+    public function testRestoresThePageContextIfCollectingTheEventsFails(): void
     {
         $page = new PageModel();
         $GLOBALS['objPage'] = $page;
         $request = new Request();
-        $generator = $this->createStub(CalendarEventsGenerator::class);
-        $generator
-            ->method('getAllEvents')
-            ->willThrowException(new \RuntimeException('boom'))
-        ;
+
+        $source = static function (): array {
+            throw new \RuntimeException('boom');
+        };
 
         try {
-            $this->controller($generator, $this->module())($request, '5');
+            $this->controller($source, $this->module())($request, '5');
             $this->fail('The exception was expected');
         } catch (\RuntimeException) {
         }
@@ -109,24 +107,26 @@ final class EventlistIcsExportControllerTest extends ContaoTestCase
     {
         $this->expectException(NotFoundHttpException::class);
 
-        $this->controller($this->createStub(CalendarEventsGenerator::class), null)(new Request(), '5');
+        $this->controller(static fn (): array => [], null)(new Request(), '5');
     }
 
     public function testRespondsWithNoContentIfNoCalendarIsAccessible(): void
     {
-        $generator = $this->createMock(CalendarEventsGenerator::class);
-        $generator
-            ->expects($this->never())
-            ->method('getAllEvents')
-        ;
+        $called = false;
+        $source = static function () use (&$called): array {
+            $called = true;
+
+            return [];
+        };
 
         $protected = new CalendarModel();
         $protected->id = 1;
         $protected->protected = true;
 
-        $response = $this->controller($generator, $this->module(), [$protected])(new Request(), '5');
+        $response = $this->controller($source, $this->module(), [$protected])(new Request(), '5');
 
         $this->assertSame(Response::HTTP_NO_CONTENT, $response->getStatusCode());
+        $this->assertFalse($called);
     }
 
     /**
@@ -170,7 +170,7 @@ final class EventlistIcsExportControllerTest extends ContaoTestCase
     /**
      * @param array<CalendarModel>|null $calendars
      */
-    private function controller(CalendarEventsGenerator $generator, ModuleModel|null $eventlist, array|null $calendars = null): EventlistIcsExportController
+    private function controller(callable $eventSource, ModuleModel|null $eventlist, array|null $calendars = null): EventlistIcsExportController
     {
         $calendar = new CalendarModel();
         $calendar->id = 1;
@@ -183,12 +183,12 @@ final class EventlistIcsExportControllerTest extends ContaoTestCase
             ->willReturnArgument(0)
         ;
 
-        return new class($generator, $eventlist, $calendars ?? [$calendar], new ResponseUtil(), new IcsExport($parser, new EventDispatcher()), $this->createStub(ContaoFramework::class), new ExportAccessChecker($security)) extends EventlistIcsExportController {
+        return new class($eventSource(...), $eventlist, $calendars ?? [$calendar], new ResponseUtil(), new IcsExport($parser, new EventDispatcher()), $this->createStub(ContaoFramework::class), new ExportAccessChecker($security)) extends EventlistIcsExportController {
             /**
              * @param array<CalendarModel> $calendars
              */
             public function __construct(
-                CalendarEventsGenerator $generator,
+                private readonly \Closure $eventSource,
                 private readonly ModuleModel|null $eventlist,
                 private readonly array $calendars,
                 ResponseUtil $responseUtil,
@@ -196,7 +196,12 @@ final class EventlistIcsExportControllerTest extends ContaoTestCase
                 ContaoFramework $framework,
                 ExportAccessChecker $accessChecker,
             ) {
-                parent::__construct($responseUtil, $icsExport, $framework, $accessChecker, $generator);
+                parent::__construct($responseUtil, $icsExport, $framework, $accessChecker);
+            }
+
+            protected function findEvents(EventlistModule $module, array $calendarIds, int $start, int $end, bool|null $featured): array
+            {
+                return ($this->eventSource)($module, $calendarIds, $featured);
             }
 
             protected function findFallbackPage(Request $request): PageModel
