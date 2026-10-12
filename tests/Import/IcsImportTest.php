@@ -24,6 +24,7 @@ use Kigkonsult\Icalcreator\Pc;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Kigkonsult\Icalcreator\Vevent;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
@@ -243,13 +244,12 @@ final class IcsImportTest extends ContaoTestCase
 
     public function testMaxRepeatCountIsReadLazilyFromTheContainer(): void
     {
-        $import = (new \ReflectionClass(IcsImport::class))->newInstanceWithoutConstructor();
         $method = new \ReflectionMethod(IcsImport::class, 'getMaxRepeatCount');
+        $import = $this->importWithParameters([]);
 
         $this->assertSame(365, $method->invoke($import), 'default without calendar-extended-bundle');
 
-        $this->bootContao(['cgoit_calendar_extended.max_repeat_count' => '50']);
-        $import = (new \ReflectionClass(IcsImport::class))->newInstanceWithoutConstructor();
+        $import = $this->importWithParameters(['cgoit_calendar_extended.max_repeat_count' => '50']);
 
         $this->assertSame(50, $method->invoke($import));
     }
@@ -492,9 +492,20 @@ final class IcsImportTest extends ContaoTestCase
             ->expects($this->once())
             ->method('warning')
         ;
-        $this->bootContao()->set('monolog.logger.contao.general', $logger);
+        (new \ReflectionProperty(IcsImport::class, 'logger'))->setValue($this->import, $logger);
 
         $this->assertSame('Training', $this->call('rewriteTitle', 'Training', '/(unclosed/', 'x'));
+    }
+
+    /**
+     * @param array<string, string> $parameters
+     */
+    private function importWithParameters(array $parameters): IcsImport
+    {
+        $import = (new \ReflectionClass(IcsImport::class))->newInstanceWithoutConstructor();
+        (new \ReflectionProperty(IcsImport::class, 'parameterBag'))->setValue($import, new ParameterBag($parameters));
+
+        return $import;
     }
 
     private function extendedEvent(string $start, string $repeatEnd): CalendarEventsModel

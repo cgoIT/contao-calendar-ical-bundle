@@ -13,19 +13,21 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Backend;
 
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
-use Contao\Backend;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
-use Contao\File;
-use Contao\Folder;
-use Contao\StringUtil;
-use Contao\System;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
 
-class ExportController extends Backend
+class ExportController
 {
-    public function __construct(private readonly IcsExport $icsExport)
-    {
+    public function __construct(
+        private readonly IcsExport $icsExport,
+        #[Autowire(service: 'monolog.logger.contao.general')]
+        private readonly LoggerInterface $logger,
+        #[Autowire('%contao.web_dir%')]
+        private readonly string $webDir,
+    ) {
     }
 
     /**
@@ -56,15 +58,9 @@ class ExportController extends Backend
             }
 
             if (false !== $filename = $this->generateFile($calendar)) {
-                System::getContainer()
-                    ->get('monolog.logger.contao.general')
-                    ->info('Generated ical subscription "'.$filename.'.ics"')
-                ;
+                $this->logger->info('Generated ical subscription "'.$filename.'.ics"');
             } else {
-                System::getContainer()
-                    ->get('monolog.logger.contao.general')
-                    ->error('Could not generate ical subscription for calendar "'.$calendar->title.'" ('.$calendar->id.')')
-                ;
+                $this->logger->error('Could not generate ical subscription for calendar "'.$calendar->title.'" ('.$calendar->id.')');
             }
         }
     }
@@ -93,14 +89,14 @@ class ExportController extends Backend
             $arrFeeds[] = $this->getSubscriptionFileName($calendar);
         }
 
-        $shareDir = System::getContainer()->getParameter('contao.web_dir').'/share';
+        $shareDir = $this->webDir.'/share';
         if (!is_dir($shareDir)) {
             return [];
         }
 
         $arrRemoved = [];
 
-        foreach (Folder::scan($shareDir) as $file) {
+        foreach (array_diff(scandir($shareDir) ?: [], ['.', '..']) as $file) {
             if (is_dir($shareDir.'/'.$file)) {
                 continue;
             }
@@ -113,10 +109,7 @@ class ExportController extends Backend
             $isOrphan = null === $objCalendar && 1 === preg_match('/^calendar\d+$/', $name);
 
             if ($isOrphan || \in_array($name, $arrFeeds, true)) {
-                System::getContainer()
-                    ->get('monolog.logger.contao.general')
-                    ->info('delete file '.$name)
-                ;
+                $this->logger->info('delete file '.$name);
 
                 // The files are not part of the file manager, so the database assisted file system is not involved
                 (new Filesystem())->remove($shareDir.'/'.$file);
@@ -146,10 +139,8 @@ class ExportController extends Backend
             null !== $ical = $this->icsExport->getVcalendar([$objCalendar], $startdate, $enddate)
         ) {
             $content = $ical->createCalendar();
-            $shareDir = System::getContainer()->getParameter('contao.web_dir').'/share';
-            $objFile = new File(StringUtil::stripRootDir($shareDir).'/'.$filename.'.ics');
-            $objFile->write($content);
-            $objFile->close();
+            $shareDir = $this->webDir.'/share';
+            (new Filesystem())->dumpFile($shareDir.'/'.$filename.'.ics', $content);
 
             return $filename;
         }

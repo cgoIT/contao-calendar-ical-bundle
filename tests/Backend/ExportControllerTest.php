@@ -98,15 +98,16 @@ final class ExportControllerTest extends ContaoTestCase
     {
         $icsExport = new IcsExport($this->createStub(InsertTagParser::class), new EventDispatcher());
 
-        return new class($icsExport, $calendars) extends ExportController {
+        return new class($icsExport, $this->shareDir, $calendars) extends ExportController {
             /**
              * @param array<CalendarModel> $calendars
              */
             public function __construct(
                 IcsExport $icsExport,
+                string $shareDir,
                 private readonly array $calendars,
             ) {
-                parent::__construct($icsExport);
+                parent::__construct($icsExport, new NullLogger(), \dirname($shareDir));
             }
 
             protected function findAllCalendars(): iterable

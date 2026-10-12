@@ -18,6 +18,7 @@ use Cgoit\ContaoCalendarIcalBundle\Widgets\WidgetTrait;
 use Contao\BackendTemplate;
 use Contao\BackendUser;
 use Contao\CalendarEventsModel;
+use Contao\Controller;
 use Contao\CoreBundle\Slug\Slug;
 use Contao\Date;
 use Contao\Environment;
@@ -49,7 +50,7 @@ class CsvImport extends AbstractImport
 
     public function importFromCSVFile(bool $prepare = true): string
     {
-        static::loadDataContainer('tl_calendar_events');
+        Controller::loadDataContainer('tl_calendar_events');
 
         $fieldnames = [];
 
@@ -323,7 +324,7 @@ class CsvImport extends AbstractImport
             Message::addError(\sprintf($GLOBALS['TL_LANG']['ERR']['csv_records_skipped'], \count($skippedRecords), implode(', ', \array_slice($skippedRecords, 0, 20)).(\count($skippedRecords) > 20 ? ', ...' : '')));
         }
 
-        static::redirect(str_replace('&key=import', '', (string) Environment::get('request')));
+        Controller::redirect(str_replace('&key=import', '', (string) Environment::get('request')));
     }
 
     /**

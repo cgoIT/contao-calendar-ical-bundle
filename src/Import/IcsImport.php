@@ -18,6 +18,7 @@ use Contao\BackendUser;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
 use Contao\Config;
+use Contao\Controller;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Slug\Slug;
 use Contao\Date;
@@ -30,14 +31,16 @@ use Kigkonsult\Icalcreator\Util\DateTimeFactory;
 use Kigkonsult\Icalcreator\Util\DateTimeZoneFactory;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Kigkonsult\Icalcreator\Vevent;
-use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class IcsImport extends AbstractImport
 {
-    private const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    private const array MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-    private const IMPORT_LOCK_TIMEOUT = 120;
+    private const int IMPORT_LOCK_TIMEOUT = 120;
 
     private int|null $maxRepeatCount = null;
 
@@ -48,6 +51,9 @@ class IcsImport extends AbstractImport
         private readonly int $defaultEndTimeDifference,
         private readonly EventDispatcherInterface $eventDispatcher,
         private readonly RemoteIcsDownloader $downloader,
+        #[Autowire(service: 'monolog.logger.contao.general')]
+        private readonly LoggerInterface $logger,
+        private readonly ParameterBagInterface $parameterBag,
     ) {
         parent::__construct($slug);
     }
@@ -73,10 +79,8 @@ class IcsImport extends AbstractImport
 
         $this->contaoFramework->initialize();
 
-        $logger = System::getContainer()->get('monolog.logger.contao.general');
-
         if (!$this->acquireImportLock($objCalendar)) {
-            $logger->info('Skip reload of iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.'): The import is already running');
+            $this->logger->info('Skip reload of iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.'): The import is already running');
 
             return false;
         }
@@ -84,7 +88,7 @@ class IcsImport extends AbstractImport
         $synced = false;
 
         try {
-            $logger->info('Reload iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.')'.($force_import ? ' (forced)' : ''));
+            $this->logger->info('Reload iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.')'.($force_import ? ' (forced)' : ''));
 
             $startDate = !empty((string) $objCalendar->ical_source_start) ?
                 new Date($objCalendar->ical_source_start, Config::get('dateFormat')) :
@@ -97,7 +101,7 @@ class IcsImport extends AbstractImport
             // Without a successful import the next run retries, it does not wait for the cache time
             $synced = $this->importFromWebICS($objCalendar, $startDate, $endDate, $tz);
         } catch (\Throwable $e) {
-            $logger->error('Could not import iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.'): '.$e->getMessage());
+            $this->logger->error('Could not import iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.'): '.$e->getMessage());
         } finally {
             $this->releaseImportLock($objCalendar, $synced);
         }
@@ -247,7 +251,7 @@ class IcsImport extends AbstractImport
     {
         $this->contaoFramework->initialize();
         System::loadLanguageFile('default');
-        static::loadDataContainer('tl_calendar_events');
+        Controller::loadDataContainer('tl_calendar_events');
 
         // Without a time zone in the ics file (or if none was selected) the time zone of the system applies
         if (!\is_array($tz) || empty($tz[1])) {
@@ -583,13 +587,9 @@ class IcsImport extends AbstractImport
      */
     private function getMaxRepeatCount(): int
     {
-        if (null === $this->maxRepeatCount) {
-            try {
-                $this->maxRepeatCount = (int) System::getContainer()->getParameter('cgoit_calendar_extended.max_repeat_count');
-            } catch (InvalidArgumentException) {
-                $this->maxRepeatCount = 365;
-            }
-        }
+        $this->maxRepeatCount ??= $this->parameterBag->has('cgoit_calendar_extended.max_repeat_count')
+            ? (int) $this->parameterBag->get('cgoit_calendar_extended.max_repeat_count')
+            : 365;
 
         return $this->maxRepeatCount;
     }
@@ -607,10 +607,7 @@ class IcsImport extends AbstractImport
         $title = @preg_replace($pattern, $replacement, $summary);
 
         if (!\is_string($title)) {
-            System::getContainer()
-                ->get('monolog.logger.contao.general')
-                ->warning('Could not rewrite the title "'.$summary.'" with the pattern "'.$pattern.'": '.preg_last_error_msg())
-            ;
+            $this->logger->warning('Could not rewrite the title "'.$summary.'" with the pattern "'.$pattern.'": '.preg_last_error_msg());
 
             return $summary;
         }
@@ -642,10 +639,7 @@ class IcsImport extends AbstractImport
         try {
             $cal->parse($content);
         } catch (\Throwable $e) {
-            System::getContainer()
-                ->get('monolog.logger.contao.general')
-                ->error('Could not import ics file from URL "'.$objCalendar->ical_url.'": '.$e->getMessage())
-            ;
+            $this->logger->error('Could not import ics file from URL "'.$objCalendar->ical_url.'": '.$e->getMessage());
 
             return false;
         }

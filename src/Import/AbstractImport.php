@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Import;
 
-use Contao\Backend;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
 use Contao\ContentModel;
@@ -20,7 +19,7 @@ use Contao\CoreBundle\Slug\Slug;
 use Contao\Model\Collection;
 use Contao\StringUtil;
 
-class AbstractImport extends Backend
+class AbstractImport
 {
     public function __construct(protected readonly Slug $slug)
     {

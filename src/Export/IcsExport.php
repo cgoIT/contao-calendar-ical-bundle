@@ -14,7 +14,6 @@ namespace Cgoit\ContaoCalendarIcalBundle\Export;
 
 use Cgoit\ContaoCalendarIcalBundle\Event\ModifyExportEventsEvent;
 use Cgoit\ContaoCalendarIcalBundle\Event\ModifyVeventEvent;
-use Contao\Backend;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
 use Contao\Config;
@@ -22,12 +21,13 @@ use Contao\CoreBundle\InsertTag\InsertTagParser;
 use Contao\Model;
 use Contao\Model\Collection;
 use Contao\StringUtil;
+use Contao\System;
 use Kigkonsult\Icalcreator\IcalInterface;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Kigkonsult\Icalcreator\Vevent;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
-class IcsExport extends Backend
+class IcsExport
 {
     /**
      * @var array<mixed>
@@ -475,8 +475,7 @@ class IcsExport extends Backend
             trigger_deprecation('cgoit/contao-calendar-ical-bundle', '6.0', 'Using the "icalModifyVevent" hook is deprecated, use an event listener for "%s" instead.', ModifyVeventEvent::class);
 
             foreach ($GLOBALS['TL_HOOKS']['icalModifyVevent'] as $callback) {
-                $this->import($callback[0]);
-                $vevent = $this->{$callback[0]}->{$callback[1]}($vevent, $objEvent, $objCalendar, $this);
+                $vevent = System::importStatic($callback[0])->{$callback[1]}($vevent, $objEvent, $objCalendar, $this);
             }
         }
 
@@ -496,8 +495,7 @@ class IcsExport extends Backend
             trigger_deprecation('cgoit/contao-calendar-ical-bundle', '6.0', 'Using the "icalGetAllEvents" hook is deprecated, use an event listener for "%s" instead.', ModifyExportEventsEvent::class);
 
             foreach ($GLOBALS['TL_HOOKS']['icalGetAllEvents'] as $callback) {
-                $this->import($callback[0]);
-                $result = $this->{$callback[0]}->{$callback[1]}($events, $calendars, $start, $end, $this);
+                $result = System::importStatic($callback[0])->{$callback[1]}($events, $calendars, $start, $end, $this);
                 $events = $result instanceof Collection ? $result->getModels() : (array) $result;
             }
         }

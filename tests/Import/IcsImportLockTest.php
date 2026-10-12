@@ -29,7 +29,7 @@ use Psr\Log\NullLogger;
  */
 final class IcsImportLockTest extends ContaoTestCase
 {
-    private const ICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:test\r\nEND:VCALENDAR\r\n";
+    private const string ICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:test\r\nEND:VCALENDAR\r\n";
 
     private Connection $db;
 
@@ -251,6 +251,7 @@ final class IcsImportLockTest extends ContaoTestCase
         $reflection->getProperty('defaultEndTimeDifference')->setValue($import, 365);
         $reflection->getProperty('db')->setValue($import, $this->db);
         $import->connection = $this->db;
+        $reflection->getProperty('logger')->setValue($import, new NullLogger());
         $reflection->getProperty('contaoFramework')->setValue($import, $this->createStub(ContaoFramework::class));
 
         return $import;
