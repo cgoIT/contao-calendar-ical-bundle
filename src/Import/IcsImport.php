@@ -286,16 +286,7 @@ class IcsImport extends AbstractImport
                 if (!empty($dtend)) {
                     [$eDate, $timezone] = $this->getDateFromPc($dtend, $tz[1]);
 
-                    if ($objEvent->addTime) {
-                        $objEvent->endDate = $eDate->getTimestamp();
-                        $objEvent->endTime = $eDate->getTimestamp();
-                    } else {
-                        $endDate = (clone $eDate)->modify('- 1 day')->getTimestamp();
-                        $endTime = (clone $eDate)->modify('- 1 second')->getTimestamp();
-
-                        $objEvent->endDate = $endDate;
-                        $objEvent->endTime = min($endTime, $endDate);
-                    }
+                    [$objEvent->endDate, $objEvent->endTime] = $this->getEndTimestamps($eDate, (bool) $objEvent->addTime);
                 }
 
                 if (0 !== $timeshift) {
@@ -458,6 +449,27 @@ class IcsImport extends AbstractImport
         }
 
         return [$date, $timezone];
+    }
+
+    /**
+     * Calculates "endDate" and "endTime" of a Contao event from the (exclusive) end of an ics event.
+     * Contao stores the end of an all day event as 23:59:59 of its last day.
+     *
+     * @return array{0: int, 1: int}
+     */
+    public function getEndTimestamps(\DateTimeInterface $end, bool $addTime): array
+    {
+        if ($addTime) {
+            return [$end->getTimestamp(), $end->getTimestamp()];
+        }
+
+        // The end of a DATE value is exclusive, so the last day is the day before
+        $end = \DateTime::createFromInterface($end);
+
+        return [
+            (clone $end)->modify('- 1 day')->getTimestamp(),
+            (clone $end)->modify('- 1 second')->getTimestamp(),
+        ];
     }
 
     /**

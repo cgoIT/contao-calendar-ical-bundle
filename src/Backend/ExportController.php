@@ -20,6 +20,7 @@ use Contao\File;
 use Contao\Folder;
 use Contao\StringUtil;
 use Contao\System;
+use Symfony\Component\Filesystem\Filesystem;
 
 class ExportController extends Backend
 {
@@ -64,55 +65,76 @@ class ExportController extends Backend
             } else {
                 System::getContainer()
                     ->get('monolog.logger.contao.general')
-                    ->error('Could not generate ical subscription "'.$filename.'.ics"')
+                    ->error('Could not generate ical subscription for calendar "'.$calendar->title.'" ('.$calendar->id.')')
                 ;
             }
         }
     }
 
     /**
-     * Remove old ics files from the root directory.
+     * The name (without extension) of the subscription file of a calendar.
+     */
+    public function getSubscriptionFileName(CalendarModel $objCalendar): string
+    {
+        return !empty($objCalendar->ical_alias) ? (string) $objCalendar->ical_alias : 'calendar'.$objCalendar->id;
+    }
+
+    /**
+     * Remove old subscription files from the "share" directory. Without a calendar the files of all
+     * calendars (and orphaned "calendar<ID>.ics" files) are removed; files of other origin stay untouched.
      *
-     * @return array<string>
+     * @return array<string> The names of the removed files
      */
     public function removeSubscriptions(CalendarModel|null $objCalendar = null): array
     {
         $arrFeeds = [];
-        if (null !== $objCalendar) {
-            $arrCalendars = [$objCalendar];
+        $arrCalendars = null !== $objCalendar ? [$objCalendar] : $this->findAllCalendars();
 
-            foreach ($arrCalendars as $objCalendar) {
-                $arrFeeds[] = 'calendar'.$objCalendar->id;
-                if (!empty($objCalendar->ical_alias)) {
-                    $arrFeeds[] = $objCalendar->ical_alias;
-                }
-            }
+        foreach ($arrCalendars as $calendar) {
+            $arrFeeds[] = 'calendar'.$calendar->id;
+            $arrFeeds[] = $this->getSubscriptionFileName($calendar);
         }
 
         $shareDir = System::getContainer()->getParameter('contao.web_dir').'/share';
+        if (!is_dir($shareDir)) {
+            return [];
+        }
 
-        // Delete old files
+        $arrRemoved = [];
+
         foreach (Folder::scan($shareDir) as $file) {
-            if (is_dir($shareDir.$file)) {
+            if (is_dir($shareDir.'/'.$file)) {
                 continue;
             }
 
-            $objFile = new File(StringUtil::stripRootDir($shareDir).'/'.$file);
+            if ('ics' !== pathinfo($file, PATHINFO_EXTENSION)) {
+                continue;
+            }
 
-            if (
-                'ics' === $objFile->extension
-                && (empty($arrFeeds) || \in_array($objFile->filename, $arrFeeds, true))
-            ) {
+            $name = pathinfo($file, PATHINFO_FILENAME);
+            $isOrphan = null === $objCalendar && 1 === preg_match('/^calendar\d+$/', $name);
+
+            if ($isOrphan || \in_array($name, $arrFeeds, true)) {
                 System::getContainer()
                     ->get('monolog.logger.contao.general')
-                    ->info('delete file '.$objFile->filename)
+                    ->info('delete file '.$name)
                 ;
 
-                $objFile->delete();
+                // The files are not part of the file manager, so the database assisted file system is not involved
+                (new Filesystem())->remove($shareDir.'/'.$file);
+                $arrRemoved[] = $file;
             }
         }
 
-        return [];
+        return $arrRemoved;
+    }
+
+    /**
+     * @return iterable<CalendarModel>
+     */
+    protected function findAllCalendars(): iterable
+    {
+        return CalendarModel::findAll() ?? [];
     }
 
     /**
@@ -123,7 +145,7 @@ class ExportController extends Backend
         $startdate = !empty($objCalendar->ical_start) ? (int) $objCalendar->ical_start : time();
         $enddate = !empty($objCalendar->ical_end) ? (int) $objCalendar->ical_end :
             (time() + $this->defaultEndTimeDifference * 24 * 3600);
-        $filename = !empty($objCalendar->ical_alias) ? $objCalendar->ical_alias : 'calendar'.$objCalendar->id;
+        $filename = $this->getSubscriptionFileName($objCalendar);
         if (
             null !== $ical = $this->icsExport->getVcalendar([$objCalendar], $startdate, $enddate)
         ) {

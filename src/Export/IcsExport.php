@@ -69,10 +69,13 @@ class IcsExport extends Backend
             $arrCalendars = $arrCalendars->getModels();
         }
 
+        // The list may be empty, e.g. if the selected calendars were deleted or are not accessible
+        $firstCalendar = !empty($arrCalendars) ? reset($arrCalendars) : null;
+
         $ical = new Vcalendar();
         $ical->setMethod(IcalInterface::PUBLISH);
-        $ical->setXprop(IcalInterface::X_WR_CALNAME, $title ?? reset($arrCalendars)->title);
-        $ical->setXprop(IcalInterface::X_WR_CALDESC, $description ?? reset($arrCalendars)->ical_description);
+        $ical->setXprop(IcalInterface::X_WR_CALNAME, $title ?? $firstCalendar?->title ?? '');
+        $ical->setXprop(IcalInterface::X_WR_CALDESC, $description ?? $firstCalendar?->ical_description ?? '');
         $ical->setXprop(IcalInterface::X_WR_TIMEZONE, Config::get('timeZone'));
 
         if (!empty($arrCalendars)) {
@@ -94,7 +97,7 @@ class IcsExport extends Backend
 
                     /** @var CalendarEventsModel $objEvent */
                     foreach ($arrEvents as $objEvent) {
-                        $vevent = $this->getVevent($objEvent);
+                        $vevent = $this->getVevent($objEvent, $prefix);
 
                         if (null !== $vevent) {
                             $ical->setComponent($vevent);
@@ -399,7 +402,8 @@ class IcsExport extends Backend
             }
 
             if (!empty($hideDates)) {
-                $vevent->setExdate($hideDates);
+                // The value type has to match the one of DTSTART (RFC 5545)
+                $vevent->setExdate($hideDates, IcalInterface::DATE === $valueType ? [IcalInterface::VALUE => IcalInterface::DATE] : []);
             }
         }
 

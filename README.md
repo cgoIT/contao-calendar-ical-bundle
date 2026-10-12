@@ -58,6 +58,15 @@ Zum Beispiel können Sie das folgende Snippet in Ihr Template `mod_eventlist.htm
 </a>
 ```
 
+Abonnement-Dateien und Feeds
+----------------------------
+
+Mit der Option „iCal Abonnement erstellen“ schreibt das Bundle die Datei `share/<Alias>.ics` (ohne Alias:
+`share/calendar<ID>.ics`). Beim Neuaufbau werden nur diese Dateien ersetzt oder gelöscht; andere Dateien in `share/`
+bleiben unberührt. Alternativ liefert eine Seite vom Typ `ics_feed` oder das Inhaltselement „iCal“ die Termine
+ausgewählter Kalender. Ein dort eingetragenes Präfix wird dem Titel jedes Termins vorangestellt; ohne Angabe gilt das
+Präfix des jeweiligen Kalenders.
+
 Geschützte Kalender
 -------------------
 

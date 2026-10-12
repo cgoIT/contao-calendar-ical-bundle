@@ -242,7 +242,20 @@ final class IcsExportTest extends ContaoTestCase
 
     public function testExceptionsOfAllDayEventsAreExportedAsDates(): void
     {
-        $this->markTestSkipped('Known bug: EXDATE of all day events is exported as date-time (EXDATE;TZID=...:20240508T000000) while DTSTART is a DATE, so clients cannot match it (see TODO.md). Expected: EXDATE;VALUE=DATE:20240508.');
+        $event = $this->createEvent([
+            'recurring' => '1',
+            'repeatEach' => serialize(['unit' => 'weeks', 'value' => 1]),
+            'useExceptions' => '1',
+            'repeatExceptions' => serialize([
+                ['exception' => $this->ts('2024-05-08 00:00'), 'action' => 'hide'],
+                ['exception' => $this->ts('2024-05-15 00:00'), 'action' => 'hide'],
+            ]),
+        ]);
+
+        $ics = $this->exportEvent($event);
+
+        $this->assertStringContainsString('DTSTART;VALUE=DATE:20240501', $ics);
+        $this->assertStringContainsString('EXDATE;VALUE=DATE:20240508,20240515', $ics);
     }
 
     public function testParticipantsAndContact(): void
@@ -262,6 +275,23 @@ final class IcsExportTest extends ContaoTestCase
     public function testParticipantWithoutEmailAddressIsExportedWithCommonName(): void
     {
         $this->markTestSkipped('Known bug: iCalcreator rejects "mailto:<name>", so a participant without "@" aborts the whole export (see TODO.md).');
+    }
+
+    public function testCalendarWithoutCalendarsIsEmptyInsteadOfAnError(): void
+    {
+        foreach ([null, []] as $calendars) {
+            $ics = $this->export->getVcalendar($calendars, $this->ts('2024-05-01 00:00'), $this->ts('2025-05-01 00:00'))?->createCalendar();
+
+            $this->assertStringContainsString('BEGIN:VCALENDAR', (string) $ics);
+            $this->assertStringNotContainsString('BEGIN:VEVENT', (string) $ics);
+        }
+    }
+
+    public function testCalendarWithoutCalendarsUsesGivenTitle(): void
+    {
+        $ics = $this->export->getVcalendar([], $this->ts('2024-05-01 00:00'), $this->ts('2025-05-01 00:00'), 'My feed')?->createCalendar();
+
+        $this->assertStringContainsString('X-WR-CALNAME:My feed', (string) $ics);
     }
 
     public function testExportEventsAcceptsModelsAndEventRows(): void

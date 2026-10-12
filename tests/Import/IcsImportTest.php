@@ -12,9 +12,13 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Tests\Import;
 
+use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
 use Cgoit\ContaoCalendarIcalBundle\Import\IcsImport;
 use Cgoit\ContaoCalendarIcalBundle\Tests\ContaoTestCase;
 use Contao\CalendarEventsModel;
+use Contao\CalendarModel;
+use Contao\CoreBundle\InsertTag\InsertTagParser;
+use Contao\Model\Registry;
 use Kigkonsult\Icalcreator\IcalInterface;
 use Kigkonsult\Icalcreator\Pc;
 use Kigkonsult\Icalcreator\Vcalendar;
@@ -199,6 +203,53 @@ final class IcsImportTest extends ContaoTestCase
         $event = $this->event(['startDate' => strtotime('2024-05-01'), 'repeatEnd' => strtotime('2024-06-01')]);
 
         $this->assertSame(0, $this->call('calculateRecurrenceCount', $event));
+    }
+
+    public function testAllDayEndIsTheEndOfTheLastDay(): void
+    {
+        // DTEND of a DATE value is exclusive: 2024-05-01 until 2024-05-03 ends on 2024-05-04
+        $end = new \DateTime('2024-05-04 00:00', new \DateTimeZone('Europe/Berlin'));
+
+        [$endDate, $endTime] = $this->import->getEndTimestamps($end, false);
+
+        $this->assertSame((new \DateTime('2024-05-03 00:00', new \DateTimeZone('Europe/Berlin')))->getTimestamp(), $endDate);
+        $this->assertSame((new \DateTime('2024-05-03 23:59:59', new \DateTimeZone('Europe/Berlin')))->getTimestamp(), $endTime);
+    }
+
+    public function testEndWithTimeIsTakenOver(): void
+    {
+        $end = new \DateTime('2024-05-01 19:00', new \DateTimeZone('Europe/Berlin'));
+
+        $this->assertSame([$end->getTimestamp(), $end->getTimestamp()], $this->import->getEndTimestamps($end, true));
+    }
+
+    public function testAllDayEventsKeepTheirEndWhenImportedAndExportedAgain(): void
+    {
+        $tz = new \DateTimeZone('Europe/Berlin');
+        [$endDate, $endTime] = $this->import->getEndTimestamps(new \DateTime('2024-05-04', $tz), false);
+
+        $parser = $this->createStub(InsertTagParser::class);
+        $parser->method('replaceInline')->willReturnArgument(0);
+
+        $calendar = new CalendarModel();
+        $calendar->id = 1;
+        Registry::getInstance()->register($calendar);
+
+        $event = $this->event([
+            'id' => 5,
+            'pid' => 1,
+            'title' => 'Camp',
+            'addTime' => '',
+            'startDate' => (new \DateTime('2024-05-01', $tz))->getTimestamp(),
+            'startTime' => (new \DateTime('2024-05-01', $tz))->getTimestamp(),
+            'endDate' => $endDate,
+            'endTime' => $endTime,
+        ]);
+
+        $ics = (new IcsExport($parser))->exportEvent($event)->createCalendar();
+
+        $this->assertStringContainsString('DTSTART;VALUE=DATE:20240501', $ics);
+        $this->assertStringContainsString('DTEND;VALUE=DATE:20240504', $ics);
     }
 
     public function testImportedTextIsEncodedAndInsertTagsAreRemoved(): void

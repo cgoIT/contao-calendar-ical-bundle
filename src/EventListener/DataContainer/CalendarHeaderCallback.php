@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\EventListener\DataContainer;
 
+use Cgoit\ContaoCalendarIcalBundle\Backend\ExportController;
 use Contao\CalendarModel;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
@@ -23,6 +24,10 @@ use Contao\System;
 #[AsCallback(table: 'tl_calendar_events', target: 'list.sorting.header')]
 class CalendarHeaderCallback
 {
+    public function __construct(private readonly ExportController $calendarExport)
+    {
+    }
+
     /**
      * @param array<mixed> $labels
      *
@@ -38,9 +43,10 @@ class CalendarHeaderCallback
 
         $objCalendar = CalendarModel::findById($dc->id);
         if (null !== $objCalendar) {
-            if (!empty($objCalendar->make_ical)) {
+            // No subscription file is generated for protected calendars
+            if (!empty($objCalendar->make_ical) && !$objCalendar->protected) {
                 $shareDir = StringUtil::stripRootDir(System::getContainer()->getParameter('contao.web_dir').'/share');
-                $file = $shareDir.'/'.$objCalendar->ical_alias.'.ics';
+                $file = $shareDir.'/'.$this->calendarExport->getSubscriptionFileName($objCalendar).'.ics';
                 $icsUrl = Idna::decode(Environment::get('base')).str_replace($shareDir, 'share', $file);
 
                 $labels[$GLOBALS['TL_LANG']['tl_calendar']['ical_export']] = $icsUrl;
