@@ -23,6 +23,7 @@ $GLOBALS['TL_DCA']['tl_calendar_ical_import'] = [
 
     'palettes' => [
         'upload' => '{source_legend},icssource;{range_legend},startDate,endDate,timeshift;{options_legend},deleteCalendar,filterEventTitle',
+        // The palette "csv" is composed at runtime, because it contains a field for every column of the file
         'timezone_differs' => '{timezone_legend},correctTimezone',
         'timezone_missing' => '{timezone_legend},timezone',
     ],
@@ -57,6 +58,22 @@ $GLOBALS['TL_DCA']['tl_calendar_ical_import'] = [
             'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['timezone'],
             'inputType' => 'select',
             'eval' => ['mandatory' => true, 'chosen' => true, 'tl_class' => 'w50'],
+        ],
+        'encoding' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['encoding'],
+            'inputType' => 'select',
+            'options' => ['utf8' => 'UTF-8', 'latin1' => 'ISO-8859-1 (Windows)'],
+            'eval' => ['mandatory' => true, 'tl_class' => 'clr w50'],
+        ],
+        'dateFormat' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['importDateFormat'],
+            'inputType' => 'text',
+            'eval' => ['mandatory' => true, 'maxlength' => 20, 'tl_class' => 'w50'],
+        ],
+        'timeFormat' => [
+            'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['importTimeFormat'],
+            'inputType' => 'text',
+            'eval' => ['mandatory' => true, 'maxlength' => 20, 'tl_class' => 'w50'],
         ],
         'filterEventTitle' => [
             'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['importFilterEventTitle'],

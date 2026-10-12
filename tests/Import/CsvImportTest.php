@@ -13,8 +13,10 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Tests\Import;
 
 use Cgoit\ContaoCalendarIcalBundle\Import\CsvImport;
+use Cgoit\ContaoCalendarIcalBundle\Util\UploadedIcsFileResolver;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * The importer needs a database; the parsing of dates and times is tested directly.
@@ -26,6 +28,38 @@ final class CsvImportTest extends TestCase
     protected function setUp(): void
     {
         $this->import = (new \ReflectionClass(CsvImport::class))->newInstanceWithoutConstructor();
+    }
+
+    public function testReadsTheHeaderAndThePreviewOfAFile(): void
+    {
+        $dir = sys_get_temp_dir().'/cgoit-csv-'.bin2hex(random_bytes(4));
+        (new Filesystem())->dumpFile($dir.'/system/tmp/events.csv', "Titel;Datum;Ort\nTraining;01.05.2024;Halle\nSpiel;08.05.2024;Platz\n");
+        $this->setProperty('projectDir', $dir);
+
+        $preview = $this->import->readPreview('system/tmp/events.csv', 'utf8', 5);
+
+        $this->assertSame(['Titel', 'Datum', 'Ort'], $preview['header']);
+        $this->assertSame([['Training', '01.05.2024', 'Halle'], ['Spiel', '08.05.2024', 'Platz']], $preview['rows']);
+
+        (new Filesystem())->remove($dir);
+    }
+
+    public function testDeletesOnlyUploadedCsvFiles(): void
+    {
+        $dir = sys_get_temp_dir().'/cgoit-csv-'.bin2hex(random_bytes(4));
+        $filesystem = new Filesystem();
+        $filesystem->dumpFile($dir.'/system/tmp/events.csv', 'a');
+        $filesystem->dumpFile($dir.'/files/events.csv', 'a');
+        $this->setProperty('projectDir', $dir);
+        $this->setProperty('uploadedFileResolver', new UploadedIcsFileResolver($dir));
+
+        $this->import->delete('system/tmp/events.csv');
+        $this->import->delete('files/events.csv');
+
+        $this->assertFileDoesNotExist($dir.'/system/tmp/events.csv');
+        $this->assertFileExists($dir.'/files/events.csv', 'Files outside of the upload directory must stay');
+
+        $filesystem->remove($dir);
     }
 
     public function testParsesDates(): void
@@ -77,5 +111,10 @@ final class CsvImportTest extends TestCase
     private function call(string $method, mixed ...$arguments): mixed
     {
         return (new \ReflectionMethod(CsvImport::class, $method))->invoke($this->import, ...$arguments);
+    }
+
+    private function setProperty(string $name, mixed $value): void
+    {
+        (new \ReflectionProperty(CsvImport::class, $name))->setValue($this->import, $value);
     }
 }

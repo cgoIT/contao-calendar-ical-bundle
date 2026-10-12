@@ -65,3 +65,5 @@ $GLOBALS['TL_LANG']['tl_calendar_events']['options_legend'] = 'Options';
 $GLOBALS['TL_LANG']['tl_calendar_events']['timezone_legend'] = 'Time zone';
 $GLOBALS['TL_LANG']['tl_calendar_events']['import_done'] = 'The import is finished.';
 $GLOBALS['TL_LANG']['tl_calendar_events']['cancel'] = 'Cancel';
+$GLOBALS['TL_LANG']['tl_calendar_events']['csv_legend'] = 'Settings';
+$GLOBALS['TL_LANG']['tl_calendar_events']['mapping_legend'] = 'Assign fields';

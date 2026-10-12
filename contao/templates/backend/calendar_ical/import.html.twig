@@ -35,10 +35,31 @@
                     {% for widget in box.widgets %}{{ widget|raw }}{% endfor %}
                 </fieldset>
             {% endfor %}
+
+            {% if preview %}
+                <fieldset id="pal_preview" class="tl_tbox">
+                    <legend>{{ preview_label }}</legend>
+                    <div class="clr widget">
+                        <table class="tl_listing">
+                            <thead>
+                                <tr>{% for cell in preview.header %}<th>{{ cell }}</th>{% endfor %}</tr>
+                            </thead>
+                            <tbody>
+                                {% for row in preview.rows %}
+                                    <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </fieldset>
+            {% endif %}
         </div>
 
         <div class="tl_formbody_submit">
             <div class="tl_submit_container">
+                {% if check %}
+                    <button type="submit" name="check" class="tl_submit">{{ check }}</button>
+                {% endif %}
                 <button type="submit" name="import" id="save" class="tl_submit" accesskey="s">{{ submit }}</button>
                 {% if abort %}
                     <button type="submit" name="abort" class="tl_submit" formnovalidate>{{ abort }}</button>

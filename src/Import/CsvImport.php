@@ -14,6 +14,7 @@ namespace Cgoit\ContaoCalendarIcalBundle\Import;
 
 use Cgoit\ContaoCalendarIcalBundle\Import\Csv\CsvParser;
 use Cgoit\ContaoCalendarIcalBundle\Util\TimezoneUtil;
+use Cgoit\ContaoCalendarIcalBundle\Util\UploadedIcsFileResolver;
 use Cgoit\ContaoCalendarIcalBundle\Widgets\WidgetTrait;
 use Contao\BackendTemplate;
 use Contao\BackendUser;
@@ -27,6 +28,7 @@ use Contao\Input;
 use Contao\Message;
 use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
@@ -42,6 +44,7 @@ class CsvImport extends AbstractImport
         private readonly string $projectDir,
         Slug $slug,
         TimezoneUtil $timezoneUtil,
+        private readonly UploadedIcsFileResolver $uploadedFileResolver,
     ) {
         parent::__construct($slug);
 
@@ -52,34 +55,10 @@ class CsvImport extends AbstractImport
     {
         Controller::loadDataContainer('tl_calendar_events');
 
-        $fieldnames = [];
+        $calfields = [];
 
-        $schemaManager = $this->db->createSchemaManager();
-        $dbfields = $schemaManager->listTableColumns('tl_calendar_events');
-
-        foreach ($dbfields as $dbfield) {
-            $fieldnames[] = $dbfield->getName();
-        }
-
-        $calfields =
-            [
-                ['title', $GLOBALS['TL_LANG']['tl_calendar_events']['title'][0]],
-                ['startTime', $GLOBALS['TL_LANG']['tl_calendar_events']['startTime'][0]],
-                ['endTime', $GLOBALS['TL_LANG']['tl_calendar_events']['endTime'][0]],
-                ['startDate', $GLOBALS['TL_LANG']['tl_calendar_events']['startDate'][0]],
-                ['endDate', $GLOBALS['TL_LANG']['tl_calendar_events']['endDate'][0]],
-                ['details', $GLOBALS['TL_LANG']['tl_calendar_events']['details'][0]],
-                ['teaser', $GLOBALS['TL_LANG']['tl_calendar_events']['teaser'][0]],
-            ];
-
-        if (\in_array('location', $fieldnames, true)) {
-            $calfields[] = ['location', $GLOBALS['TL_LANG']['tl_calendar_events']['location'][0]];
-        }
-        if (\in_array('cep_participants', $fieldnames, true)) {
-            $calfields[] = ['cep_participants', $GLOBALS['TL_LANG']['tl_calendar_events']['cep_participants'][0]];
-        }
-        if (\in_array('location_contact', $fieldnames, true)) {
-            $calfields[] = ['location_contact', $GLOBALS['TL_LANG']['tl_calendar_events']['location_contact'][0]];
+        foreach ($this->getCalendarFields() as $name => $label) {
+            $calfields[] = [$name, $label];
         }
 
         $dateFormat = Input::post('dateFormat');
@@ -146,14 +125,137 @@ class CsvImport extends AbstractImport
             return $objTemplate->parse();
         }
 
+        $mapping = [];
+
+        foreach ((array) $calvalues as $idx => $value) {
+            $foundindex = array_search($csvvalues[$idx] ?? null, $header, true);
+
+            if (false !== $foundindex) {
+                $mapping[] = [(int) $foundindex, (string) $value];
+            }
+        }
+
+        $skippedRecords = $this->import(
+            (string) $importSettings['csv_filename'],
+            (int) ($importSettings['csv_pid'] ?? 0),
+            $mapping,
+            (string) $encoding,
+            (string) $dateFormat,
+            (string) $timeFormat,
+            new Date($importSettings['csv_startdate'], $GLOBALS['TL_CONFIG']['dateFormat']),
+            !empty((string) ($importSettings['csv_enddate'] ?? '')) ? new Date($importSettings['csv_enddate'], $GLOBALS['TL_CONFIG']['dateFormat']) : null,
+            !empty($importSettings['csv_deletecalendar']) && !empty($importSettings['csv_pid']),
+            (int) $importSettings['csv_timeshift'],
+            (string) ($importSettings['csv_filterEventTitle'] ?? ''),
+        );
+
+        $this->requestStack
+            ->getCurrentRequest()
+            ->getSession()
+            ->remove('calendar_ical.csvimport.settings')
+        ;
+
+        // The uploaded file is not needed anymore
+        if (!empty($importSettings['csv_filename'])) {
+            (new File($importSettings['csv_filename']))->delete();
+        }
+
+        if (!empty($skippedRecords)) {
+            Message::addError(\sprintf($GLOBALS['TL_LANG']['ERR']['csv_records_skipped'], \count($skippedRecords), implode(', ', \array_slice($skippedRecords, 0, 20)).(\count($skippedRecords) > 20 ? ', ...' : '')));
+        }
+
+        Controller::redirect(str_replace('&key=import', '', (string) Environment::get('request')));
+    }
+
+    /**
+     * The fields of an event a column of a csv file can be assigned to.
+     *
+     * @return array<string, string> The names of the fields with their labels
+     */
+    public function getCalendarFields(): array
+    {
+        Controller::loadDataContainer('tl_calendar_events');
+
+        $columns = array_map(
+            static fn ($column): string => $column->getName(),
+            $this->db->createSchemaManager()->listTableColumns('tl_calendar_events'),
+        );
+
+        $fields = [];
+
+        foreach (['title', 'startTime', 'endTime', 'startDate', 'endDate', 'details', 'teaser', 'location', 'cep_participants', 'location_contact'] as $name) {
+            // The last three fields exist only if the corresponding bundles are installed
+            if (\in_array($name, ['location', 'cep_participants', 'location_contact'], true) && !\in_array($name, $columns, true)) {
+                continue;
+            }
+
+            $fields[$name] = (string) $GLOBALS['TL_LANG']['tl_calendar_events'][$name][0];
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Reads the header and the first records of a csv file.
+     *
+     * @param string $file The path of the csv file relative to the project directory
+     *
+     * @return array{header: list<string>, rows: list<list<string>>}
+     */
+    public function readPreview(string $file, string $encoding, int $lines = 5): array
+    {
+        $parser = new CsvParser($this->projectDir.'/'.$file, '' !== $encoding ? $encoding : 'utf8');
+        $header = array_map(static fn ($cell): string => (string) $cell, $parser->extractHeader());
+        $rows = [];
+
+        $data = $parser->getDataArray($lines);
+
+        foreach (\is_array($data) ? $data : [] as $row) {
+            if (\is_array($row)) {
+                $rows[] = array_map(static fn ($cell): string => (string) $cell, array_values($row));
+            }
+        }
+
+        return ['header' => $header, 'rows' => $rows];
+    }
+
+    /**
+     * Deletes an uploaded csv file, which is not needed anymore.
+     */
+    public function delete(string $file): void
+    {
+        $resolved = $this->uploadedFileResolver->resolve($file, ['csv']);
+
+        if (null !== $resolved) {
+            (new Filesystem())->remove($this->projectDir.'/'.$resolved);
+        }
+    }
+
+    /**
+     * Imports the events of a csv file.
+     *
+     * @param string                         $file      The path of the csv file relative to the project directory
+     * @param list<array{0: int, 1: string}> $mapping   The index of the column in the file and the field of the event, for every imported column
+     * @param Date                           $startDate The first day to import
+     * @param Date|null                      $endDate   The last day to import, null for no end
+     *
+     * @return list<int> The numbers of the records that were skipped because of a wrong date or time
+     */
+    public function import(string $file, int $calendarId, array $mapping, string $encoding, string $dateFormat, string $timeFormat, Date $startDate, Date|null $endDate, bool $deleteCalendar, int $timeshift, string $filterEventTitle): array
+    {
+        Controller::loadDataContainer('tl_calendar_events');
+
+        $parser = new CsvParser($this->projectDir.'/'.$file, '' !== $encoding ? $encoding : 'utf8');
+        $parser->extractHeader();
+
         $skippedRecords = [];
 
         // Either everything or nothing is imported (also if the calendar is emptied before)
         $this->db->beginTransaction();
 
         try {
-            if (!empty($importSettings['csv_deletecalendar']) && !empty($importSettings['csv_pid'])) {
-                $objEvents = CalendarEventsModel::findByPid($importSettings['csv_pid']);
+            if ($deleteCalendar) {
+                $objEvents = CalendarEventsModel::findByPid($calendarId);
                 $this->deleteEvents($objEvents);
             }
 
@@ -172,7 +274,7 @@ class CsvImport extends AbstractImport
 
                     $objEvent = new CalendarEventsModel();
                     $objEvent->tstamp = time();
-                    $objEvent->pid = $importSettings['csv_pid'];
+                    $objEvent->pid = $calendarId;
                     $objEvent->published = true;
 
                     foreach ($defaultFields as $field => $value) {
@@ -185,39 +287,33 @@ class CsvImport extends AbstractImport
 
                     $objEvent->author = BackendUser::getInstance()->id ?? 0;
 
-                    foreach ($calvalues as $idx => $value) {
-                        if (!empty($value)) {
-                            $indexfield = $csvvalues[$idx];
-                            $foundindex = array_search($indexfield, $header, true);
+                    foreach ($mapping as [$foundindex, $value]) {
+                        if (!empty($value) && !empty($data[$foundindex])) {
+                            switch ($value) {
+                                case 'startDate':
+                                case 'endDate':
+                                    $timestamp = $this->parseDate($dateFormat, (string) $data[$foundindex]);
 
-                            if (false !== $foundindex && !empty($data[$foundindex])) {
-                                switch ($value) {
-                                    case 'startDate':
-                                    case 'endDate':
-                                        $timestamp = $this->parseDate((string) Input::post('dateFormat'), (string) $data[$foundindex]);
+                                    // A wrong date must not silently become another one
+                                    if (null === $timestamp) {
+                                        $skippedRecords[] = $record;
+                                        continue 3;
+                                    }
 
-                                        // A wrong date must not silently become another one
-                                        if (null === $timestamp) {
-                                            $skippedRecords[] = $record;
-                                            continue 3;
-                                        }
-
-                                        $objEvent->{$value} = $timestamp;
-                                        break;
-                                    case 'details':
-                                        $eventcontent[] = $this->encodeImportedText((string) $data[$foundindex]);
-                                        break;
-                                    case 'title':
-                                        $objEvent->{$value} = $this->encodeImportedText((string) $data[$foundindex]);
-                                        $filterEventTitle = $importSettings['csv_filterEventTitle'];
-                                        if (!empty($filterEventTitle) && !str_contains(mb_strtolower($this->encodeImportedText((string) $data[$foundindex])), mb_strtolower((string) $filterEventTitle))) {
-                                            continue 3;
-                                        }
-                                    // no break
-                                    default:
-                                        $objEvent->{$value} = $this->encodeImportedText((string) $data[$foundindex]);
-                                        break;
-                                }
+                                    $objEvent->{$value} = $timestamp;
+                                    break;
+                                case 'details':
+                                    $eventcontent[] = $this->encodeImportedText((string) $data[$foundindex]);
+                                    break;
+                                case 'title':
+                                    $objEvent->{$value} = $this->encodeImportedText((string) $data[$foundindex]);
+                                    if ('' !== $filterEventTitle && !str_contains(mb_strtolower($this->encodeImportedText((string) $data[$foundindex])), mb_strtolower($filterEventTitle))) {
+                                        continue 3;
+                                    }
+                                // no break
+                                default:
+                                    $objEvent->{$value} = $this->encodeImportedText((string) $data[$foundindex]);
+                                    break;
                             }
                         }
                     }
@@ -232,30 +328,23 @@ class CsvImport extends AbstractImport
                         $objEvent->endDate = $objEvent->startDate;
                     }
 
-                    foreach ($calvalues as $idx => $value) {
-                        if (!empty($value)) {
-                            $indexfield = $csvvalues[$idx];
-                            $foundindex = array_search($indexfield, $header, true);
-
-                            if (false !== $foundindex) {
-                                switch ($value) {
-                                    case 'startTime':
-                                    case 'endTime':
-                                        if (empty($data[$foundindex])) {
-                                            break;
-                                        }
-
-                                        $seconds = $this->parseTime((string) Input::post('timeFormat'), (string) $data[$foundindex]);
-
-                                        if (null === $seconds) {
-                                            $skippedRecords[] = $record;
-                                            continue 3;
-                                        }
-
-                                        $objEvent->{$value} = ('startTime' === $value ? $objEvent->startDate : $objEvent->endDate) + $seconds;
-                                        break;
+                    foreach ($mapping as [$foundindex, $value]) {
+                        switch ($value) {
+                            case 'startTime':
+                            case 'endTime':
+                                if (empty($data[$foundindex])) {
+                                    break;
                                 }
-                            }
+
+                                $seconds = $this->parseTime($timeFormat, (string) $data[$foundindex]);
+
+                                if (null === $seconds) {
+                                    $skippedRecords[] = $record;
+                                    continue 3;
+                                }
+
+                                $objEvent->{$value} = ('startTime' === $value ? $objEvent->startDate : $objEvent->endDate) + $seconds;
+                                break;
                         }
                     }
 
@@ -266,8 +355,6 @@ class CsvImport extends AbstractImport
                     if (empty($objEvent->title)) {
                         $objEvent->title = $GLOBALS['TL_LANG']['tl_calendar_events']['untitled'];
                     }
-
-                    $timeshift = (int) $importSettings['csv_timeshift'];
 
                     if (0 !== $timeshift) {
                         $objEvent->startDate += $timeshift * 3600;
@@ -280,14 +367,11 @@ class CsvImport extends AbstractImport
                         }
                     }
 
-                    $startDate = new Date($importSettings['csv_startdate'], $GLOBALS['TL_CONFIG']['dateFormat']);
-                    $endDate = new Date($importSettings['csv_enddate'], $GLOBALS['TL_CONFIG']['dateFormat']);
-
                     if (empty($objEvent->source)) {
                         $objEvent->source = 'default';
                     }
 
-                    if ($objEvent->endDate < $startDate->tstamp || (!empty((string) $importSettings['csv_enddate']) && ($objEvent->startDate > $endDate->tstamp))) {
+                    if ($objEvent->endDate < $startDate->tstamp || (null !== $endDate && ($objEvent->startDate > $endDate->tstamp))) {
                         // date is not in range
                     } else {
                         $objEvent = $objEvent->save();
@@ -309,22 +393,7 @@ class CsvImport extends AbstractImport
             throw $e;
         }
 
-        $this->requestStack
-            ->getCurrentRequest()
-            ->getSession()
-            ->remove('calendar_ical.csvimport.settings')
-        ;
-
-        // The uploaded file is not needed anymore
-        if (!empty($importSettings['csv_filename'])) {
-            (new File($importSettings['csv_filename']))->delete();
-        }
-
-        if (!empty($skippedRecords)) {
-            Message::addError(\sprintf($GLOBALS['TL_LANG']['ERR']['csv_records_skipped'], \count($skippedRecords), implode(', ', \array_slice($skippedRecords, 0, 20)).(\count($skippedRecords) > 20 ? ', ...' : '')));
-        }
-
-        Controller::redirect(str_replace('&key=import', '', (string) Environment::get('request')));
+        return $skippedRecords;
     }
 
     /**

@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Controller\Backend;
 
 use Cgoit\ContaoCalendarIcalBundle\Drivers\DC_IcalImport;
+use Cgoit\ContaoCalendarIcalBundle\Import\CsvImport;
 use Cgoit\ContaoCalendarIcalBundle\Import\IcsFileImporter;
 use Cgoit\ContaoCalendarIcalBundle\Import\TimezoneCheck;
 use Contao\CalendarBundle\Security\ContaoCalendarPermissions;
@@ -26,6 +27,7 @@ use Contao\Message;
 use Contao\System;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -36,8 +38,9 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 /**
  * The import form of the calendar in the back end as a Symfony route that renders the widgets of Contao.
  *
- * Step 1 asks for the ics file and the settings of the import. If the time zone of the file differs from the
- * one of the system (or the file has none), step 2 asks how to proceed. The state in between is kept in the session.
+ * Step 1 asks for the file (ics or csv) and the settings of the import. For an ics file the time zone is clarified
+ * in step 2 if it differs from the one of the system (or the file has none), for a csv file the columns are assigned
+ * to the fields of the events. The state in between is kept in the session.
  */
 #[Route('/%contao.backend.route_prefix%/calendar-ical/import/{id}',
     name: self::ROUTE_NAME,
@@ -53,6 +56,7 @@ final class ImportBackendController extends AbstractBackendController
     public function __construct(
         private readonly DC_IcalImport $dataContainer,
         private readonly IcsFileImporter $importer,
+        private readonly CsvImport $csvImport,
         private readonly ContaoCsrfTokenManager $csrfTokenManager,
         private readonly UrlGeneratorInterface $router,
         #[Autowire(service: 'monolog.logger.contao.general')]
@@ -80,14 +84,18 @@ final class ImportBackendController extends AbstractBackendController
 
         // The user cancels at step 2
         if (null !== $state && $request->request->has('abort')) {
-            $this->importer->delete($state['file']);
+            $this->deleteFile($state);
             $session->remove(self::SESSION_KEY.$id);
 
             return new RedirectResponse($request->getUri());
         }
 
-        return null === $state
-            ? $this->handleUploadStep($request, $calendar)
+        if (null === $state) {
+            return $this->handleUploadStep($request, $calendar);
+        }
+
+        return 'csv' === $state['type']
+            ? $this->handleCsvStep($request, $calendar, $state)
             : $this->handleTimezoneStep($request, $calendar, $state);
     }
 
@@ -111,6 +119,7 @@ final class ImportBackendController extends AbstractBackendController
 
             if (null !== $file) {
                 $state = [
+                    'type' => strtolower(pathinfo($file, PATHINFO_EXTENSION)),
                     'file' => $file,
                     'startDate' => $values['startDate'],
                     'endDate' => $values['endDate'] ?? '',
@@ -166,12 +175,96 @@ final class ImportBackendController extends AbstractBackendController
     }
 
     /**
+     * @param array<string, mixed> $state
+     */
+    private function handleCsvStep(Request $request, CalendarModel $calendar, array $state): Response
+    {
+        // Another encoding changes the columns and the preview
+        $encoding = $request->request->has('encoding') && \in_array($request->request->get('encoding'), ['utf8', 'latin1'], true)
+            ? (string) $request->request->get('encoding')
+            : 'utf8';
+
+        $preview = $this->csvImport->readPreview($state['file'], $encoding);
+
+        $this->dataContainer->initialize(
+            (int) $calendar->id,
+            'csv',
+            [
+                'encoding' => $encoding,
+                'dateFormat' => $GLOBALS['TL_LANG']['tl_calendar_events']['dateFormat'],
+                'timeFormat' => $GLOBALS['TL_LANG']['tl_calendar_events']['timeFormat'],
+            ],
+        );
+        $this->dataContainer->defineMappingFields($preview['header'], $this->csvImport->getCalendarFields());
+
+        $boxes = $this->renderBoxes();
+
+        if ($this->dataContainer->isValidSubmit() && $request->request->has('import')) {
+            $this->runCsvImport($calendar, $state, $this->dataContainer->getValues(), \count($preview['header']));
+            $request->getSession()->remove(self::SESSION_KEY.$calendar->id);
+
+            return $this->redirectToCalendar($calendar);
+        }
+
+        return $this->renderImportForm($calendar, $boxes, false, null, $GLOBALS['TL_LANG']['tl_calendar_events']['proceed'][0], true, $preview);
+    }
+
+    /**
+     * @param array<string, mixed> $state
+     * @param array<string, mixed> $values
+     */
+    private function runCsvImport(CalendarModel $calendar, array $state, array $values, int $columns): void
+    {
+        $dateFormat = (string) Config::get('dateFormat');
+        $mapping = [];
+
+        for ($i = 0; $i < $columns; ++$i) {
+            if (!empty($values['mapping_'.$i])) {
+                $mapping[] = [$i, (string) $values['mapping_'.$i]];
+            }
+        }
+
+        try {
+            $skipped = $this->csvImport->import(
+                $state['file'],
+                (int) $calendar->id,
+                $mapping,
+                (string) $values['encoding'],
+                (string) $values['dateFormat'],
+                (string) $values['timeFormat'],
+                new Date($state['startDate'], $dateFormat),
+                '' !== $state['endDate'] ? new Date($state['endDate'], $dateFormat) : null,
+                $state['deleteCalendar'],
+                $state['timeshift'],
+                $state['filterEventTitle'],
+            );
+
+            Message::addConfirmation($GLOBALS['TL_LANG']['tl_calendar_events']['import_done']);
+
+            if ([] !== $skipped) {
+                Message::addError(\sprintf($GLOBALS['TL_LANG']['ERR']['csv_records_skipped'], \count($skipped), implode(', ', \array_slice($skipped, 0, 20)).(\count($skipped) > 20 ? ', ...' : '')));
+            }
+        } catch (\Throwable $e) {
+            Message::addError($GLOBALS['TL_LANG']['ERR']['csv_parse_error']);
+            $this->logger->error('Could not import csv file "'.$state['file'].'": '.$e->getMessage());
+        } finally {
+            $this->csvImport->delete($state['file']);
+        }
+    }
+
+    /**
      * Checks the time zone of the file and imports it or asks the user how to proceed.
      *
      * @param array<string, mixed> $state
      */
     private function continueWithFile(Request $request, CalendarModel $calendar, array $state): Response|null
     {
+        if ('csv' === $state['type']) {
+            $this->continueWithCsvFile($request, $calendar, $state);
+
+            return null;
+        }
+
         try {
             $cal = $this->importer->load($state['file'], $calendar);
         } catch (\InvalidArgumentException $e) {
@@ -196,6 +289,28 @@ final class ImportBackendController extends AbstractBackendController
         $request->getSession()->set(self::SESSION_KEY.$calendar->id, $state);
 
         return null;
+    }
+
+    /**
+     * @param array<string, mixed> $state
+     */
+    private function continueWithCsvFile(Request $request, CalendarModel $calendar, array $state): void
+    {
+        try {
+            $header = $this->csvImport->readPreview($state['file'], 'utf8', 0)['header'];
+        } catch (\Throwable $e) {
+            $header = [];
+            $this->logger->error('Could not read csv file "'.$state['file'].'": '.$e->getMessage());
+        }
+
+        if ([] === $header) {
+            Message::addError($GLOBALS['TL_LANG']['ERR']['csv_parse_error']);
+            $this->csvImport->delete($state['file']);
+
+            return;
+        }
+
+        $request->getSession()->set(self::SESSION_KEY.$calendar->id, $state);
     }
 
     /**
@@ -242,9 +357,9 @@ final class ImportBackendController extends AbstractBackendController
         foreach ($uploaded as $path) {
             $extension = strtolower(pathinfo((string) $path, PATHINFO_EXTENSION));
 
-            if ('ics' !== $extension) {
+            if (!\in_array($extension, ['ics', 'csv'], true)) {
                 Message::addError(\sprintf($GLOBALS['TL_LANG']['ERR']['filetype'], $extension));
-                $this->importer->delete((string) $path);
+                (new Filesystem())->remove(System::getContainer()->getParameter('kernel.project_dir').'/'.$path);
 
                 continue;
             }
@@ -262,7 +377,7 @@ final class ImportBackendController extends AbstractBackendController
             Message::addError($GLOBALS['TL_LANG']['ERR']['only_one_file']);
 
             foreach ($files as $file) {
-                $this->importer->delete($file);
+                $this->deleteFile(['file' => $file, 'type' => strtolower(pathinfo($file, PATHINFO_EXTENSION))]);
             }
 
             return null;
@@ -289,8 +404,9 @@ final class ImportBackendController extends AbstractBackendController
 
     /**
      * @param list<array{key: string, class: string, label: string, widgets: list<string>}> $boxes
+     * @param array{header: list<string>, rows: list<list<string>>}|null                    $preview
      */
-    private function renderImportForm(CalendarModel $calendar, array $boxes, bool $withUploader, string|null $info, string $submit, bool $withAbort = false): Response
+    private function renderImportForm(CalendarModel $calendar, array $boxes, bool $withUploader, string|null $info, string $submit, bool $withAbort = false, array|null $preview = null): Response
     {
         return $this->render('@Contao/backend/calendar_ical/import.html.twig', [
             'headline' => $GLOBALS['TL_LANG']['MSC']['import_calendar'][0],
@@ -301,12 +417,29 @@ final class ImportBackendController extends AbstractBackendController
             'info' => $info,
             'submit' => $submit,
             'abort' => $withAbort ? $GLOBALS['TL_LANG']['tl_calendar_events']['cancel'] : null,
+            'preview' => $preview,
+            'preview_label' => $GLOBALS['TL_LANG']['tl_calendar_events']['preview'],
+            'check' => null !== $preview ? $GLOBALS['TL_LANG']['tl_calendar_events']['check'] : null,
             'back_url' => $this->getBackUrl((int) $calendar->id),
             'request_token' => $this->csrfTokenManager->getDefaultTokenValue(),
             'max_file_size' => Config::get('maxFileSize'),
             'has_errors' => $this->dataContainer->hasErrors(),
             'message' => Message::generate(),
         ]);
+    }
+
+    /**
+     * Deletes the uploaded file of an import.
+     *
+     * @param array<string, mixed> $state
+     */
+    private function deleteFile(array $state): void
+    {
+        if ('csv' === $state['type']) {
+            $this->csvImport->delete($state['file']);
+        } else {
+            $this->importer->delete($state['file']);
+        }
     }
 
     private function redirectToCalendar(CalendarModel $calendar): RedirectResponse

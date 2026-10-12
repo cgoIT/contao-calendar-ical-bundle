@@ -64,6 +64,14 @@ final class UploadedIcsFileResolverTest extends TestCase
         $this->assertNull($this->resolver->resolve('/etc/passwd'));
     }
 
+    public function testAllowsTheGivenExtensionsOnly(): void
+    {
+        (new Filesystem())->dumpFile($this->projectDir.'/system/tmp/events.csv', 'a');
+
+        $this->assertNull($this->resolver->resolve('system/tmp/events.csv'), 'Only ics files are allowed by default');
+        $this->assertSame('system/tmp/events.csv', $this->resolver->resolve('system/tmp/events.csv', ['csv']));
+    }
+
     public function testRejectsMissingFilesAndDirectories(): void
     {
         $this->assertNull($this->resolver->resolve('system/tmp/missing.ics'));

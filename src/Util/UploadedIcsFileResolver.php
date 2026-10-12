@@ -14,20 +14,22 @@ namespace Cgoit\ContaoCalendarIcalBundle\Util;
 
 /**
  * The backend import passes the path of the uploaded file on via a form field. This class makes sure
- * the path only points to an ics file in the upload directory "system/tmp".
+ * the path only points to an uploaded file (ics by default) in the upload directory "system/tmp".
  */
 class UploadedIcsFileResolver
 {
-    private const UPLOAD_DIR = 'system/tmp';
+    private const string UPLOAD_DIR = 'system/tmp';
 
     public function __construct(private readonly string $projectDir)
     {
     }
 
     /**
+     * @param list<string> $extensions The allowed file extensions
+     *
      * @return string|null The path relative to the project directory or null if the path is not allowed
      */
-    public function resolve(string $path): string|null
+    public function resolve(string $path, array $extensions = ['ics']): string|null
     {
         $projectDir = realpath($this->projectDir);
         $uploadDir = realpath($this->projectDir.'/'.self::UPLOAD_DIR);
@@ -37,7 +39,7 @@ class UploadedIcsFileResolver
             return null;
         }
 
-        if (!str_starts_with($realPath, $uploadDir.\DIRECTORY_SEPARATOR) || 'ics' !== strtolower(pathinfo($realPath, PATHINFO_EXTENSION))) {
+        if (!str_starts_with($realPath, $uploadDir.\DIRECTORY_SEPARATOR) || !\in_array(strtolower(pathinfo($realPath, PATHINFO_EXTENSION)), $extensions, true)) {
             return null;
         }
 

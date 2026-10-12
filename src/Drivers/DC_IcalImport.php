@@ -18,6 +18,7 @@ use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\DataContainer;
 use Contao\FileUpload;
 use Contao\Input;
+use Contao\StringUtil;
 use Contao\System;
 
 /**
@@ -94,6 +95,40 @@ class DC_IcalImport extends DataContainer
     public function isValidSubmit(): bool
     {
         return $this->isSubmitted() && !$this->noReload;
+    }
+
+    /**
+     * Adds a field for every column of a csv file, to assign the column to a field of the event, and composes the
+     * palette "csv" with them.
+     *
+     * @param list<string>          $header         The names of the columns
+     * @param array<string, string> $calendarFields The fields of the event with their labels
+     */
+    public function defineMappingFields(array $header, array $calendarFields): void
+    {
+        $fields = [];
+
+        foreach ($header as $index => $name) {
+            $field = 'mapping_'.$index;
+            $fields[] = $field;
+
+            $GLOBALS['TL_DCA'][self::TABLE]['fields'][$field] = [
+                // The name comes from an uploaded file
+                'label' => [StringUtil::specialchars($name), ''],
+                'inputType' => 'select',
+                'options' => $calendarFields,
+                'eval' => ['includeBlankOption' => true, 'tl_class' => 'w50'],
+            ];
+
+            // Preselect the field with the name (or label) of the column
+            foreach ($calendarFields as $key => $label) {
+                if (0 === strcasecmp(trim($name), $key) || 0 === strcasecmp(trim($name), $label)) {
+                    $this->importValues[$field] ??= $key;
+                }
+            }
+        }
+
+        $GLOBALS['TL_DCA'][self::TABLE]['palettes']['csv'] = '{csv_legend},encoding,dateFormat,timeFormat;{mapping_legend},'.implode(',', $fields);
     }
 
     /**
