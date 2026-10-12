@@ -951,6 +951,24 @@ class IcsImport extends AbstractImport
     }
 
     /**
+     * Many feeds give UNTIL as a date (UNTIL=20240531) although the event has a time. Such a value is read as
+     * midnight and would exclude the recurrence of the last day, so it is moved to the end of that day.
+     * A UNTIL that is exactly midnight of the event time zone is interpreted this way, too.
+     */
+    private function extendDateOnlyUntil(\DateTime $until, string $timezone, int $eventStartTime): \DateTime
+    {
+        $zone = DateTimeZoneFactory::factory($timezone);
+        $local = \DateTime::createFromInterface($until)->setTimezone($zone);
+        $startsAtMidnight = '000000' === (new \DateTimeImmutable('@'.$eventStartTime))->setTimezone($zone)->format('His');
+
+        if ('000000' === $local->format('His') && !$startsAtMidnight) {
+            return $local->setTime(23, 59, 59);
+        }
+
+        return $until;
+    }
+
+    /**
      * Returns the time stamp of the UNTIL value. It is an exact point in time (UTC) unless the event starts with a
      * date or a floating time; then the value is a local time and is read in the given time zone.
      *
@@ -967,6 +985,8 @@ class IcsImport extends AbstractImport
                     DateTimeZoneFactory::factory($timezone),
                 );
             }
+
+            $until = $this->extendDateOnlyUntil($until, $timezone, $eventStartTime);
 
             $timestamp = $until->getTimestamp();
             if (0 !== $timeshift) {

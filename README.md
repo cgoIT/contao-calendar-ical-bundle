@@ -147,7 +147,7 @@ mit `TZID` behalten ihre Zeitzone.
 
 Bei Wiederholungen gilt `UNTIL` einschließlich der letzten Wiederholung; es wird als UTC-Zeitpunkt gelesen (bei
 ganztägigen Terminen und Zeiten ohne Zeitzone als Ortszeit des Kalenders). Eine Serie mit `COUNT=1` ist ein einzelner
-Termin.
+Termin. Gibt ein Feed `UNTIL` nur als Datum an, obwohl der Termin eine Uhrzeit hat, gilt die Wiederholung dieses Tages noch.
 
 Der reguläre Ausdruck für die Titel-Umschreibung wird beim Speichern des Kalenders geprüft und benötigt Trennzeichen,
 z. B. `/^\[Verein\] /`. Das Feld „Benutzername:Passwort“ für den Proxy wird verdeckt angezeigt und ist nicht

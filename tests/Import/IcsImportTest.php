@@ -365,6 +365,9 @@ final class IcsImportTest extends ContaoTestCase
             'utc' => ['DTSTART;TZID=Europe/Berlin:20240501T180000', 'RRULE:FREQ=WEEKLY;UNTIL=20240529T160000Z', 4],
             'floating' => ['DTSTART:20240501T180000', 'RRULE:FREQ=WEEKLY;UNTIL=20240529T180000', 4],
             'date' => ['DTSTART;VALUE=DATE:20240501', 'RRULE:FREQ=WEEKLY;UNTIL=20240529', 4],
+            // many feeds give UNTIL as a date although the event has a time; the recurrence of that day is kept
+            'timed with date until' => ['DTSTART;TZID=Europe/Berlin:20240501T180000', 'RRULE:FREQ=WEEKLY;UNTIL=20240529', 4],
+            'floating with date until' => ['DTSTART:20240501T180000', 'RRULE:FREQ=WEEKLY;UNTIL=20240529', 4],
         ];
 
         foreach ($cases as $name => [$dtstartLine, $rruleLine, $expected]) {
