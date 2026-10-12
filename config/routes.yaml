@@ -1,0 +1,3 @@
+cgoit_contao_calendar_ical:
+    resource: ../src/Controller/
+    type: attribute

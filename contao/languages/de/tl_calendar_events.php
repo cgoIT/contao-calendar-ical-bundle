@@ -58,3 +58,10 @@ $GLOBALS['TL_LANG']['tl_calendar_events']['untitled'] = 'Ohne Titel';
 $GLOBALS['TL_LANG']['tl_calendar_events']['dateFormat'] = 'd.m.Y';
 $GLOBALS['TL_LANG']['tl_calendar_events']['timeFormat'] = 'H:i';
 $GLOBALS['TL_LANG']['tl_content']['error_generating_ical_file'] = 'Beim erzeugen der ics Datei ist ein Fehler aufgetreten.';
+
+$GLOBALS['TL_LANG']['tl_calendar_events']['source_legend'] = 'Quelle';
+$GLOBALS['TL_LANG']['tl_calendar_events']['range_legend'] = 'Zeitraum';
+$GLOBALS['TL_LANG']['tl_calendar_events']['options_legend'] = 'Optionen';
+$GLOBALS['TL_LANG']['tl_calendar_events']['timezone_legend'] = 'Zeitzone';
+$GLOBALS['TL_LANG']['tl_calendar_events']['import_done'] = 'Der Import ist abgeschlossen.';
+$GLOBALS['TL_LANG']['tl_calendar_events']['cancel'] = 'Abbrechen';

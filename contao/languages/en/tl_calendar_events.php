@@ -58,3 +58,10 @@ $GLOBALS['TL_LANG']['tl_calendar_events']['check'] = 'Check';
 $GLOBALS['TL_LANG']['tl_calendar_events']['untitled'] = 'Untitled';
 $GLOBALS['TL_LANG']['tl_calendar_events']['dateFormat'] = 'Y-m-d';
 $GLOBALS['TL_LANG']['tl_calendar_events']['timeFormat'] = 'H:i';
+
+$GLOBALS['TL_LANG']['tl_calendar_events']['source_legend'] = 'Source';
+$GLOBALS['TL_LANG']['tl_calendar_events']['range_legend'] = 'Period';
+$GLOBALS['TL_LANG']['tl_calendar_events']['options_legend'] = 'Options';
+$GLOBALS['TL_LANG']['tl_calendar_events']['timezone_legend'] = 'Time zone';
+$GLOBALS['TL_LANG']['tl_calendar_events']['import_done'] = 'The import is finished.';
+$GLOBALS['TL_LANG']['tl_calendar_events']['cancel'] = 'Cancel';

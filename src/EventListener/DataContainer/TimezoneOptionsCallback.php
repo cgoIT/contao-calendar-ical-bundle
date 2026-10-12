@@ -17,6 +17,7 @@ use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 
 #[AsCallback(table: 'tl_calendar', target: 'fields.ical_timezone.options')]
+#[AsCallback(table: 'tl_calendar_ical_import', target: 'fields.timezone.options')]
 class TimezoneOptionsCallback
 {
     public function __construct(private readonly TimezoneUtil $timezoneUtil)

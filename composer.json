@@ -67,7 +67,10 @@
   "autoload": {
     "psr-4": {
       "Cgoit\\ContaoCalendarIcalBundle\\": "src/"
-    }
+    },
+    "files": [
+      "config/compat.php"
+    ]
   },
   "autoload-dev": {
     "psr-4": {
