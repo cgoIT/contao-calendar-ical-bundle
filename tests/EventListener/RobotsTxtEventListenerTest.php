@@ -27,7 +27,7 @@ final class RobotsTxtEventListenerTest extends TestCase
         $file = new File();
         $this->dispatch($file);
 
-        $this->assertSame("user-agent:*\ndisallow:/_event/", trim((string) $file));
+        $this->assertSame("user-agent:*\ndisallow:/_event/\ndisallow:/_eventlist/", trim((string) $file));
     }
 
     public function testAddsDisallowToEveryExistingRecord(): void
@@ -37,6 +37,7 @@ final class RobotsTxtEventListenerTest extends TestCase
 
         $content = (string) $file;
         $this->assertSame(2, substr_count($content, 'disallow:/_event/'));
+        $this->assertSame(2, substr_count($content, 'disallow:/_eventlist/'));
         $this->assertStringContainsString('disallow:/private/', $content);
     }
 

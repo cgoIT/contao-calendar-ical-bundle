@@ -41,6 +41,7 @@ class RobotsTxtEventListener
         foreach ($file->getRecords() as $record) {
             $directiveList = $record->getDirectiveList();
             $directiveList->add(new Directive('Disallow', '/_event/'));
+            $directiveList->add(new Directive('Disallow', '/_eventlist/'));
         }
     }
 }

@@ -67,6 +67,16 @@ bleiben unberührt. Alternativ liefert eine Seite vom Typ `ics_feed` oder das In
 ausgewählter Kalender. Ein dort eingetragenes Präfix wird dem Titel jedes Termins vorangestellt; ohne Angabe gilt das
 Präfix des jeweiligen Kalenders.
 
+Wiederholungen, Ausnahmen und Teilnehmer
+----------------------------------------
+
+Mit dem `cgoit/calendar-extended-bundle` ausgeschlossene Wiederholungen („Termin nicht anzeigen“) werden als `EXDATE`
+exportiert. Verschobene Wiederholungen („Termin verschieben“) werden als eigener Termin mit derselben `UID` und
+`RECURRENCE-ID` des ursprünglichen Termins exportiert; Kalender-Apps ersetzen damit genau diese eine Wiederholung.
+
+Als `ATTENDEE` kann ICS nur E-Mail-Adressen aufnehmen. Teilnehmer ohne gültige E-Mail-Adresse werden daher nicht
+exportiert.
+
 Geschützte Kalender
 -------------------
 

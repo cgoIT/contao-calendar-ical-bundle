@@ -274,7 +274,14 @@ final class IcsExportTest extends ContaoTestCase
 
     public function testParticipantWithoutEmailAddressIsExportedWithCommonName(): void
     {
-        $this->markTestSkipped('Known bug: iCalcreator rejects "mailto:<name>", so a participant without "@" aborts the whole export (see TODO.md).');
+        // iCalcreator only accepts e-mail addresses as ATTENDEE; a name must not abort the export
+        $event = $this->createEvent(['cep_participants' => 'Max Mustermann, jane@example.com, broken@']);
+
+        $ics = $this->exportEvent($event);
+
+        $this->assertStringContainsString('ATTENDEE:mailto:jane@example.com', $ics);
+        $this->assertStringNotContainsString('Mustermann', $ics);
+        $this->assertSame(1, substr_count($ics, 'ATTENDEE'));
     }
 
     public function testCalendarWithoutCalendarsIsEmptyInsteadOfAnError(): void
@@ -292,6 +299,85 @@ final class IcsExportTest extends ContaoTestCase
         $ics = $this->export->getVcalendar([], $this->ts('2024-05-01 00:00'), $this->ts('2025-05-01 00:00'), 'My feed')?->createCalendar();
 
         $this->assertStringContainsString('X-WR-CALNAME:My feed', (string) $ics);
+    }
+
+    public function testMovedRecurrenceBecomesOverrideWithSameUid(): void
+    {
+        $event = $this->createWeeklyTimedEvent([
+            ['exception' => $this->ts('2024-05-08 18:00'), 'action' => 'move', 'new_exception' => '+1 day', 'new_start' => '', 'new_end' => ''],
+        ]);
+
+        $ics = $this->exportEvent($event);
+
+        $this->assertSame(2, substr_count($ics, 'BEGIN:VEVENT'));
+        $this->assertStringNotContainsString('EXDATE', $ics, 'The override replaces the recurrence, it must not be excluded as well');
+
+        [$main, $moved] = $this->events($ics);
+
+        $this->assertSame($this->property($main, 'UID'), $this->property($moved, 'UID'));
+        $this->assertStringContainsString('RECURRENCE-ID;TZID=Europe/Berlin:20240508T180000', $moved);
+        $this->assertStringContainsString('DTSTART;TZID=Europe/Berlin:20240509T180000', $moved);
+        $this->assertStringContainsString('DTEND;TZID=Europe/Berlin:20240509T190000', $moved);
+        $this->assertStringContainsString('SUMMARY:Event', $moved);
+        $this->assertStringNotContainsString('RRULE', $moved);
+    }
+
+    public function testMovedRecurrenceCanHaveNewTimes(): void
+    {
+        $event = $this->createWeeklyTimedEvent([
+            ['exception' => $this->ts('2024-05-08 18:00'), 'action' => 'move', 'new_exception' => '+2 days', 'new_start' => '19:00', 'new_end' => '20:30'],
+        ]);
+
+        [, $moved] = $this->events($this->exportEvent($event));
+
+        $this->assertStringContainsString('DTSTART;TZID=Europe/Berlin:20240510T190000', $moved);
+        $this->assertStringContainsString('DTEND;TZID=Europe/Berlin:20240510T203000', $moved);
+    }
+
+    public function testMovedRecurrenceOfAllDayEvent(): void
+    {
+        $event = $this->createEvent([
+            'recurring' => '1',
+            'repeatEach' => serialize(['unit' => 'weeks', 'value' => 1]),
+            'useExceptions' => '1',
+            'repeatExceptions' => serialize([
+                ['exception' => $this->ts('2024-05-08 00:00'), 'action' => 'move', 'new_exception' => '+1 day'],
+            ]),
+        ]);
+
+        [, $moved] = $this->events($this->exportEvent($event));
+
+        $this->assertStringContainsString('RECURRENCE-ID;VALUE=DATE:20240508', $moved);
+        $this->assertStringContainsString('DTSTART;VALUE=DATE:20240509', $moved);
+        $this->assertStringContainsString('DTEND;VALUE=DATE:20240510', $moved);
+    }
+
+    public function testRecurrencesMovedByPeriodBecomeOverrides(): void
+    {
+        $event = $this->createWeeklyTimedEvent([], [
+            ['exception' => $this->ts('2024-05-08 00:00'), 'exceptionTo' => $this->ts('2024-05-15 00:00'), 'action' => 'move', 'new_exception' => '+1 day', 'new_start' => '', 'new_end' => ''],
+        ]);
+        $event->allRecurrences = serialize([
+            $this->ts('2024-05-08 18:00') => [],
+            $this->ts('2024-05-15 18:00') => [],
+            $this->ts('2024-05-22 18:00') => [],
+        ]);
+
+        $ics = $this->exportEvent($event);
+
+        $this->assertSame(3, substr_count($ics, 'BEGIN:VEVENT'));
+        $this->assertStringContainsString('RECURRENCE-ID;TZID=Europe/Berlin:20240508T180000', $ics);
+        $this->assertStringContainsString('RECURRENCE-ID;TZID=Europe/Berlin:20240515T180000', $ics);
+        $this->assertStringNotContainsString('RECURRENCE-ID;TZID=Europe/Berlin:20240522T180000', $ics);
+    }
+
+    public function testMoveWithoutValidTargetIsIgnored(): void
+    {
+        $event = $this->createWeeklyTimedEvent([
+            ['exception' => $this->ts('2024-05-08 18:00'), 'action' => 'move', 'new_exception' => ''],
+        ]);
+
+        $this->assertSame(1, substr_count($this->exportEvent($event), 'BEGIN:VEVENT'));
     }
 
     public function testExportEventsAcceptsModelsAndEventRows(): void
@@ -320,6 +406,41 @@ final class IcsExportTest extends ContaoTestCase
         $event = $this->createEvent(['title' => 'Original']);
 
         $this->assertStringContainsString('SUMMARY:Changed by hook', $this->exportEvent($event));
+    }
+
+    /**
+     * @param array<mixed> $exceptions
+     * @param array<mixed> $periods
+     */
+    private function createWeeklyTimedEvent(array $exceptions, array $periods = []): CalendarEventsModel
+    {
+        return $this->createEvent([
+            'addTime' => '1',
+            'startTime' => $this->ts('2024-05-01 18:00'),
+            'endTime' => $this->ts('2024-05-01 19:00'),
+            'recurring' => '1',
+            'repeatEach' => serialize(['unit' => 'weeks', 'value' => 1]),
+            'useExceptions' => '1',
+            'repeatExceptions' => [] === $exceptions ? null : serialize($exceptions),
+            'repeatExceptionsPer' => [] === $periods ? null : serialize($periods),
+        ]);
+    }
+
+    /**
+     * @return array<string>
+     */
+    private function events(string $ics): array
+    {
+        preg_match_all('/BEGIN:VEVENT.*?END:VEVENT/s', $ics, $matches);
+
+        return $matches[0];
+    }
+
+    private function property(string $vevent, string $name): string
+    {
+        preg_match('/^'.$name.':(.*)$/m', $vevent, $matches);
+
+        return trim($matches[1] ?? '');
     }
 
     /**

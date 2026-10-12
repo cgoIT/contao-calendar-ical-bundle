@@ -45,6 +45,7 @@ class ContentIcalElement extends AbstractContentElementController
         private readonly ResponseUtil $responseUtil,
         private readonly IcsExport $icsExport,
         private readonly ExportAccessChecker $accessChecker,
+        private readonly int $defaultEndTimeDifference,
     ) {
     }
 
@@ -111,7 +112,7 @@ class ContentIcalElement extends AbstractContentElementController
     private function getIcalFile(ContentModel $model, array $arrCalendars): Vcalendar|null
     {
         $startDate = !empty($model->ical_start) ? (int) $model->ical_start : time();
-        $endDate = !empty($model->ical_end) ? (int) $model->ical_end : time() + 365 * 24 * 3600;
+        $endDate = !empty($model->ical_end) ? (int) $model->ical_end : time() + $this->defaultEndTimeDifference * 24 * 3600;
 
         if (!empty($arrCalendars)) {
             return $this->icsExport->getVcalendar($arrCalendars, $startDate, $endDate, $model->ical_title, $model->ical_description, $model->ical_prefix);
