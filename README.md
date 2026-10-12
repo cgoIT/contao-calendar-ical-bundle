@@ -204,6 +204,10 @@ Wichtig
 Die globale Operation in `tl_calendar_events` heißt jetzt `import` (vorher `export`). Das Bundle benötigt PHP 8.3 und
 läuft mit Contao 5.3 und neueren Versionen.
 
+**Content-Element „iCal Download“ (Twig):** Das Element wird jetzt mit `content_element/ical.html.twig` gerendert (statt
+`ce_ical.html5`); haben Sie `ce_ical` überschrieben, legen Sie stattdessen ein Twig-Template an. Das Feld „Template für
+iCal Download-Element“ (`ical_download_template`, `ce_download_*`) entfällt; das Markup des Links steht im Twig-Template.
+
 Wenn Sie den Standardwert für die Differenz zwischen Start- und Enddatum in Ihrer `localconfig.php` über
 `$GLOBALS['calendar_ical']['endDateTimeDifferenceInDays']` überschrieben haben, müssen Sie diesen Wert jetzt in Ihre
 `config.yml` übernehmen:

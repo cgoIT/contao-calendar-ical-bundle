@@ -20,8 +20,6 @@ use Contao\ContentModel;
 use Contao\Controller;
 use Contao\CoreBundle\Controller\ContentElement\AbstractContentElementController;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsContentElement;
-use Contao\CoreBundle\Routing\ScopeMatcher;
-use Contao\FrontendTemplate;
 use Contao\Input;
 use Contao\Model\Collection;
 use Contao\StringUtil;
@@ -29,7 +27,6 @@ use Contao\System;
 use Contao\Template;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 
 #[AsContentElement(type: ContentIcalElement::TYPE, category: 'files')]
@@ -42,11 +39,9 @@ class ContentIcalElement extends AbstractContentElementController
     protected Vcalendar $ical;
 
     public function __construct(
-        private readonly RequestStack $requestStack,
         private readonly ResponseUtil $responseUtil,
         private readonly IcsExport $icsExport,
         private readonly ExportAccessChecker $accessChecker,
-        private readonly ScopeMatcher $scopeMatcher,
     ) {
     }
 
@@ -63,25 +58,10 @@ class ContentIcalElement extends AbstractContentElementController
                 throw $this->responseUtil->sendFileForDownload($ical->createCalendar(), $filename);
             }
 
-            // Generate a general HTML output using the download template
-            $downloadTemplate = 'ce_download';
-            if (!empty($model->ical_download_template)) {
-                $request = $this->requestStack->getCurrentRequest();
-
-                // Use the custom template unless it is a back end request
-                if (!$request || !$this->scopeMatcher->isBackendRequest($request)) {
-                    $downloadTemplate = $model->ical_download_template;
-                }
-            }
-
-            $tpl = new FrontendTemplate($downloadTemplate);
-            $tpl->link = !empty($model->linkTitle) ? $model->linkTitle : $GLOBALS['TL_LANG']['tl_content']['ical_download_title'];
-            $tpl->title = $GLOBALS['TL_LANG']['tl_content']['ical_download_title'];
-            $tpl->href = Controller::addToUrl('ical='.$model->id);
-            $tpl->filesize = System::getReadableSize(\strlen($ical->createCalendar()));
-            $tpl->mime = 'text/calendar';
-            $tpl->extension = 'ics';
-            $template->downloadElement = $tpl->parse();
+            $template->link = !empty($model->linkTitle) ? $model->linkTitle : $GLOBALS['TL_LANG']['tl_content']['ical_download_title'];
+            $template->title = $GLOBALS['TL_LANG']['tl_content']['ical_download_title'];
+            $template->href = Controller::addToUrl('ical='.$model->id);
+            $template->filesize = System::getReadableSize(\strlen($ical->createCalendar()));
 
             return $this->createResponse($template, $arrAllCalendars);
         }
