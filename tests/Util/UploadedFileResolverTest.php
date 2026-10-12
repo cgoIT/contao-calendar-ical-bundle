@@ -12,15 +12,15 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Tests\Util;
 
-use Cgoit\ContaoCalendarIcalBundle\Util\UploadedIcsFileResolver;
+use Cgoit\ContaoCalendarIcalBundle\Util\UploadedFileResolver;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
-final class UploadedIcsFileResolverTest extends TestCase
+final class UploadedFileResolverTest extends TestCase
 {
     private string $projectDir;
 
-    private UploadedIcsFileResolver $resolver;
+    private UploadedFileResolver $resolver;
 
     protected function setUp(): void
     {
@@ -33,7 +33,7 @@ final class UploadedIcsFileResolverTest extends TestCase
         $filesystem->dumpFile($this->projectDir.'/.env.ics', 'secret');
         $filesystem->dumpFile(\dirname($this->projectDir).'/'.basename($this->projectDir).'-outside.ics', 'secret');
 
-        $this->resolver = new UploadedIcsFileResolver($this->projectDir);
+        $this->resolver = new UploadedFileResolver($this->projectDir);
     }
 
     protected function tearDown(): void

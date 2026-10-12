@@ -28,10 +28,12 @@ use Contao\Model\Registry;
 use Kigkonsult\Icalcreator\IcalInterface;
 use Kigkonsult\Icalcreator\Vcalendar;
 use PHPUnit\Framework\MockObject\MockObject;
+use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -61,6 +63,8 @@ final class ImportBackendControllerTest extends ContaoTestCase
      */
     private array $denied = [];
 
+    private bool $stateValid = true;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -80,8 +84,9 @@ final class ImportBackendControllerTest extends ContaoTestCase
         $container->set('contao.routing.scope_matcher', $matcher);
 
         $GLOBALS['TL_CONFIG']['dateFormat'] = 'Y-m-d';
-        $GLOBALS['TL_LANG']['ERR'] = ['all_fields' => 'all fields', 'filetype' => 'type %s', 'only_one_file' => 'one file', 'ics_parse_error' => 'ics error', 'csv_parse_error' => 'csv error', 'csv_records_skipped' => '%d skipped (%s)'];
-        $GLOBALS['TL_LANG']['tl_calendar_events'] = ['import_done' => 'done', 'dateFormat' => 'd.m.Y', 'timeFormat' => 'H:i'];
+        $GLOBALS['TL_LANG']['ERR'] = ['all_fields' => 'all fields', 'filetype' => 'type %s', 'only_one_file' => 'one file', 'ics_parse_error' => 'ics error', 'csv_parse_error' => 'csv error', 'csv_records_skipped' => '%d skipped (%s)', 'csv_no_mapping' => 'no mapping', 'import_failed' => 'import_failed_text'];
+        $GLOBALS['TL_LANG']['tl_calendar_events'] = ['import_done' => 'done', 'dateFormat' => 'd.m.Y', 'timeFormat' => 'H:i', 'proceed' => ['Weiter'], 'cancel' => 'Abbrechen', 'check' => 'Überprüfen', 'preview' => 'Vorschau', 'import' => ['Import'], 'icssource' => ['Quelle']];
+        $GLOBALS['TL_LANG']['MSC']['import_calendar'] = ['Kalender importieren'];
 
         $calendar = new CalendarModel();
         $calendar->id = 3;
@@ -373,6 +378,210 @@ final class ImportBackendControllerTest extends ContaoTestCase
         $this->assertFalse($this->session->has(self::SESSION_KEY));
     }
 
+    public function testDropsAStateIfTheUploadedFileIsGone(): void
+    {
+        $this->stateValid = false;
+        $this->session->set(self::SESSION_KEY, $this->state(['type' => 'csv', 'file' => 'system/tmp/events.csv']));
+        $this->csvImport
+            ->expects($this->once())
+            ->method('delete')
+            ->with('system/tmp/events.csv')
+        ;
+        $this->submit(['startDate' => '2026-01-01'], []);
+
+        $this->call($this->request());
+
+        // The state is gone, so the form of step 1 was handled (without file)
+        $this->assertFalse($this->session->has(self::SESSION_KEY));
+    }
+
+    public function testDropsAStateThatIsTooOld(): void
+    {
+        $this->session->set(self::SESSION_KEY, $this->state(['created' => time() - 7200]));
+        $this->icsImporter
+            ->expects($this->once())
+            ->method('delete')
+            ->with('system/tmp/club.ics')
+        ;
+        $this->submit(['startDate' => '2026-01-01'], []);
+
+        $this->call($this->request());
+
+        $this->assertFalse($this->session->has(self::SESSION_KEY));
+    }
+
+    public function testDropsACsvImportWhoseFileHasNoHeader(): void
+    {
+        $this->session->set(self::SESSION_KEY, $this->state(['type' => 'csv', 'file' => 'system/tmp/events.csv']));
+        $this->csvImport
+            ->method('readPreview')
+            ->willReturn(['header' => [], 'rows' => []])
+        ;
+
+        $this->csvImport
+            ->expects($this->once())
+            ->method('delete')
+            ->with('system/tmp/events.csv')
+        ;
+
+        $this->csvImport
+            ->expects($this->never())
+            ->method('import')
+        ;
+
+        $response = $this->call($this->request(['import' => '1']));
+
+        $this->assertSame(self::URI, $response->getTargetUrl());
+        $this->assertFalse($this->session->has(self::SESSION_KEY));
+        $this->assertNotEmpty($this->session->getFlashBag()->peekAll());
+    }
+
+    public function testDropsACsvImportWhoseFileCannotBeRead(): void
+    {
+        $this->session->set(self::SESSION_KEY, $this->state(['type' => 'csv', 'file' => 'system/tmp/events.csv']));
+        $this->csvImport
+            ->method('readPreview')
+            ->willThrowException(new \InvalidArgumentException('Invalid csv file path'))
+        ;
+
+        $this->csvImport
+            ->expects($this->never())
+            ->method('import')
+        ;
+
+        $this->call($this->request(['import' => '1']));
+
+        $this->assertFalse($this->session->has(self::SESSION_KEY));
+    }
+
+    public function testDoesNotImportACsvFileWithoutAssignedColumn(): void
+    {
+        $this->session->set(self::SESSION_KEY, $this->state(['type' => 'csv', 'file' => 'system/tmp/events.csv', 'deleteCalendar' => true]));
+        $this->submit(['encoding' => 'utf8', 'dateFormat' => 'd.m.Y', 'timeFormat' => 'H:i', 'mapping_0' => '', 'mapping_1' => '']);
+        $this->csvImport
+            ->method('readPreview')
+            ->willReturn(['header' => ['Titel', 'Datum'], 'rows' => []])
+        ;
+
+        $this->csvImport
+            ->method('getCalendarFields')
+            ->willReturn(['title' => 'Titel'])
+        ;
+
+        $this->csvImport
+            ->expects($this->never())
+            ->method('import')
+        ;
+
+        $this->csvImport
+            ->expects($this->never())
+            ->method('delete')
+        ;
+
+        $response = $this->call($this->request(['import' => '1']));
+
+        $this->assertSame(self::URI, $response->getTargetUrl());
+        $this->assertTrue($this->session->has(self::SESSION_KEY), 'The user can assign a column');
+    }
+
+    public function testChecksTheCsvFileAgainWithoutImportingIt(): void
+    {
+        $this->session->set(self::SESSION_KEY, $this->state(['type' => 'csv', 'file' => 'system/tmp/events.csv']));
+        $this->submit(['encoding' => 'latin1', 'dateFormat' => 'd.m.Y', 'timeFormat' => 'H:i', 'mapping_0' => 'title']);
+        $this->csvImport
+            ->expects($this->once())
+            ->method('readPreview')
+            ->with('system/tmp/events.csv', 'latin1')
+            ->willReturn(['header' => ['Titel'], 'rows' => [['Training']]])
+        ;
+
+        $this->csvImport
+            ->method('getCalendarFields')
+            ->willReturn(['title' => 'Titel'])
+        ;
+
+        $this->csvImport
+            ->expects($this->never())
+            ->method('import')
+        ;
+
+        $controller = $this->createController();
+        $controller($this->request(['check' => '1', 'encoding' => 'latin1']), 3);
+
+        $this->assertSame('@Contao/backend/calendar_ical/import.html.twig', $controller->rendered['view']);
+        $this->assertSame(['header' => ['Titel'], 'rows' => [['Training']]], $controller->rendered['parameters']['preview']);
+        $this->assertNotNull($controller->rendered['parameters']['check']);
+        $this->assertTrue($this->session->has(self::SESSION_KEY), 'The import goes on');
+    }
+
+    public function testRejectsSeveralFiles(): void
+    {
+        $this->submit(['startDate' => '2026-01-01'], ['system/tmp/a.ics', 'system/tmp/b.ics']);
+        $this->icsImporter
+            ->expects($this->never())
+            ->method('load')
+        ;
+
+        $this->icsImporter
+            ->expects($this->exactly(2))
+            ->method('delete')
+        ;
+
+        $this->call($this->request());
+
+        $this->assertFalse($this->session->has(self::SESSION_KEY));
+        $this->assertNotEmpty($this->session->getFlashBag()->peekAll());
+    }
+
+    public function testAsksForTheTimezoneIfTheFileHasNone(): void
+    {
+        $this->submit(['startDate' => '2026-01-01', 'endDate' => '', 'timeshift' => 0], ['system/tmp/club.ics']);
+        $this->icsImporter
+            ->method('load')
+            ->willReturn(new Vcalendar())
+        ;
+
+        $this->icsImporter
+            ->method('checkTimezone')
+            ->willReturn(TimezoneCheck::Missing)
+        ;
+
+        $this->icsImporter
+            ->method('getTimezone')
+            ->willReturn(null)
+        ;
+
+        $this->icsImporter
+            ->expects($this->never())
+            ->method('import')
+        ;
+
+        $this->call($this->request());
+
+        $this->assertSame('missing', $this->session->get(self::SESSION_KEY)['mode']);
+    }
+
+    public function testReportsAnImportErrorAndLogsIt(): void
+    {
+        $this->session->set(self::SESSION_KEY, $this->state(['mode' => 'missing']));
+        $this->submit(['timezone' => 'Europe/Paris']);
+        $this->icsImporter
+            ->method('load')
+            ->willReturn(new Vcalendar())
+        ;
+
+        $this->icsImporter
+            ->method('import')
+            ->willThrowException(new \RuntimeException('database is gone'))
+        ;
+
+        $response = $this->call($this->request());
+
+        $this->assertSame('/back', $response->getTargetUrl());
+        $this->assertFalse($this->session->has(self::SESSION_KEY));
+        $this->assertSame(['import_failed_text'], array_merge(...array_values($this->session->getFlashBag()->peekAll())));
+    }
+
     public function testUnknownCalendarIsNotFound(): void
     {
         $this->expectException(NotFoundHttpException::class);
@@ -426,6 +635,7 @@ final class ImportBackendControllerTest extends ContaoTestCase
     private function state(array $overrides = []): array
     {
         return $overrides + [
+            'created' => time(),
             'type' => 'ics',
             'file' => 'system/tmp/club.ics',
             'startDate' => '2026-01-01',
@@ -439,6 +649,18 @@ final class ImportBackendControllerTest extends ContaoTestCase
     }
 
     private function call(Request $request, int $id = 3): RedirectResponse
+    {
+        $response = ($this->createController())($request, $id);
+
+        $this->assertInstanceOf(RedirectResponse::class, $response);
+
+        return $response;
+    }
+
+    /**
+     * @return ImportBackendController&object{rendered: array<string, mixed>}
+     */
+    private function createController(): ImportBackendController
     {
         $checker = $this->createStub(AuthorizationCheckerInterface::class);
         $checker
@@ -454,7 +676,40 @@ final class ImportBackendControllerTest extends ContaoTestCase
 
         $csrf = $this->createStub(ContaoCsrfTokenManager::class);
 
-        $controller = new class($this->dataContainer, $this->icsImporter, $this->csvImport, $csrf, $router, new NullLogger()) extends ImportBackendController {
+        $controller = new class($this->dataContainer, $this->icsImporter, $this->csvImport, $csrf, $router, new NullLogger(), '/project', $this->stateValid) extends ImportBackendController {
+            public function __construct(
+                DC_IcalImport $dataContainer,
+                IcsFileImporter $importer,
+                CsvImport $csvImport,
+                ContaoCsrfTokenManager $csrfTokenManager,
+                UrlGeneratorInterface $router,
+                LoggerInterface $logger,
+                string $projectDir,
+                private readonly bool $stateValid,
+            ) {
+                parent::__construct($dataContainer, $importer, $csvImport, $csrfTokenManager, $router, $logger, $projectDir);
+            }
+
+            protected function isUploadAvailable(string $file): bool
+            {
+                return $this->stateValid;
+            }
+
+            /**
+             * @var array<string, mixed>
+             */
+            public array $rendered = [];
+
+            /**
+             * @param array<string, mixed> $parameters
+             */
+            protected function render(string $view, array $parameters = [], Response|null $response = null, mixed ...$rest): Response
+            {
+                $this->rendered = ['view' => $view, 'parameters' => $parameters];
+
+                return new Response('rendered');
+            }
+
             protected function findCalendar(int $id): CalendarModel|null
             {
                 return 3 === $id ? CalendarModel::findById($id) : null;
@@ -466,10 +721,6 @@ final class ImportBackendControllerTest extends ContaoTestCase
         };
         $controller->setContainer(new ServiceLocator(['security.authorization_checker' => static fn (): AuthorizationCheckerInterface => $checker]));
 
-        $response = $controller($request, $id);
-
-        $this->assertInstanceOf(RedirectResponse::class, $response);
-
-        return $response;
+        return $controller;
     }
 }

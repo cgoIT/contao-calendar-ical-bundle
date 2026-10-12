@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Import;
 
 use Cgoit\ContaoCalendarIcalBundle\Import\Csv\CsvParser;
-use Cgoit\ContaoCalendarIcalBundle\Util\UploadedIcsFileResolver;
+use Cgoit\ContaoCalendarIcalBundle\Util\UploadedFileResolver;
 use Contao\BackendUser;
 use Contao\CalendarEventsModel;
 use Contao\Controller;
@@ -28,7 +28,7 @@ class CsvImport extends AbstractImport
         private readonly Connection $db,
         private readonly string $projectDir,
         Slug $slug,
-        private readonly UploadedIcsFileResolver $uploadedFileResolver,
+        private readonly UploadedFileResolver $uploadedFileResolver,
     ) {
         parent::__construct($slug);
     }
@@ -67,10 +67,12 @@ class CsvImport extends AbstractImport
      * @param string $file The path of the csv file relative to the project directory
      *
      * @return array{header: list<string>, rows: list<list<string>>}
+     *
+     * @throws \InvalidArgumentException If the path is not the one of an uploaded csv file
      */
     public function readPreview(string $file, string $encoding, int $lines = 5): array
     {
-        $parser = new CsvParser($this->projectDir.'/'.$file, '' !== $encoding ? $encoding : 'utf8');
+        $parser = new CsvParser($this->resolvePath($file), '' !== $encoding ? $encoding : 'utf8');
         $header = array_map(static fn ($cell): string => (string) $cell, $parser->extractHeader());
         $rows = [];
 
@@ -106,13 +108,19 @@ class CsvImport extends AbstractImport
      * @param Date|null                      $endDate   The last day to import, null for no end
      *
      * @return list<int> The numbers of the records that were skipped because of a wrong date or time
+     *
+     * @throws \InvalidArgumentException If the file is not an uploaded csv file or has no header
      */
     public function import(string $file, int $calendarId, array $mapping, string $encoding, string $dateFormat, string $timeFormat, Date $startDate, Date|null $endDate, bool $deleteCalendar, int $timeshift, string $filterEventTitle): array
     {
-        Controller::loadDataContainer('tl_calendar_events');
+        $parser = new CsvParser($this->resolvePath($file), '' !== $encoding ? $encoding : 'utf8');
 
-        $parser = new CsvParser($this->projectDir.'/'.$file, '' !== $encoding ? $encoding : 'utf8');
-        $parser->extractHeader();
+        // Check the file before anything is deleted: without a header nothing could be imported
+        if ([] === $parser->extractHeader()) {
+            throw new \InvalidArgumentException('The csv file is empty or cannot be read');
+        }
+
+        Controller::loadDataContainer('tl_calendar_events');
 
         $skippedRecords = [];
 
@@ -260,6 +268,22 @@ class CsvImport extends AbstractImport
         }
 
         return $skippedRecords;
+    }
+
+    /**
+     * The absolute path of an uploaded csv file.
+     *
+     * @throws \InvalidArgumentException If the path is not the one of an uploaded csv file
+     */
+    private function resolvePath(string $file): string
+    {
+        $resolved = $this->uploadedFileResolver->resolve($file, ['csv']);
+
+        if (null === $resolved) {
+            throw new \InvalidArgumentException('Invalid csv file path');
+        }
+
+        return $this->projectDir.'/'.$resolved;
     }
 
     /**

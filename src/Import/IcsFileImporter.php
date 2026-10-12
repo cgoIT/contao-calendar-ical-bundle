@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Import;
 
-use Cgoit\ContaoCalendarIcalBundle\Util\UploadedIcsFileResolver;
+use Cgoit\ContaoCalendarIcalBundle\Util\UploadedFileResolver;
 use Contao\CalendarModel;
 use Contao\Config;
 use Contao\Date;
@@ -29,7 +29,7 @@ class IcsFileImporter
 {
     public function __construct(
         private readonly IcsImport $icsImport,
-        private readonly UploadedIcsFileResolver $uploadedFileResolver,
+        private readonly UploadedFileResolver $uploadedFileResolver,
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
     ) {

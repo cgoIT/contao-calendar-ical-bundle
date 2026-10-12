@@ -16,7 +16,7 @@ use Cgoit\ContaoCalendarIcalBundle\Import\IcsFileImporter;
 use Cgoit\ContaoCalendarIcalBundle\Import\IcsImport;
 use Cgoit\ContaoCalendarIcalBundle\Import\TimezoneCheck;
 use Cgoit\ContaoCalendarIcalBundle\Tests\ContaoTestCase;
-use Cgoit\ContaoCalendarIcalBundle\Util\UploadedIcsFileResolver;
+use Cgoit\ContaoCalendarIcalBundle\Util\UploadedFileResolver;
 use Contao\CalendarModel;
 use Contao\Date;
 use Kigkonsult\Icalcreator\IcalInterface;
@@ -159,7 +159,7 @@ final class IcsFileImporterTest extends ContaoTestCase
 
     private function importer(IcsImport|null $icsImport = null): IcsFileImporter
     {
-        return new IcsFileImporter($icsImport ?? $this->createStub(IcsImport::class), new UploadedIcsFileResolver($this->projectDir), $this->projectDir);
+        return new IcsFileImporter($icsImport ?? $this->createStub(IcsImport::class), new UploadedFileResolver($this->projectDir), $this->projectDir);
     }
 
     private function calendar(): CalendarModel

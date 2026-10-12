@@ -13,10 +13,10 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Util;
 
 /**
- * The backend import passes the path of the uploaded file on via a form field. This class makes sure
+ * The import in the back end remembers the path of the uploaded file between its steps. This class makes sure
  * the path only points to an uploaded file (ics by default) in the upload directory "system/tmp".
  */
-class UploadedIcsFileResolver
+class UploadedFileResolver
 {
     private const string UPLOAD_DIR = 'system/tmp';
 

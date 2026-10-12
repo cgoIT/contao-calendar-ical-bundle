@@ -13,7 +13,8 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Tests\Import;
 
 use Cgoit\ContaoCalendarIcalBundle\Import\CsvImport;
-use Cgoit\ContaoCalendarIcalBundle\Util\UploadedIcsFileResolver;
+use Cgoit\ContaoCalendarIcalBundle\Util\UploadedFileResolver;
+use Contao\Date;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
@@ -34,7 +35,7 @@ final class CsvImportTest extends TestCase
     {
         $dir = sys_get_temp_dir().'/cgoit-csv-'.bin2hex(random_bytes(4));
         (new Filesystem())->dumpFile($dir.'/system/tmp/events.csv', "Titel;Datum;Ort\nTraining;01.05.2024;Halle\nSpiel;08.05.2024;Platz\n");
-        $this->setProperty('projectDir', $dir);
+        $this->useDirectory($dir);
 
         $preview = $this->import->readPreview('system/tmp/events.csv', 'utf8', 5);
 
@@ -44,14 +45,44 @@ final class CsvImportTest extends TestCase
         (new Filesystem())->remove($dir);
     }
 
+    public function testDoesNotReadFilesOutsideOfTheUploadDirectory(): void
+    {
+        $dir = sys_get_temp_dir().'/cgoit-csv-'.bin2hex(random_bytes(4));
+        (new Filesystem())->dumpFile($dir.'/files/events.csv', "Titel\nTraining\n");
+        $this->useDirectory($dir);
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        try {
+            $this->import->readPreview('files/events.csv', 'utf8');
+        } finally {
+            (new Filesystem())->remove($dir);
+        }
+    }
+
+    public function testImportStopsBeforeAnythingIsDeletedIfTheFileHasNoHeader(): void
+    {
+        $dir = sys_get_temp_dir().'/cgoit-csv-'.bin2hex(random_bytes(4));
+        (new Filesystem())->dumpFile($dir.'/system/tmp/empty.csv', '');
+        $this->useDirectory($dir);
+
+        // The database is not set up: the import must fail before it touches the calendar
+        $this->expectException(\InvalidArgumentException::class);
+
+        try {
+            $this->import->import('system/tmp/empty.csv', 1, [[0, 'title']], 'utf8', 'd.m.Y', 'H:i', new Date(20260101, 'Ymd'), null, true, 0, '');
+        } finally {
+            (new Filesystem())->remove($dir);
+        }
+    }
+
     public function testDeletesOnlyUploadedCsvFiles(): void
     {
         $dir = sys_get_temp_dir().'/cgoit-csv-'.bin2hex(random_bytes(4));
         $filesystem = new Filesystem();
         $filesystem->dumpFile($dir.'/system/tmp/events.csv', 'a');
         $filesystem->dumpFile($dir.'/files/events.csv', 'a');
-        $this->setProperty('projectDir', $dir);
-        $this->setProperty('uploadedFileResolver', new UploadedIcsFileResolver($dir));
+        $this->useDirectory($dir);
 
         $this->import->delete('system/tmp/events.csv');
         $this->import->delete('files/events.csv');
@@ -111,6 +142,12 @@ final class CsvImportTest extends TestCase
     private function call(string $method, mixed ...$arguments): mixed
     {
         return (new \ReflectionMethod(CsvImport::class, $method))->invoke($this->import, ...$arguments);
+    }
+
+    private function useDirectory(string $dir): void
+    {
+        $this->setProperty('projectDir', $dir);
+        $this->setProperty('uploadedFileResolver', new UploadedFileResolver($dir));
     }
 
     private function setProperty(string $name, mixed $value): void
