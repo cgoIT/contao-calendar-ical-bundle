@@ -68,6 +68,23 @@ Inhaltselement „iCal“. Unveröffentlichte Termine werden nie exportiert.
 Die Option „iCal Abonnement erstellen“ schreibt eine **öffentliche** Datei nach `share/`. Sie steht daher für
 geschützte Kalender nicht zur Verfügung; verwenden Sie stattdessen eine Seite vom Typ `ics_feed`.
 
+Kalender aus einer Web-Quelle importieren
+-----------------------------------------
+
+Ein Kalender kann seine Termine regelmäßig aus einer ICS-URL übernehmen („Web-Quelle“). Der Download ist ab Version 6.0
+abgesichert:
+
+- Erlaubt sind nur `http://`, `https://` und `webcal://` (wird als `https://` abgerufen).
+- Das TLS-Zertifikat der Gegenstelle wird **geprüft**. Quellen mit selbstsigniertem oder abgelaufenem Zertifikat
+  lassen sich nicht mehr importieren; die Gegenstelle muss ein gültiges Zertifikat verwenden.
+- Ziele in privaten Netzen (z. B. `127.0.0.1`, `192.168.x.x`, Cloud-Metadaten-Adressen) werden ohne Proxy blockiert.
+  Das gilt auch für Weiterleitungen. Ist ein Proxy konfiguriert, löst dieser das Ziel auf; dann findet die Prüfung nicht
+  statt.
+- Zeitlimit 10 Sekunden je Anfrage (30 Sekunden gesamt), höchstens 5 Weiterleitungen, höchstens 10 MiB Dateigröße.
+- Der Inhalt wird direkt verarbeitet; es werden keine temporären Dateien in `system/tmp` mehr angelegt.
+
+Die PHP-Erweiterung `ext-curl` wird nicht mehr benötigt, stattdessen `symfony/http-client`.
+
 Wichtig
 -------
 

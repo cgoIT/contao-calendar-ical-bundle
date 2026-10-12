@@ -21,7 +21,6 @@ use Contao\Config;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Slug\Slug;
 use Contao\Date;
-use Contao\File;
 use Contao\StringUtil;
 use Contao\System;
 use Doctrine\DBAL\Connection;
@@ -49,6 +48,7 @@ class IcsImport extends AbstractImport
         private readonly ContaoFramework $contaoFramework,
         private readonly int $defaultEndTimeDifference,
         private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly RemoteIcsDownloader $downloader,
     ) {
         parent::__construct($slug);
 
@@ -441,67 +441,6 @@ class IcsImport extends AbstractImport
         return [$date, $timezone];
     }
 
-    protected function downloadURLToTempFile(string $url, string|null $proxy, string|null $benutzerpw, int|null $port): File|null
-    {
-        $url = html_entity_decode($url);
-
-        if ($this->isCurlInstalled()) {
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            if (!empty($proxy)) {
-                curl_setopt($ch, CURLOPT_PROXY, "$proxy");
-                if (!empty($benutzerpw)) {
-                    curl_setopt($ch, CURLOPT_PROXYUSERPWD, "$benutzerpw");
-                }
-                if (!empty($port)) {
-                    curl_setopt($ch, CURLOPT_PROXYPORT, $port);
-                }
-            }
-
-            if (preg_match('/^https/', $url)) {
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-            }
-
-            curl_setopt($ch, CURLOPT_HEADER, false);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-
-            $content = curl_exec($ch);
-            if (false === $content) {
-                $content = null;
-            } else {
-                $responseCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                if ($responseCode >= 400) {
-                    System::getContainer()
-                        ->get('monolog.logger.contao.general')
-                        ->error('Could not download ics file from URL "'.$url.'". Got response code: '.$responseCode)
-                    ;
-
-                    $content = null;
-                }
-            }
-            curl_close($ch);
-        } else {
-            $content = file_get_contents($url);
-        }
-
-        if (empty($content)) {
-            System::getContainer()
-                ->get('monolog.logger.contao.general')
-                ->warning('The downloaded ics file from URL "'.$url.'" seems to be empty.')
-            ;
-
-            return null;
-        }
-
-        $filename = md5(uniqid((string) random_int(0, mt_getrandmax()), true));
-        $objFile = new File('system/tmp/'.$filename);
-        $objFile->write($content);
-        $objFile->close();
-
-        return $objFile;
-    }
-
     /**
      * @param array<mixed> $timezone
      */
@@ -516,14 +455,13 @@ class IcsImport extends AbstractImport
         $cal->setXprop(Vcalendar::X_WR_CALNAME, $objCalendar->title);
         $cal->setXprop(Vcalendar::X_WR_CALDESC, $objCalendar->title);
 
-        /* start parse of local file */
-        $file = $this->downloadURLToTempFile($objCalendar->ical_url, $objCalendar->ical_proxy, $objCalendar->ical_bnpw, $objCalendar->ical_port);
-        if (null === $file) {
+        $content = $this->downloader->download($objCalendar->ical_url, $objCalendar->ical_proxy, $objCalendar->ical_bnpw, $objCalendar->ical_port ? (int) $objCalendar->ical_port : null);
+        if (null === $content) {
             return;
         }
 
         try {
-            $cal->parse($file->getContent());
+            $cal->parse($content);
         } catch (\Throwable $e) {
             System::getContainer()
                 ->get('monolog.logger.contao.general')
@@ -543,11 +481,6 @@ class IcsImport extends AbstractImport
         }
 
         $this->importFromIcsFile($cal, $objCalendar, $startDate, $endDate, $tz, $objCalendar->ical_filter_event_title, $objCalendar->ical_pattern_event_title, $objCalendar->ical_replacement_event_title, true);
-    }
-
-    private function isCurlInstalled(): bool
-    {
-        return \in_array('curl', get_loaded_extensions(), true);
     }
 
     /**
