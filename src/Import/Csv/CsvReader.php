@@ -17,7 +17,7 @@ namespace Cgoit\ContaoCalendarIcalBundle\Import\Csv;
  */
 class CsvReader implements \Iterator
 {
-    private const UTF8_BOM = "\xEF\xBB\xBF";
+    private const string UTF8_BOM = "\xEF\xBB\xBF";
 
     /**
      * @var resource|null

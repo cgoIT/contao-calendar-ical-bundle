@@ -25,11 +25,11 @@ class RemoteIcsDownloader
 {
     final public const MAX_SIZE = 10 * 1024 * 1024;
 
-    private const TIMEOUT = 10;
+    private const int TIMEOUT = 10;
 
-    private const MAX_DURATION = 30;
+    private const int MAX_DURATION = 30;
 
-    private const MAX_REDIRECTS = 5;
+    private const int MAX_REDIRECTS = 5;
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
