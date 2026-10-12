@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of cgoit\contao-calendar-ical-bundle for Contao Open Source CMS.
  *

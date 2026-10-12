@@ -10,8 +10,6 @@ declare(strict_types=1);
  * @license    LGPL-3.0-or-later
  */
 
-namespace contao\dca;
-
 /*
  * Table tl_calendar_events
  */

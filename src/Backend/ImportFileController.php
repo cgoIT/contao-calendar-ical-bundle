@@ -278,7 +278,6 @@ class ImportFileController extends Backend
             $tz = $tzComponent->getXprop(IcalInterface::X_LIC_LOCATION);
         }
 
-        // if (0 === $timeshift) {
         if (\is_array($tz) && !empty($tz[1]) && (string) $tz[1] !== (string) Config::get('timeZone')) {
             if (null === $correctTimezone) {
                 return $this->getConfirmationForm($filename, $startDate, $endDate, $tz[1],
@@ -298,7 +297,6 @@ class ImportFileController extends Backend
                 $tz = [$manualTZ, $manualTZ];
             }
         }
-        // }
 
         try {
             $this->icsImport->importFromIcsFile($cal, $objCalendar, $startDate, $endDate, $tz, $this->filterEventTitle, null, null, $deleteCalendar, $timeshift);
