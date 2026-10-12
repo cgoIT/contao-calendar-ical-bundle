@@ -100,8 +100,11 @@ final class ExportControllerTest extends ContaoTestCase
             /**
              * @param array<CalendarModel> $calendars
              */
-            public function __construct(IcsExport $icsExport, int $days, private readonly array $calendars)
-            {
+            public function __construct(
+                IcsExport $icsExport,
+                int $days,
+                private readonly array $calendars,
+            ) {
                 parent::__construct($icsExport, $days);
             }
 

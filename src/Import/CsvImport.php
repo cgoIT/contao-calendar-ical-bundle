@@ -111,7 +111,7 @@ class CsvImport extends AbstractImport
             $objTemplate->lngFields = $GLOBALS['TL_LANG']['tl_calendar_events']['ical_bundle_fields'];
             $objTemplate->lngPreview = $GLOBALS['TL_LANG']['tl_calendar_events']['preview'];
             $objTemplate->check = $GLOBALS['TL_LANG']['tl_calendar_events']['check'];
-            $objTemplate->header = \is_array($header) ? array_map(static fn ($cell): string => StringUtil::specialchars((string) $cell), $header) : $header;
+            $objTemplate->header = array_map(static fn ($cell): string => StringUtil::specialchars((string) $cell), $header);
 
             if (!empty($preview)) {
                 foreach ($preview as $idx => $line) {
@@ -297,7 +297,6 @@ class CsvImport extends AbstractImport
                 }
             }
 
-
             $this->db->commit();
         } catch (\Throwable $e) {
             $this->db->rollBack();
@@ -348,6 +347,6 @@ class CsvImport extends AbstractImport
             return null;
         }
 
-        return $res['hour'] * 3600 + $res['minute'] * 60 + (int) ($res['second'] ?: 0);
+        return $res['hour'] * 3600 + $res['minute'] * 60 + $res['second'];
     }
 }

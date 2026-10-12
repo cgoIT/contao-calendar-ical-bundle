@@ -150,17 +150,20 @@ final class IcsImportLockTest extends ContaoTestCase
             }
         };
 
-        $values = array_merge([
-            'id' => 1,
-            'title' => 'Web calendar',
-            'tstamp' => time() - 86400,
-            'ical_source' => '1',
-            'ical_url' => 'https://example.com/cal.ics',
-            'ical_cache' => 3600,
-            'ical_last_sync' => null,
-            'ical_importing' => '',
-            'ical_timezone' => 'Europe/Berlin',
-        ], $data);
+        $values = array_merge(
+            [
+                'id' => 1,
+                'title' => 'Web calendar',
+                'tstamp' => time() - 86400,
+                'ical_source' => '1',
+                'ical_url' => 'https://example.com/cal.ics',
+                'ical_cache' => 3600,
+                'ical_last_sync' => null,
+                'ical_importing' => '',
+                'ical_timezone' => 'Europe/Berlin',
+            ],
+            $data,
+        );
 
         foreach ($values as $key => $value) {
             $calendar->{$key} = $value;
@@ -169,10 +172,16 @@ final class IcsImportLockTest extends ContaoTestCase
         return $calendar;
     }
 
+    /**
+     * @return IcsImport&object{imports: int}
+     */
     private function import(bool $throw = false, string|null $content = self::ICS): IcsImport
     {
         $downloader = $this->createStub(RemoteIcsDownloader::class);
-        $downloader->method('download')->willReturn($content);
+        $downloader
+            ->method('download')
+            ->willReturn($content)
+        ;
 
         $import = new class($throw) extends IcsImport {
             public int $imports = 0;

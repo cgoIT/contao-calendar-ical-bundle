@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Tests\Import;
 
 use Cgoit\ContaoCalendarIcalBundle\Import\RemoteIcsDownloader;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -21,14 +22,29 @@ use Symfony\Component\HttpClient\Response\MockResponse;
 final class RemoteIcsDownloaderTest extends TestCase
 {
     /**
-     * @var list<string>
+     * @var AbstractLogger&object{messages: list<string>}
      */
-    private array $errors = [];
+    private AbstractLogger $logger;
 
     /**
      * @var list<array{0: string, 1: string, 2: array<string, mixed>}>
      */
     private array $requests = [];
+
+    protected function setUp(): void
+    {
+        $this->logger = new class() extends AbstractLogger {
+            /**
+             * @var list<string>
+             */
+            public array $messages = [];
+
+            public function log($level, \Stringable|string $message, array $context = []): void
+            {
+                $this->messages[] = (string) $message;
+            }
+        };
+    }
 
     public function testDownloadsContent(): void
     {
@@ -54,14 +70,14 @@ final class RemoteIcsDownloaderTest extends TestCase
         $this->assertSame('https://example.com/cal.ics', $this->requests[0][1]);
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('provideForbiddenUrls')]
+    #[DataProvider('provideForbiddenUrls')]
     public function testRejectsOtherSchemes(string $url): void
     {
         $downloader = $this->downloader(new MockResponse('secret'));
 
         $this->assertNull($downloader->download($url));
         $this->assertSame([], $this->requests);
-        $this->assertNotEmpty($this->errors);
+        $this->assertNotEmpty($this->logger->messages);
     }
 
     /**
@@ -100,7 +116,7 @@ final class RemoteIcsDownloaderTest extends TestCase
         $downloader = $this->downloader(new MockResponse('nope', ['http_code' => 404]));
 
         $this->assertNull($downloader->download('https://example.com/cal.ics'));
-        $this->assertStringContainsString('404', $this->errors[0]);
+        $this->assertStringContainsString('404', $this->logger->messages[0]);
     }
 
     public function testReturnsNullOnEmptyContent(): void
@@ -116,8 +132,8 @@ final class RemoteIcsDownloaderTest extends TestCase
         $downloader->download('https://example.com/cal.ics');
 
         $options = $this->requests[0][2];
-        $this->assertSame(10.0, (float) $options['timeout']);
-        $this->assertSame(30.0, (float) $options['max_duration']);
+        $this->assertEqualsWithDelta(10.0, (float) $options['timeout'], PHP_FLOAT_EPSILON);
+        $this->assertEqualsWithDelta(30.0, (float) $options['max_duration'], PHP_FLOAT_EPSILON);
 
         $this->expectException(\RuntimeException::class);
         $options['on_progress'](RemoteIcsDownloader::MAX_SIZE + 1, 0, []);
@@ -144,31 +160,19 @@ final class RemoteIcsDownloaderTest extends TestCase
         $downloader = $this->downloader(new MockResponse('', ['http_code' => 500]));
         $downloader->download('https://user:secret@example.com/cal.ics');
 
-        $this->assertStringNotContainsString('secret', $this->errors[0]);
+        $this->assertStringNotContainsString('secret', $this->logger->messages[0]);
     }
 
     private function downloader(MockResponse ...$responses): RemoteIcsDownloader
     {
-        $client = new MockHttpClient(function (string $method, string $url, array $options) use (&$responses): MockResponse {
-            $this->requests[] = [$method, $url, $options];
+        $client = new MockHttpClient(
+            function (string $method, string $url, array $options) use (&$responses): MockResponse {
+                $this->requests[] = [$method, $url, $options];
 
-            return 1 === \count($responses) ? $responses[0] : array_shift($responses);
-        });
+                return 1 === \count($responses) ? $responses[0] : array_shift($responses);
+            },
+        );
 
-        $logger = new class($this->errors) extends AbstractLogger {
-            /**
-             * @param list<string> $errors
-             */
-            public function __construct(private array &$errors)
-            {
-            }
-
-            public function log($level, string|\Stringable $message, array $context = []): void
-            {
-                $this->errors[] = (string) $message;
-            }
-        };
-
-        return new RemoteIcsDownloader($client, $logger);
+        return new RemoteIcsDownloader($client, $this->logger);
     }
 }

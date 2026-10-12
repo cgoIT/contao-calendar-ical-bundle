@@ -29,11 +29,13 @@ class CalendarTitlePatternSaveListener
 
         // Compile the expression; PHP reports the reason for an invalid pattern as a warning
         $error = null;
-        set_error_handler(static function (int $errno, string $message) use (&$error): bool {
-            $error = preg_replace('/^preg_match\(\): /', '', $message);
+        set_error_handler(
+            static function (int $errno, string $message) use (&$error): bool {
+                $error = preg_replace('/^preg_match\(\): /', '', $message);
 
-            return true;
-        });
+                return true;
+            },
+        );
 
         try {
             $valid = false !== preg_match((string) $value, '');

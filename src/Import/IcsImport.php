@@ -53,22 +53,6 @@ class IcsImport extends AbstractImport
     }
 
     /**
-     * The maximum number of recurrences, configured by the calendar-extended-bundle if it is installed.
-     */
-    private function getMaxRepeatCount(): int
-    {
-        if (null === $this->maxRepeatCount) {
-            try {
-                $this->maxRepeatCount = (int) System::getContainer()->getParameter('cgoit_calendar_extended.max_repeat_count');
-            } catch (InvalidArgumentException) {
-                $this->maxRepeatCount = 365;
-            }
-        }
-
-        return $this->maxRepeatCount;
-    }
-
-    /**
      * Imports the web source of a calendar if the cache time ("ical_cache") is over or the import is forced.
      * A running import of the same calendar is never started twice in parallel.
      */
@@ -278,7 +262,7 @@ class IcsImport extends AbstractImport
                 $objEvent->addTime = false;
                 $objEvent->endDate = null;
                 $objEvent->endTime = null;
-                $timezone = \is_array($tz) ? $tz[1] : null;
+                $timezone = $tz[1];
 
                 if (!empty($dtstart)) {
                     [$sDate, $timezone] = $this->getDateFromPc($dtstart, $tz[1]);
@@ -484,6 +468,64 @@ class IcsImport extends AbstractImport
             (clone $end)->modify('- 1 day')->getTimestamp(),
             (clone $end)->modify('- 1 second')->getTimestamp(),
         ];
+    }
+
+    /**
+     * Sets "recurrences" and "repeatEnd" of the event from COUNT/UNTIL of the rule. The number of
+     * recurrences has to be known before the end is calculated.
+     *
+     * @param array<mixed> $rrule
+     * @param array<mixed> $repeatEach
+     *
+     * @throws \Exception
+     */
+    protected function applyRecurrenceEnd(CalendarEventsModel $objEvent, array $rrule, array $repeatEach, string $timezone, int $timeshift, bool $blnExtended, bool $untilIsLocal = false): void
+    {
+        // A series with a single occurrence is no recurring event; 0 recurrences would mean "unlimited"
+        if (\array_key_exists('COUNT', $rrule) && (int) $rrule['COUNT'] <= 1) {
+            $objEvent->repeatEnd = 0;
+            $objEvent->recurring = false;
+            $objEvent->recurringExt = false;
+            $objEvent->recurrences = 0;
+
+            return;
+        }
+
+        // 0 means "unlimited", an UNTIL date is converted into a count below
+        $objEvent->recurrences = \array_key_exists('COUNT', $rrule) ? ((int) $rrule['COUNT']) - 1 : 0;
+
+        $repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEach, $timezone, $timeshift, $blnExtended, $untilIsLocal);
+
+        if (false === $repeatEnd) {
+            $objEvent->repeatEnd = 0;
+            $objEvent->recurring = false;
+            $objEvent->recurringExt = false;
+            $objEvent->recurrences = 0;
+
+            return;
+        }
+
+        $objEvent->repeatEnd = $repeatEnd;
+
+        if (!\array_key_exists('COUNT', $rrule) && \array_key_exists('UNTIL', $rrule)) {
+            $objEvent->recurrences = $this->calculateRecurrenceCount($objEvent);
+        }
+    }
+
+    /**
+     * The maximum number of recurrences, configured by the calendar-extended-bundle if it is installed.
+     */
+    private function getMaxRepeatCount(): int
+    {
+        if (null === $this->maxRepeatCount) {
+            try {
+                $this->maxRepeatCount = (int) System::getContainer()->getParameter('cgoit_calendar_extended.max_repeat_count');
+            } catch (InvalidArgumentException) {
+                $this->maxRepeatCount = 365;
+            }
+        }
+
+        return $this->maxRepeatCount;
     }
 
     /**
@@ -702,48 +744,6 @@ class IcsImport extends AbstractImport
     }
 
     /**
-     * Sets "recurrences" and "repeatEnd" of the event from COUNT/UNTIL of the rule. The number of
-     * recurrences has to be known before the end is calculated.
-     *
-     * @param array<mixed> $rrule
-     * @param array<mixed> $repeatEach
-     *
-     * @throws \Exception
-     */
-    protected function applyRecurrenceEnd(CalendarEventsModel $objEvent, array $rrule, array $repeatEach, string $timezone, int $timeshift, bool $blnExtended, bool $untilIsLocal = false): void
-    {
-        // A series with a single occurrence is no recurring event; 0 recurrences would mean "unlimited"
-        if (\array_key_exists('COUNT', $rrule) && (int) $rrule['COUNT'] <= 1) {
-            $objEvent->repeatEnd = 0;
-            $objEvent->recurring = false;
-            $objEvent->recurringExt = false;
-            $objEvent->recurrences = 0;
-
-            return;
-        }
-
-        // 0 means "unlimited", an UNTIL date is converted into a count below
-        $objEvent->recurrences = \array_key_exists('COUNT', $rrule) ? ((int) $rrule['COUNT']) - 1 : 0;
-
-        $repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEach, $timezone, $timeshift, $blnExtended, $untilIsLocal);
-
-        if (false === $repeatEnd) {
-            $objEvent->repeatEnd = 0;
-            $objEvent->recurring = false;
-            $objEvent->recurringExt = false;
-            $objEvent->recurrences = 0;
-
-            return;
-        }
-
-        $objEvent->repeatEnd = $repeatEnd;
-
-        if (!\array_key_exists('COUNT', $rrule) && \array_key_exists('UNTIL', $rrule)) {
-            $objEvent->recurrences = $this->calculateRecurrenceCount($objEvent);
-        }
-    }
-
-    /**
      * @param array<mixed> $rrule
      * @param array<mixed> $repeatEach
      *
@@ -885,13 +885,12 @@ class IcsImport extends AbstractImport
     }
 
     /**
+     * Returns the time stamp of the UNTIL value. It is an exact point in time (UTC) unless the event starts with a
+     * date or a floating time; then the value is a local time and is read in the given time zone.
+     *
      * @param array<mixed> $rrule
      *
      * @throws \DateMalformedStringException
-     */
-    /**
-     * Returns the time stamp of the UNTIL value. It is an exact point in time (UTC) unless the event starts with a
-     * date or a floating time; then the value is a local time and is read in the given time zone.
      */
     private function getRecurringUntilDate(array $rrule, string $timezone, int $timeshift, int $eventStartTime, bool $untilIsLocal = false): bool|int|null
     {

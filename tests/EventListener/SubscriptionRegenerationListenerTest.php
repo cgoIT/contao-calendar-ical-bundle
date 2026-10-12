@@ -20,6 +20,7 @@ use Contao\Model\Registry;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\TerminateEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 
@@ -40,7 +41,10 @@ final class SubscriptionRegenerationListenerTest extends ContaoTestCase
 
     public function testDoesNothingWithoutScheduledCalendars(): void
     {
-        $this->export->expects($this->never())->method('generateSubscriptions');
+        $this->export
+            ->expects($this->never())
+            ->method('generateSubscriptions')
+        ;
 
         $this->terminate();
     }
@@ -54,9 +58,11 @@ final class SubscriptionRegenerationListenerTest extends ContaoTestCase
         $this->export
             ->expects($this->exactly(2))
             ->method('generateSubscriptions')
-            ->willReturnCallback(static function (CalendarModel $calendar) use (&$rebuilt): void {
-                $rebuilt[] = (int) $calendar->id;
-            })
+            ->willReturnCallback(
+                static function (CalendarModel $calendar) use (&$rebuilt): void {
+                    $rebuilt[] = (int) $calendar->id;
+                },
+            )
         ;
 
         $this->listener->schedule(1);
@@ -73,7 +79,10 @@ final class SubscriptionRegenerationListenerTest extends ContaoTestCase
     public function testRebuildsOnlyOnceForTheNextRequest(): void
     {
         $this->calendar(1);
-        $this->export->expects($this->once())->method('generateSubscriptions');
+        $this->export
+            ->expects($this->once())
+            ->method('generateSubscriptions')
+        ;
 
         $this->listener->schedule(1);
         $this->terminate();
@@ -83,7 +92,11 @@ final class SubscriptionRegenerationListenerTest extends ContaoTestCase
     public function testRebuildsAllCalendarsAtOnce(): void
     {
         $this->calendar(1);
-        $this->export->expects($this->once())->method('generateSubscriptions')->with(null);
+        $this->export
+            ->expects($this->once())
+            ->method('generateSubscriptions')
+            ->with(null)
+        ;
 
         $this->listener->schedule(1);
         $this->listener->scheduleAll();
@@ -94,7 +107,10 @@ final class SubscriptionRegenerationListenerTest extends ContaoTestCase
     public function testErrorDoesNotBreakTheResponse(): void
     {
         $this->calendar(1);
-        $this->export->method('generateSubscriptions')->willThrowException(new \RuntimeException('disk full'));
+        $this->export
+            ->method('generateSubscriptions')
+            ->willThrowException(new \RuntimeException('disk full'))
+        ;
 
         $this->listener->schedule(1);
         $this->terminate();
@@ -104,7 +120,7 @@ final class SubscriptionRegenerationListenerTest extends ContaoTestCase
 
     private function terminate(): void
     {
-        $this->listener->onTerminate(new TerminateEvent($this->createStub(HttpKernelInterface::class), new Request(), new \Symfony\Component\HttpFoundation\Response()));
+        $this->listener->onTerminate(new TerminateEvent($this->createStub(HttpKernelInterface::class), new Request(), new Response()));
     }
 
     private function calendar(int $id): CalendarModel

@@ -97,9 +97,17 @@ class ExportAccessChecker
     }
 
     /**
+     * Loads the page including the settings that are inherited from the parent pages.
+     */
+    protected function loadPage(int $id): PageModel|null
+    {
+        return PageModel::findWithDetails($id);
+    }
+
+    /**
      * Checks "guests only" and the member group protection of a record (module, content element, article, page).
      */
-    private function isGrantedFor(ContentModel|ModuleModel|ArticleModel|PageModel $record): bool
+    private function isGrantedFor(ArticleModel|ContentModel|ModuleModel|PageModel $record): bool
     {
         if ($record->guests && $this->security->isGranted('ROLE_MEMBER')) {
             return false;
@@ -135,14 +143,6 @@ class ExportAccessChecker
         $page = $this->loadPage((int) $article->pid);
 
         return null !== $page && $this->isPagePublished($page) && $this->isGrantedFor($page);
-    }
-
-    /**
-     * Loads the page including the settings that are inherited from the parent pages.
-     */
-    protected function loadPage(int $id): PageModel|null
-    {
-        return PageModel::findWithDetails($id);
     }
 
     private function isArticlePublished(ArticleModel $article): bool

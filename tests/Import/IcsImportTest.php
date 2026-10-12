@@ -233,20 +233,6 @@ final class IcsImportTest extends ContaoTestCase
         $this->assertSame(2, $this->call('calculateRecurrenceCount', $event));
     }
 
-    private function extendedEvent(string $start, string $repeatEnd): CalendarEventsModel
-    {
-        return $this->event([
-            'addTime' => '1',
-            'recurringExt' => '1',
-            'repeatEachExt' => serialize(['unit' => 'thursday', 'value' => 'first']),
-            'startDate' => strtotime($start),
-            'startTime' => strtotime($start.' 18:00'),
-            'endDate' => strtotime($start),
-            'endTime' => strtotime($start.' 19:00'),
-            'repeatEnd' => strtotime($repeatEnd.' 23:59:59'),
-        ]);
-    }
-
     public function testRecurrenceCountIsZeroForNonRecurringEvent(): void
     {
         $event = $this->event(['startDate' => strtotime('2024-05-01'), 'repeatEnd' => strtotime('2024-06-01')]);
@@ -385,8 +371,8 @@ final class IcsImportTest extends ContaoTestCase
             $calendar = new Vcalendar();
             $calendar->parse("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:x\r\nBEGIN:VEVENT\r\nUID:1\r\nDTSTAMP:20240101T000000Z\r\n".$dtstartLine."\r\n".$rruleLine."\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n");
 
-            /** @var Vevent $vevent */
             $vevent = $calendar->getComponent(IcalInterface::VEVENT);
+            $this->assertInstanceOf(Vevent::class, $vevent);
             $dtstart = $vevent->getDtstart(true);
             [$start] = $this->import->getDateFromPc($dtstart, 'Europe/Berlin');
 
@@ -430,28 +416,6 @@ final class IcsImportTest extends ContaoTestCase
         $this->assertGreaterThan(strtotime('2024-05-02'), $repeatEnd);
     }
 
-    private function weeklyEvent(string $start, bool $addTime = true): CalendarEventsModel
-    {
-        return $this->event([
-            'addTime' => $addTime,
-            'startDate' => strtotime($start),
-            'startTime' => strtotime($start),
-            'endDate' => strtotime($start),
-            'endTime' => strtotime($start) + 3600,
-            'recurring' => true,
-            'repeatEach' => serialize(['unit' => 'weeks', 'value' => 1]),
-        ]);
-    }
-
-    private function dtstart(string $line): Pc
-    {
-        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:x\r\nBEGIN:VEVENT\r\nUID:1\r\nDTSTAMP:20240101T000000Z\r\n".$line."\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
-        $calendar = new Vcalendar();
-        $calendar->parse($ics);
-
-        return $calendar->getComponent(IcalInterface::VEVENT)->getDtstart(true);
-    }
-
     public function testAllDayEndIsTheEndOfTheLastDay(): void
     {
         // DTEND of a DATE value is exclusive: 2024-05-01 until 2024-05-03 ends on 2024-05-04
@@ -476,7 +440,10 @@ final class IcsImportTest extends ContaoTestCase
         [$endDate, $endTime] = $this->import->getEndTimestamps(new \DateTime('2024-05-04', $tz), false);
 
         $parser = $this->createStub(InsertTagParser::class);
-        $parser->method('replaceInline')->willReturnArgument(0);
+        $parser
+            ->method('replaceInline')
+            ->willReturnArgument(0)
+        ;
 
         $calendar = new CalendarModel();
         $calendar->id = 1;
@@ -517,10 +484,55 @@ final class IcsImportTest extends ContaoTestCase
     public function testRewriteTitleKeepsTitleForInvalidPattern(): void
     {
         $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->once())->method('warning');
+        $logger
+            ->expects($this->once())
+            ->method('warning')
+        ;
         $this->bootContao()->set('monolog.logger.contao.general', $logger);
 
         $this->assertSame('Training', $this->call('rewriteTitle', 'Training', '/(unclosed/', 'x'));
+    }
+
+    private function extendedEvent(string $start, string $repeatEnd): CalendarEventsModel
+    {
+        return $this->event([
+            'addTime' => '1',
+            'recurringExt' => '1',
+            'repeatEachExt' => serialize(['unit' => 'thursday', 'value' => 'first']),
+            'startDate' => strtotime($start),
+            'startTime' => strtotime($start.' 18:00'),
+            'endDate' => strtotime($start),
+            'endTime' => strtotime($start.' 19:00'),
+            'repeatEnd' => strtotime($repeatEnd.' 23:59:59'),
+        ]);
+    }
+
+    private function weeklyEvent(string $start, bool $addTime = true): CalendarEventsModel
+    {
+        return $this->event([
+            'addTime' => $addTime,
+            'startDate' => strtotime($start),
+            'startTime' => strtotime($start),
+            'endDate' => strtotime($start),
+            'endTime' => strtotime($start) + 3600,
+            'recurring' => true,
+            'repeatEach' => serialize(['unit' => 'weeks', 'value' => 1]),
+        ]);
+    }
+
+    private function dtstart(string $line): Pc
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:x\r\nBEGIN:VEVENT\r\nUID:1\r\nDTSTAMP:20240101T000000Z\r\n".$line."\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        $calendar = new Vcalendar();
+        $calendar->parse($ics);
+
+        $vevent = $calendar->getComponent(IcalInterface::VEVENT);
+        $this->assertInstanceOf(Vevent::class, $vevent);
+
+        $dtstart = $vevent->getDtstart(true);
+        $this->assertInstanceOf(Pc::class, $dtstart);
+
+        return $dtstart;
     }
 
     /**

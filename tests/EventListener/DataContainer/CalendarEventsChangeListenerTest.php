@@ -100,8 +100,15 @@ final class CalendarEventsChangeListenerTest extends ContaoTestCase
     private function dataContainer(int $id, array $record = []): DataContainer
     {
         $dc = $this->createStub(DataContainer::class);
-        $dc->method('__get')->willReturnCallback(static fn (string $key): int|null => 'id' === $key ? $id : null);
-        $dc->method('getCurrentRecord')->willReturn($record);
+        $dc
+            ->method('__get')
+            ->willReturnCallback(static fn (string $key): int|null => 'id' === $key ? $id : null)
+        ;
+
+        $dc
+            ->method('getCurrentRecord')
+            ->willReturn($record)
+        ;
 
         return $dc;
     }

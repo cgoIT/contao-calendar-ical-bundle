@@ -71,8 +71,8 @@ class IcsExport extends Backend
 
         $ical = new Vcalendar();
         $ical->setMethod(IcalInterface::PUBLISH);
-        $ical->setXprop(IcalInterface::X_WR_CALNAME, $title ?? $firstCalendar?->title ?? '');
-        $ical->setXprop(IcalInterface::X_WR_CALDESC, $description ?? $firstCalendar?->ical_description ?? '');
+        $ical->setXprop(IcalInterface::X_WR_CALNAME, $title ?? $firstCalendar->title ?? '');
+        $ical->setXprop(IcalInterface::X_WR_CALDESC, $description ?? $firstCalendar->ical_description ?? '');
         $ical->setXprop(IcalInterface::X_WR_TIMEZONE, Config::get('timeZone'));
 
         if (!empty($arrCalendars)) {

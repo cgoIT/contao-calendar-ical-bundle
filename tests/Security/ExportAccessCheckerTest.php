@@ -188,8 +188,10 @@ final class ExportAccessCheckerTest extends ContaoTestCase
             /**
              * @param array<int, PageModel> $pages
              */
-            public function __construct(Security $security, private readonly array $pages)
-            {
+            public function __construct(
+                Security $security,
+                private readonly array $pages,
+            ) {
                 parent::__construct($security);
             }
 

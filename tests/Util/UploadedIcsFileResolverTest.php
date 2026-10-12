@@ -73,7 +73,7 @@ final class UploadedIcsFileResolverTest extends TestCase
 
     public function testRejectsSymlinkToFileOutsideOfUploadDirectory(): void
     {
-        symlink($this->projectDir.'/system/config/localconfig.ics', $this->projectDir.'/system/tmp/link.ics');
+        (new Filesystem())->symlink($this->projectDir.'/system/config/localconfig.ics', $this->projectDir.'/system/tmp/link.ics');
 
         $this->assertNull($this->resolver->resolve('system/tmp/link.ics'));
     }
