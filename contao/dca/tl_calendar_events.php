@@ -13,7 +13,7 @@ declare(strict_types=1);
 /*
  * Table tl_calendar_events
  */
-$GLOBALS['TL_DCA']['tl_calendar_events']['list']['global_operations']['export'] = [
+$GLOBALS['TL_DCA']['tl_calendar_events']['list']['global_operations']['import'] = [
     'label' => &$GLOBALS['TL_LANG']['MSC']['import_calendar'],
     'href' => 'key=import',
     'class' => 'header_import header_icon',
