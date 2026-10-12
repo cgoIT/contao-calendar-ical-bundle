@@ -57,7 +57,6 @@ final class ExtensionTest extends TestCase
         (new CgoitContaoCalendarIcalExtension())->load([], $container);
 
         foreach ([
-            'Backend\ImportFileController',
             'Backend\Automator',
             'Controller\Route\EventlistIcsExportController',
             'Controller\Route\SingleEventIcsExportController',

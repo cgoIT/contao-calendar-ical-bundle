@@ -13,158 +13,24 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Import;
 
 use Cgoit\ContaoCalendarIcalBundle\Import\Csv\CsvParser;
-use Cgoit\ContaoCalendarIcalBundle\Util\TimezoneUtil;
 use Cgoit\ContaoCalendarIcalBundle\Util\UploadedIcsFileResolver;
-use Cgoit\ContaoCalendarIcalBundle\Widgets\WidgetTrait;
-use Contao\BackendTemplate;
 use Contao\BackendUser;
 use Contao\CalendarEventsModel;
 use Contao\Controller;
 use Contao\CoreBundle\Slug\Slug;
 use Contao\Date;
-use Contao\Environment;
-use Contao\File;
-use Contao\Input;
-use Contao\Message;
-use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 class CsvImport extends AbstractImport
 {
-    use WidgetTrait;
-
     public function __construct(
-        private readonly RequestStack $requestStack,
         private readonly Connection $db,
-        private readonly CsrfTokenManagerInterface $csrfTokenManager,
-        private readonly string $csrfTokenName,
         private readonly string $projectDir,
         Slug $slug,
-        TimezoneUtil $timezoneUtil,
         private readonly UploadedIcsFileResolver $uploadedFileResolver,
     ) {
         parent::__construct($slug);
-
-        $this->timezoneUtil = $timezoneUtil;
-    }
-
-    public function importFromCSVFile(bool $prepare = true): string
-    {
-        Controller::loadDataContainer('tl_calendar_events');
-
-        $calfields = [];
-
-        foreach ($this->getCalendarFields() as $name => $label) {
-            $calfields[] = [$name, $label];
-        }
-
-        $dateFormat = Input::post('dateFormat');
-        $timeFormat = Input::post('timeFormat');
-        $fields = [];
-        $csvvalues = Input::post('csvfield');
-        $calvalues = Input::post('calfield');
-        $encoding = Input::post('encoding');
-
-        $importSettings = StringUtil::deserialize(
-            $this->requestStack
-                ->getCurrentRequest()
-                ->getSession()
-                ->get('calendar_ical.csvimport.settings'),
-            true,
-        );
-
-        $data = $this->projectDir.'/'.$importSettings['csv_filename'];
-        $parser = new CsvParser($data, !empty((string) $encoding) ? $encoding : 'utf8');
-        $header = $parser->extractHeader();
-
-        for ($i = 0; $i < (!empty($header) ? \count($header) : 0); ++$i) {
-            $objCSV = $this->getFieldSelector($i, 'csvfield', $header,
-                \is_array($csvvalues) ? $csvvalues[$i] : $header[$i]);
-            $objCal = $this->getFieldSelector($i, 'calfield', $calfields, $calvalues[$i] ?? null);
-            $fields[] = [$objCSV, $objCal];
-        }
-
-        if ($prepare) {
-            $preview = $parser->getDataArray(5);
-            $objTemplate = new BackendTemplate('be_import_calendar_csv_headers');
-            $objTemplate->request_token = $this->csrfTokenManager->getToken($this->csrfTokenName)->getValue();
-
-            $objTemplate->lngFields = $GLOBALS['TL_LANG']['tl_calendar_events']['ical_bundle_fields'];
-            $objTemplate->lngPreview = $GLOBALS['TL_LANG']['tl_calendar_events']['preview'];
-            $objTemplate->check = $GLOBALS['TL_LANG']['tl_calendar_events']['check'];
-            $objTemplate->header = array_map(static fn ($cell): string => StringUtil::specialchars((string) $cell), $header);
-
-            if (!empty($preview)) {
-                foreach ($preview as $idx => $line) {
-                    if (\is_array($line)) {
-                        foreach ($line as $key => $value) {
-                            $preview[$idx][$key] = StringUtil::specialchars((string) $value);
-                        }
-                    }
-                }
-            }
-
-            $objTemplate->preview = $preview;
-            $objTemplate->encoding = $this->getEncodingWidget($encoding);
-
-            if (\function_exists('date_parse_from_format')) {
-                $objTemplate->dateFormat = $this->getDateFormatWidget($dateFormat);
-                $objTemplate->timeFormat = $this->getTimeFormatWidget($timeFormat);
-            }
-
-            $objTemplate->hrefBack = StringUtil::ampersand(str_replace('&key=import', '', (string) Environment::get('request')));
-            $objTemplate->goBack = $GLOBALS['TL_LANG']['MSC']['goBack'];
-            $objTemplate->headline = $GLOBALS['TL_LANG']['MSC']['import_calendar'][0];
-            $objTemplate->request = StringUtil::ampersand(Environment::get('request'), true);
-            $objTemplate->submit = StringUtil::specialchars($GLOBALS['TL_LANG']['tl_calendar_events']['proceed'][0]);
-            $objTemplate->fields = $fields;
-
-            return $objTemplate->parse();
-        }
-
-        $mapping = [];
-
-        foreach ((array) $calvalues as $idx => $value) {
-            $foundindex = array_search($csvvalues[$idx] ?? null, $header, true);
-
-            if (false !== $foundindex) {
-                $mapping[] = [(int) $foundindex, (string) $value];
-            }
-        }
-
-        $skippedRecords = $this->import(
-            (string) $importSettings['csv_filename'],
-            (int) ($importSettings['csv_pid'] ?? 0),
-            $mapping,
-            (string) $encoding,
-            (string) $dateFormat,
-            (string) $timeFormat,
-            new Date($importSettings['csv_startdate'], $GLOBALS['TL_CONFIG']['dateFormat']),
-            !empty((string) ($importSettings['csv_enddate'] ?? '')) ? new Date($importSettings['csv_enddate'], $GLOBALS['TL_CONFIG']['dateFormat']) : null,
-            !empty($importSettings['csv_deletecalendar']) && !empty($importSettings['csv_pid']),
-            (int) $importSettings['csv_timeshift'],
-            (string) ($importSettings['csv_filterEventTitle'] ?? ''),
-        );
-
-        $this->requestStack
-            ->getCurrentRequest()
-            ->getSession()
-            ->remove('calendar_ical.csvimport.settings')
-        ;
-
-        // The uploaded file is not needed anymore
-        if (!empty($importSettings['csv_filename'])) {
-            (new File($importSettings['csv_filename']))->delete();
-        }
-
-        if (!empty($skippedRecords)) {
-            Message::addError(\sprintf($GLOBALS['TL_LANG']['ERR']['csv_records_skipped'], \count($skippedRecords), implode(', ', \array_slice($skippedRecords, 0, 20)).(\count($skippedRecords) > 20 ? ', ...' : '')));
-        }
-
-        Controller::redirect(str_replace('&key=import', '', (string) Environment::get('request')));
     }
 
     /**

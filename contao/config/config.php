@@ -11,11 +11,5 @@ declare(strict_types=1);
  */
 
 use Cgoit\ContaoCalendarIcalBundle\Backend\Automator;
-use Cgoit\ContaoCalendarIcalBundle\Backend\ImportFileController;
-
-/*
- * Backend modules
- */
-$GLOBALS['BE_MOD']['content']['calendar']['import'] = [ImportFileController::class, 'importCalendar'];
 
 $GLOBALS['TL_PURGE']['custom']['calendar_ical_regen_subscriptions'] = ['callback' => [Automator::class, 'generateIcsFiles']];

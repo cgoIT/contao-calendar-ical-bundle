@@ -16,12 +16,14 @@ use Cgoit\ContaoCalendarIcalBundle\Backend\Automator;
 use Cgoit\ContaoCalendarIcalBundle\Controller\Route\EventlistIcsExportController;
 use Cgoit\ContaoCalendarIcalBundle\Export\EventlistModule;
 use Cgoit\ContaoCalendarIcalBundle\Import\IcsImport;
+use Contao\CoreBundle\Csrf\ContaoCsrfTokenManager;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\InsertTag\InsertTagParser;
 use Contao\CoreBundle\Routing\ScopeMatcher;
 use Contao\CoreBundle\Slug\Slug;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\TestCase;
+use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Config\FileLocator;
@@ -30,7 +32,7 @@ use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -64,28 +66,31 @@ final class ServicesTest extends TestCase
         $container = new ContainerBuilder();
         $container->setParameter('kernel.project_dir', '/project');
         $container->setParameter('contao.web_dir', '/project/public');
-        $container->setParameter('contao.csrf_token_name', 'token');
         $container->setParameter('calendar_ical.end_date_time_difference_in_days', 365);
 
         $external = [
             RequestStack::class, Connection::class, ContaoFramework::class, InsertTagParser::class, Slug::class,
-            CsrfTokenManagerInterface::class, LoggerInterface::class, EventDispatcherInterface::class,
-            ParameterBagInterface::class, HttpClientInterface::class, ScopeMatcher::class, Security::class,
+            ContaoCsrfTokenManager::class, LoggerInterface::class, EventDispatcherInterface::class,
+            ParameterBagInterface::class, HttpClientInterface::class, UrlGeneratorInterface::class, ScopeMatcher::class, Security::class,
         ];
 
         foreach ($external as $id) {
             $container->setDefinition($id, (new Definition($id))->setSynthetic(true)->setPublic(true));
         }
 
-        foreach (['contao.csrf.token_manager' => CsrfTokenManagerInterface::class, 'monolog.logger.contao.cron' => LoggerInterface::class, 'monolog.logger.contao.general' => LoggerInterface::class] as $id => $class) {
+        // Controllers get the container injected by the controller resolver in the application
+        $container->setAlias(ContainerInterface::class, 'service_container');
+
+        foreach (['monolog.logger.contao.cron' => LoggerInterface::class, 'monolog.logger.contao.general' => LoggerInterface::class] as $id => $class) {
             $container->setDefinition($id, (new Definition($class))->setSynthetic(true)->setPublic(true));
         }
 
         (new YamlFileLoader($container, new FileLocator(__DIR__.'/../../config')))->load('services.yaml');
 
-        // Keep the unused services, the compiler would remove everything that is private and not referenced
-        $container->getCompilerPassConfig()->setRemovingPasses([]);
-        $container->getCompilerPassConfig()->setAfterRemovingPasses([]);
+        // Unused private services are removed without checking them, so make all services public to find arguments that cannot be autowired
+        foreach ($container->getDefinitions() as $definition) {
+            $definition->setPublic(true);
+        }
 
         return $container;
     }

@@ -5,16 +5,11 @@ services:
         public: false
         bind:
             $projectDir: '%kernel.project_dir%'
-            $csrfTokenManager: '@contao.csrf.token_manager'
-            $csrfTokenName: '%contao.csrf_token_name%'
             $defaultEndTimeDifference: '%calendar_ical.end_date_time_difference_in_days%'
 
     Cgoit\ContaoCalendarIcalBundle\:
         resource: ../src/*
-        exclude: '../src/{ContaoManager,DependencyInjection,Event,Export/EventlistModule.php,Import/Csv,Widgets}'
-
-    Cgoit\ContaoCalendarIcalBundle\Backend\ImportFileController:
-        public: true
+        exclude: '../src/{ContaoManager,DependencyInjection,Event,Export/EventlistModule.php,Import/Csv}'
 
     Cgoit\ContaoCalendarIcalBundle\Backend\Automator:
         public: true
