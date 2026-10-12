@@ -43,6 +43,7 @@
     "symfony/http-foundation": "^6.4 || ^7.3",
     "symfony/http-kernel": "^6.4 || ^7.3",
     "symfony/routing": "^6.4 || ^7.3",
+    "symfony/security-bundle": "^6.4 || ^7.3",
     "symfony/security-csrf": "^6.4 || ^7.3",
     "kigkonsult/icalcreator": "~2",
     "webignition/robots-txt-file": "^3.0"

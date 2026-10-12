@@ -65,6 +65,9 @@ Geschützte Kalender (`protected` mit Mitgliedergruppen) werden nur an Frontend-
 exportiert. Das gilt für den Export einzelner Termine, den Eventlisten-Export, die Seite vom Typ `ics_feed` und das
 Inhaltselement „iCal“. Unveröffentlichte Termine werden nie exportiert.
 
+Kalender-Apps melden sich nicht als Contao-Mitglied an. Ein Feed mit geschützten Kalendern enthält für sie daher keine
+Termine dieser Kalender; er wird zudem nie in einem gemeinsamen Cache abgelegt.
+
 Die Option „iCal Abonnement erstellen“ schreibt eine **öffentliche** Datei nach `share/`. Sie steht daher für
 geschützte Kalender nicht zur Verfügung; verwenden Sie stattdessen eine Seite vom Typ `ics_feed`.
 
@@ -74,7 +77,8 @@ Kalender aus einer Web-Quelle importieren
 Ein Kalender kann seine Termine regelmäßig aus einer ICS-URL übernehmen („Web-Quelle“). Der Download ist ab Version 6.0
 abgesichert:
 
-- Erlaubt sind nur `http://`, `https://` und `webcal://` (wird als `https://` abgerufen).
+- Erlaubt sind nur `http://`, `https://` und `webcal://`. `webcal://` wird immer als `https://` abgerufen; Quellen, die
+  nur per HTTP erreichbar sind, tragen Sie bitte mit `http://` ein.
 - Das TLS-Zertifikat der Gegenstelle wird **geprüft**. Quellen mit selbstsigniertem oder abgelaufenem Zertifikat
   lassen sich nicht mehr importieren; die Gegenstelle muss ein gültiges Zertifikat verwenden.
 - Ziele in privaten Netzen (z. B. `127.0.0.1`, `192.168.x.x`, Cloud-Metadaten-Adressen) werden ohne Proxy blockiert.
@@ -84,6 +88,17 @@ abgesichert:
 - Der Inhalt wird direkt verarbeitet; es werden keine temporären Dateien in `system/tmp` mehr angelegt.
 
 Die PHP-Erweiterung `ext-curl` wird nicht mehr benötigt, stattdessen `symfony/http-client`.
+
+Importierte Inhalte
+-------------------
+
+Titel, Ort, Beschreibung, Teilnehmer und Kontakte aus ICS- und CSV-Dateien werden beim Import kodiert gespeichert
+(HTML wird als Text angezeigt, Insert-Tags werden entfernt). Das gilt für den Web-Import wie für den Import im Backend.
+Bereits importierte Termine werden beim nächsten Import entsprechend aktualisiert.
+
+Der reguläre Ausdruck für die Titel-Umschreibung wird beim Speichern des Kalenders geprüft und benötigt Trennzeichen,
+z. B. `/^\[Verein\] /`. Das Feld „Benutzername:Passwort“ für den Proxy wird verdeckt angezeigt und ist nicht
+durchsuchbar. Hochgeladene Dateien für den Backend-Import werden nach dem Import aus `system/tmp` gelöscht.
 
 Wichtig
 -------

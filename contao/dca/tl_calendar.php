@@ -96,9 +96,8 @@ $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_proxy'] = [
 
 $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_bnpw'] = [
     'exclude' => true,
-    'search' => true,
     'inputType' => 'text',
-    'eval' => ['maxlength' => 255, 'tl_class' => 'w50'],
+    'eval' => ['maxlength' => 255, 'hideInput' => true, 'tl_class' => 'w50'],
     'sql' => ['type' => 'string', 'length' => 255, 'default' => ''],
 ];
 

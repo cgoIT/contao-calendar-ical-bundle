@@ -436,7 +436,8 @@ trait WidgetTrait
             if (\is_array($fieldvalue)) {
                 $arrOptions[] = ['value' => $fieldvalue[0], 'label' => $fieldvalue[1]];
             } else {
-                $arrOptions[] = ['value' => $fieldvalue, 'label' => $fieldvalue];
+                // The labels of the select menu are not encoded by the widget; the CSV header comes from an uploaded file
+                $arrOptions[] = ['value' => $fieldvalue, 'label' => StringUtil::specialchars((string) $fieldvalue)];
             }
         }
 

@@ -125,7 +125,13 @@ class RemoteIcsDownloader
             [, $scheme, $proxy] = $matches;
         }
 
-        $auth = !empty($credentials) ? $credentials.'@' : '';
+        $auth = '';
+
+        if (!empty($credentials)) {
+            // "user:password"; special characters must not break the URL
+            [$user, $password] = array_pad(explode(':', $credentials, 2), 2, null);
+            $auth = rawurlencode($user).(null !== $password ? ':'.rawurlencode($password) : '').'@';
+        }
         $portSuffix = !empty($port) && !str_contains($proxy, ':') ? ':'.$port : '';
 
         return $scheme.$auth.$proxy.$portSuffix;

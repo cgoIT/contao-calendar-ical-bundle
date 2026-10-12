@@ -131,6 +131,14 @@ final class RemoteIcsDownloaderTest extends TestCase
         $this->assertSame('http://user:pw@proxy.local:3128', $this->requests[0][2]['proxy']);
     }
 
+    public function testProxyCredentialsAreUrlEncoded(): void
+    {
+        $downloader = $this->downloader(new MockResponse('x'));
+        $downloader->download('http://10.0.0.5/cal.ics', 'proxy.local', 'us@er:p@ss/w:rd#', 3128);
+
+        $this->assertSame('http://us%40er:p%40ss%2Fw%3Ard%23@proxy.local:3128', $this->requests[0][2]['proxy']);
+    }
+
     public function testErrorLogDoesNotContainCredentialsOfUrl(): void
     {
         $downloader = $this->downloader(new MockResponse('', ['http_code' => 500]));

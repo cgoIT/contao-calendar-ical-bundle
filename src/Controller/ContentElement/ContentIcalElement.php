@@ -21,6 +21,7 @@ use Contao\Controller;
 use Contao\CoreBundle\Controller\ContentElement\AbstractContentElementController;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsContentElement;
 use Contao\FrontendTemplate;
+use Contao\Model\Collection;
 use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
@@ -50,7 +51,8 @@ class ContentIcalElement extends AbstractContentElementController
     protected function getResponse(Template $template, ContentModel $model, Request $request): Response
     {
         System::loadLanguageFile('tl_content');
-        $ical = $this->getIcalFile($model);
+        $arrAllCalendars = CalendarModel::findMultipleByIds(StringUtil::deserialize($model->ical_calendar, true));
+        $ical = $this->getIcalFile($model, $this->accessChecker->filterCalendars($arrAllCalendars));
 
         if (!empty($ical)) {
             if ((string) $model->id === Input::get('ical')) {
@@ -79,22 +81,38 @@ class ContentIcalElement extends AbstractContentElementController
             $tpl->extension = 'ics';
             $template->downloadElement = $tpl->parse();
 
-            return $template->getResponse();
+            return $this->createResponse($template, $arrAllCalendars);
         }
 
         $template->error = $GLOBALS['TL_LANG']['tl_content']['error_generating_ical_file'];
 
-        return $template->getResponse();
+        return $this->createResponse($template, $arrAllCalendars);
     }
 
-    private function getIcalFile(ContentModel $model): Vcalendar|null
+    /**
+     * @param Collection<CalendarModel>|null $arrAllCalendars
+     */
+    private function createResponse(Template $template, Collection|null $arrAllCalendars): Response
+    {
+        $response = $template->getResponse();
+
+        // The output depends on the logged in member and must not be stored in a shared cache
+        if ($this->accessChecker->hasProtectedCalendar($arrAllCalendars)) {
+            $response->setPrivate();
+            $response->headers->addCacheControlDirective('no-store');
+        }
+
+        return $response;
+    }
+
+    /**
+     * @param array<CalendarModel> $arrCalendars
+     */
+    private function getIcalFile(ContentModel $model, array $arrCalendars): Vcalendar|null
     {
         $startDate = !empty($model->ical_start) ? (int) $model->ical_start : time();
         $endDate = !empty($model->ical_end) ? (int) $model->ical_end : time() + 365 * 24 * 3600;
 
-        $arrCalendars = $this->accessChecker->filterCalendars(
-            CalendarModel::findMultipleByIds(StringUtil::deserialize($model->ical_calendar, true)),
-        );
         if (!empty($arrCalendars)) {
             return $this->icsExport->getVcalendar($arrCalendars, $startDate, $endDate, $model->ical_title, $model->ical_description, $model->ical_prefix);
         }

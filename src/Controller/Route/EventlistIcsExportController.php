@@ -15,6 +15,7 @@ namespace Cgoit\ContaoCalendarIcalBundle\Controller\Route;
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
 use Cgoit\ContaoCalendarIcalBundle\Security\ExportAccessChecker;
 use Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil;
+use Contao\CalendarModel;
 use Contao\ContentModel;
 use Contao\CoreBundle\Exception\PageNotFoundException;
 use Contao\CoreBundle\Framework\ContaoFramework;
@@ -107,7 +108,15 @@ class EventlistIcsExportController extends Events
         $iCal = $this->icsExport->exportEvents($arrEvents)->createCalendar();
         $filename = StringUtil::sanitizeFileName($objEventlist->name ?? $eventlistId).'.ics';
 
-        throw $this->responseUtil->sendFileForDownload($iCal, $filename);
+        $exception = $this->responseUtil->sendFileForDownload($iCal, $filename);
+
+        $calendars = CalendarModel::findMultipleByIds(StringUtil::deserialize($objEventlist->cal_calendar, true));
+        if ($objEventlist->protected || $this->accessChecker->hasProtectedCalendar($calendars)) {
+            $exception->getResponse()->setPrivate();
+            $exception->getResponse()->headers->addCacheControlDirective('no-store');
+        }
+
+        throw $exception;
     }
 
     private function isEventlist(ContentModel|ModuleModel $element): bool

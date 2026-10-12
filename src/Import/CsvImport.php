@@ -21,6 +21,7 @@ use Contao\Config;
 use Contao\CoreBundle\Slug\Slug;
 use Contao\Date;
 use Contao\Environment;
+use Contao\File;
 use Contao\Input;
 use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
@@ -121,13 +122,13 @@ class CsvImport extends AbstractImport
             $objTemplate->lngFields = $GLOBALS['TL_LANG']['tl_calendar_events']['ical_bundle_fields'];
             $objTemplate->lngPreview = $GLOBALS['TL_LANG']['tl_calendar_events']['preview'];
             $objTemplate->check = $GLOBALS['TL_LANG']['tl_calendar_events']['check'];
-            $objTemplate->header = $header;
+            $objTemplate->header = \is_array($header) ? array_map(static fn ($cell): string => StringUtil::specialchars((string) $cell), $header) : $header;
 
             if (!empty($preview)) {
                 foreach ($preview as $idx => $line) {
                     if (\is_array($line)) {
                         foreach ($line as $key => $value) {
-                            $preview[$idx][$key] = StringUtil::specialchars($value);
+                            $preview[$idx][$key] = StringUtil::specialchars((string) $value);
                         }
                     }
                 }
@@ -208,17 +209,17 @@ class CsvImport extends AbstractImport
                                     }
                                     break;
                                 case 'details':
-                                    $eventcontent[] = StringUtil::specialchars($data[$foundindex]);
+                                    $eventcontent[] = $this->encodeImportedText((string) $data[$foundindex]);
                                     break;
                                 case 'title':
-                                    $objEvent->{$value} = StringUtil::specialchars($data[$foundindex]);
+                                    $objEvent->{$value} = $this->encodeImportedText((string) $data[$foundindex]);
                                     $filterEventTitle = $importSettings['csv_filterEventTitle'];
-                                    if (!empty($filterEventTitle) && !str_contains(mb_strtolower(StringUtil::specialchars($data[$foundindex])), mb_strtolower((string) $filterEventTitle))) {
+                                    if (!empty($filterEventTitle) && !str_contains(mb_strtolower($this->encodeImportedText((string) $data[$foundindex])), mb_strtolower((string) $filterEventTitle))) {
                                         continue 3;
                                     }
                                 // no break
                                 default:
-                                    $objEvent->{$value} = StringUtil::specialchars($data[$foundindex]);
+                                    $objEvent->{$value} = $this->encodeImportedText((string) $data[$foundindex]);
                                     break;
                             }
                         }
@@ -317,6 +318,11 @@ class CsvImport extends AbstractImport
             ->getSession()
             ->remove('calendar_ical.csvimport.settings')
         ;
+
+        // The uploaded file is not needed anymore
+        if (!empty($importSettings['csv_filename'])) {
+            (new File($importSettings['csv_filename']))->delete();
+        }
 
         static::redirect(str_replace('&key=import', '', (string) Environment::get('request')));
     }

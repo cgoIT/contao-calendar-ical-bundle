@@ -15,6 +15,7 @@ namespace Cgoit\ContaoCalendarIcalBundle\Backend;
 use Cgoit\ContaoCalendarIcalBundle\Import\CsvImport;
 use Cgoit\ContaoCalendarIcalBundle\Import\IcsImport;
 use Cgoit\ContaoCalendarIcalBundle\Util\TimezoneUtilAwareInterface;
+use Cgoit\ContaoCalendarIcalBundle\Util\UploadedIcsFileResolver;
 use Cgoit\ContaoCalendarIcalBundle\Widgets\WidgetTrait;
 use Contao\Backend;
 use Contao\BackendTemplate;
@@ -48,6 +49,7 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
         private readonly IcsImport $icsImport,
         private readonly CsvImport $csvImport,
         private readonly string $projectDir,
+        private readonly UploadedIcsFileResolver $uploadedIcsFileResolver,
     ) {
         parent::__construct();
     }
@@ -171,7 +173,7 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
         } elseif ('tl_import_calendar_confirmation' === Input::post('FORM_SUBMIT') && $this->blnSave) {
             $startDate = new Date(Input::post('startDate'), Config::get('dateFormat')); // @phpstan-ignore-line
             $endDate = new Date(Input::post('endDate'), Config::get('dateFormat')); // @phpstan-ignore-line
-            $filename = Input::post('icssource');
+            $filename = (string) Input::post('icssource', true);
             $deleteCalendar = (bool) Input::post('deleteCalendar');
             $this->filterEventTitle = Input::post('filterEventTitle');
             $timeshift = (int) Input::post('timeshift');
@@ -220,9 +222,9 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
 
         $objTemplate->startDate = $startDate->date;
         $objTemplate->endDate = $endDate->date;
-        $objTemplate->icssource = $icssource;
+        $objTemplate->icssource = StringUtil::specialchars($icssource);
         $objTemplate->deleteCalendar = $deleteCalendar;
-        $objTemplate->filterEventTitle = $this->filterEventTitle;
+        $objTemplate->filterEventTitle = StringUtil::specialchars($this->filterEventTitle);
         $objTemplate->hrefBack = StringUtil::ampersand(str_replace('&key=import', '', (string) Environment::get('request')));
         $objTemplate->goBack = $GLOBALS['TL_LANG']['MSC']['goBack'];
         $objTemplate->headline = $GLOBALS['TL_LANG']['MSC']['import_calendar'][0];
@@ -239,8 +241,15 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
         $cal->setXprop(Vcalendar::X_WR_CALNAME, $objCalendar->title);
         $cal->setXprop(Vcalendar::X_WR_CALDESC, $objCalendar->title);
 
+        // The path comes from a form field and must only point to a file uploaded before
+        $uploadedFile = $this->uploadedIcsFileResolver->resolve($filename);
+
         try {
-            $file = new File($filename);
+            if (null === $uploadedFile) {
+                throw new \InvalidArgumentException('Invalid ics file path');
+            }
+
+            $file = new File($uploadedFile);
             $content = $file->exists() ? $file->getContent() : '';
             if (empty($content)) {
                 throw new \InvalidArgumentException('Ical content empty');
@@ -252,6 +261,10 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
                 ->get('monolog.logger.contao.general')
                 ->error('Could not import ics file "'.$filename.'": '.$e->getMessage())
             ;
+
+            if (null !== $uploadedFile) {
+                (new File($uploadedFile))->delete();
+            }
 
             static::reload();
         }
@@ -284,7 +297,13 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
         }
         // }
 
-        $this->icsImport->importFromIcsFile($cal, $objCalendar, $startDate, $endDate, $tz, $this->filterEventTitle, null, null, $deleteCalendar, $timeshift);
+        try {
+            $this->icsImport->importFromIcsFile($cal, $objCalendar, $startDate, $endDate, $tz, $this->filterEventTitle, null, null, $deleteCalendar, $timeshift);
+        } finally {
+            // The uploaded file is not needed anymore
+            (new File($uploadedFile))->delete();
+        }
+
         static::redirect(str_replace('&key=import', '', (string) Environment::get('request')));
     }
 }

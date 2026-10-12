@@ -190,14 +190,11 @@ class IcsImport extends AbstractImport
                 $description = $vevent->getDescription() ?: '';
                 $location = trim($vevent->getLocation() ?: '');
 
-                $title = $summary;
-                if (!empty($patternEventTitle) && !empty($replacementEventTitle)) {
-                    $title = preg_replace($patternEventTitle, $replacementEventTitle, $summary);
-                }
+                $title = $this->rewriteTitle($summary, $patternEventTitle, $replacementEventTitle);
 
                 // set values from vevent
-                $objEvent->title = !empty($title) ? $title : $summary;
-                $cleanedup = \strlen($description) ? $description : $summary;
+                $objEvent->title = $this->encodeImportedText(!empty($title) ? $title : $summary);
+                $cleanedup = $this->encodeImportedText(\strlen($description) ? $description : $summary);
                 $cleanedup = preg_replace('/[\\r](\\\\)n(\\t){0,1}/ims', '', $cleanedup);
                 $cleanedup = preg_replace('/[\\r\\n]/ims', '', (string) $cleanedup);
                 $cleanedup = str_replace('\\n', '<br />', (string) $cleanedup);
@@ -209,6 +206,8 @@ class IcsImport extends AbstractImport
 
                 // calendar_events_plus fields
                 if (!empty($location)) {
+                    $location = $this->encodeImportedText($location);
+
                     if (\in_array('location', $fieldNames, true)) {
                         $location = preg_replace('/(\\\\r)|(\\\\n)/im', "\n", $location);
                         $objEvent->location = $location;
@@ -223,7 +222,7 @@ class IcsImport extends AbstractImport
 
                     foreach ($vevent->getAllAttendee() as $attendee) {
                         if (!empty($attendee->getParams('CN'))) {
-                            $attendees[] = (string) $attendee->getParams('CN');
+                            $attendees[] = $this->encodeImportedText((string) $attendee->getParams('CN'));
                         }
                     }
 
@@ -238,7 +237,7 @@ class IcsImport extends AbstractImport
 
                     foreach ($contact as $c) {
                         if (!empty($c->getValue())) {
-                            $contacts[] = $c->getValue();
+                            $contacts[] = $this->encodeImportedText((string) $c->getValue());
                         }
                     }
                     if (!empty($contacts)) {
@@ -439,6 +438,30 @@ class IcsImport extends AbstractImport
         }
 
         return [$date, $timezone];
+    }
+
+    /**
+     * Rewrites the title with the configured regular expression. An invalid expression or a
+     * failing replacement (e.g. backtrack limit) leaves the title untouched.
+     */
+    private function rewriteTitle(string $summary, string|null $pattern, string|null $replacement): string
+    {
+        if (empty($pattern) || empty($replacement)) {
+            return $summary;
+        }
+
+        $title = @preg_replace($pattern, $replacement, $summary);
+
+        if (!\is_string($title)) {
+            System::getContainer()
+                ->get('monolog.logger.contao.general')
+                ->warning('Could not rewrite the title "'.$summary.'" with the pattern "'.$pattern.'": '.preg_last_error_msg())
+            ;
+
+            return $summary;
+        }
+
+        return $title;
     }
 
     /**

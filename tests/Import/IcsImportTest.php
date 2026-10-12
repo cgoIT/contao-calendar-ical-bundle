@@ -19,6 +19,7 @@ use Kigkonsult\Icalcreator\IcalInterface;
 use Kigkonsult\Icalcreator\Pc;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Kigkonsult\Icalcreator\Vevent;
+use Psr\Log\LoggerInterface;
 
 /**
  * Covers the parts of the importer that do not need a database. The importer's constructor
@@ -198,6 +199,30 @@ final class IcsImportTest extends ContaoTestCase
         $event = $this->event(['startDate' => strtotime('2024-05-01'), 'repeatEnd' => strtotime('2024-06-01')]);
 
         $this->assertSame(0, $this->call('calculateRecurrenceCount', $event));
+    }
+
+    public function testImportedTextIsEncodedAndInsertTagsAreRemoved(): void
+    {
+        $this->assertSame(
+            '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; Fish &amp; Chips',
+            $this->call('encodeImportedText', '<script>alert("x")</script>{{file::1}} Fish & Chips'),
+        );
+        $this->assertSame('Tom &amp; Jerry', $this->call('encodeImportedText', 'Tom &amp; Jerry'));
+    }
+
+    public function testRewriteTitleAppliesPattern(): void
+    {
+        $this->assertSame('Spiel: Training', $this->call('rewriteTitle', 'Training', '/^/', 'Spiel: '));
+        $this->assertSame('Training', $this->call('rewriteTitle', 'Training', null, null));
+    }
+
+    public function testRewriteTitleKeepsTitleForInvalidPattern(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('warning');
+        $this->bootContao()->set('monolog.logger.contao.general', $logger);
+
+        $this->assertSame('Training', $this->call('rewriteTitle', 'Training', '/(unclosed/', 'x'));
     }
 
     /**

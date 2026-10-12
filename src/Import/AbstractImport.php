@@ -18,11 +18,22 @@ use Contao\CalendarModel;
 use Contao\ContentModel;
 use Contao\CoreBundle\Slug\Slug;
 use Contao\Model\Collection;
+use Contao\StringUtil;
 
 class AbstractImport extends Backend
 {
     public function __construct(protected readonly Slug $slug)
     {
+    }
+
+    /**
+     * Encodes text from an external source (ics/csv) before it is stored. Contao stores form input
+     * encoded as well, so the value can be output in templates as usual. Insert tags are removed
+     * to prevent that foreign content triggers them.
+     */
+    protected function encodeImportedText(string $text): string
+    {
+        return StringUtil::specialchars($text, true);
     }
 
     /**

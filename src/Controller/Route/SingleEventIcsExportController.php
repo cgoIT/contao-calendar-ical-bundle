@@ -57,6 +57,11 @@ class SingleEventIcsExportController extends AbstractController
         $objEvent = CalendarEventsModel::findById($eventId);
         if (null !== $objEvent) {
             $objEvent = CalendarEventsModel::findPublishedByParentAndIdOrAlias((string) $objEvent->id, [(int) $objEvent->pid]);
+
+            // The lookup also matches aliases, so make sure it is the requested event
+            if (null !== $objEvent && (int) $objEvent->id !== $eventId) {
+                $objEvent = null;
+            }
         }
 
         $objCalendar = null !== $objEvent ? CalendarModel::findById($objEvent->pid) : null;
@@ -68,6 +73,13 @@ class SingleEventIcsExportController extends AbstractController
         $icsEvent = $this->icsExport->exportEvent($objEvent)->createCalendar();
         $filename = StringUtil::sanitizeFileName($objEvent->title ?? $eventId).'.ics';
 
-        throw $this->responseUtil->sendFileForDownload($icsEvent, $filename);
+        $exception = $this->responseUtil->sendFileForDownload($icsEvent, $filename);
+
+        if ($objCalendar->protected) {
+            $exception->getResponse()->setPrivate();
+            $exception->getResponse()->headers->addCacheControlDirective('no-store');
+        }
+
+        throw $exception;
     }
 }

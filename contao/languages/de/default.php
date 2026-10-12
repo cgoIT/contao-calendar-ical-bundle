@@ -35,3 +35,4 @@ $GLOBALS['TL_LANG']['tl_maintenance_jobs']['calendar_ical_regen_subscriptions'][
 $GLOBALS['TL_LANG']['ERR']['only_one_file'] = 'Bitte wählen Sie nur eine Datei zum Hochladen aus!';
 $GLOBALS['TL_LANG']['ERR']['ics_parse_error'] = 'Die hochgeladene ics-Datei konnte aufgrund eines Formatfehlers nicht verarbeitet werden.';
 $GLOBALS['TL_LANG']['ERR']['ical_protected_calendar'] = 'Für geschützte Kalender kann kein iCal-Abonnement erstellt werden, da die Datei öffentlich im Verzeichnis „share“ abgelegt würde. Nutzen Sie stattdessen eine Seite vom Typ „iCal-Feed“.';
+$GLOBALS['TL_LANG']['ERR']['ical_invalid_pattern'] = 'Der reguläre Ausdruck für die Titel-Umschreibung ist ungültig (er benötigt Trennzeichen, z. B. /muster/): %s';
