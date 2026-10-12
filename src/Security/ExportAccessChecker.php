@@ -12,12 +12,14 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Security;
 
+use Contao\ArticleModel;
 use Contao\CalendarModel;
 use Contao\ContentModel;
 use Contao\CoreBundle\Security\ContaoCorePermissions;
 use Contao\Date;
 use Contao\Model\Collection;
 use Contao\ModuleModel;
+use Contao\PageModel;
 use Contao\StringUtil;
 use Symfony\Bundle\SecurityBundle\Security;
 
@@ -44,21 +46,18 @@ class ExportAccessChecker
      * Checks whether a module or content element is visible to the current visitor (publish state,
      * "guests only" and member group protection).
      */
-    public function isElementVisible(ContentModel|ModuleModel $element): bool
+    public function isElementVisible(ContentModel|ModuleModel $element, int $depth = 0): bool
     {
         if ($element instanceof ContentModel && !$this->isPublished($element)) {
             return false;
         }
 
-        if ($element->guests && $this->security->isGranted('ROLE_MEMBER')) {
+        if (!$this->isGrantedFor($element)) {
             return false;
         }
 
-        if ($element->protected) {
-            return $this->security->isGranted(ContaoCorePermissions::MEMBER_IN_GROUPS, StringUtil::deserialize($element->groups, true));
-        }
-
-        return true;
+        // A content element is only as visible as the article/element/page it belongs to
+        return !$element instanceof ContentModel || $this->isParentVisible($element, $depth);
     }
 
     /**
@@ -95,6 +94,74 @@ class ExportAccessChecker
         }
 
         return false;
+    }
+
+    /**
+     * Checks "guests only" and the member group protection of a record (module, content element, article, page).
+     */
+    private function isGrantedFor(ContentModel|ModuleModel|ArticleModel|PageModel $record): bool
+    {
+        if ($record->guests && $this->security->isGranted('ROLE_MEMBER')) {
+            return false;
+        }
+
+        if ($record->protected) {
+            return $this->security->isGranted(ContaoCorePermissions::MEMBER_IN_GROUPS, StringUtil::deserialize($record->groups, true));
+        }
+
+        return true;
+    }
+
+    private function isParentVisible(ContentModel $element, int $depth): bool
+    {
+        // Content elements can be nested; the limit protects against cycles
+        if ('tl_content' === $element->ptable) {
+            $parent = $depth < 10 ? ContentModel::findById($element->pid) : null;
+
+            return null !== $parent && $this->isElementVisible($parent, $depth + 1);
+        }
+
+        // Elements of other tables (e.g. news, events) are not part of an article
+        if (!\in_array((string) $element->ptable, ['', 'tl_article'], true)) {
+            return true;
+        }
+
+        $article = ArticleModel::findById($element->pid);
+
+        if (null === $article || !$this->isArticlePublished($article) || !$this->isGrantedFor($article)) {
+            return false;
+        }
+
+        $page = $this->loadPage((int) $article->pid);
+
+        return null !== $page && $this->isPagePublished($page) && $this->isGrantedFor($page);
+    }
+
+    /**
+     * Loads the page including the settings that are inherited from the parent pages.
+     */
+    protected function loadPage(int $id): PageModel|null
+    {
+        return PageModel::findWithDetails($id);
+    }
+
+    private function isArticlePublished(ArticleModel $article): bool
+    {
+        return $this->isInPublishedPeriod((bool) $article->published, $article->start, $article->stop);
+    }
+
+    private function isPagePublished(PageModel $page): bool
+    {
+        return $this->isInPublishedPeriod((bool) $page->published, $page->start, $page->stop);
+    }
+
+    private function isInPublishedPeriod(bool $published, mixed $start, mixed $stop): bool
+    {
+        $time = Date::floorToMinute();
+
+        return $published
+            && (empty($start) || (int) $start <= $time)
+            && (empty($stop) || (int) $stop > $time);
     }
 
     private function isPublished(ContentModel $element): bool

@@ -63,7 +63,10 @@ Abonnement-Dateien und Feeds
 
 Mit der Option „iCal Abonnement erstellen“ schreibt das Bundle die Datei `share/<Alias>.ics` (ohne Alias:
 `share/calendar<ID>.ics`). Beim Neuaufbau werden nur diese Dateien ersetzt oder gelöscht; andere Dateien in `share/`
-bleiben unberührt. Alternativ liefert eine Seite vom Typ `ics_feed` oder das Inhaltselement „iCal“ die Termine
+bleiben unberührt. Die Datei wird nach dem Speichern, Kopieren, Löschen, Wiederherstellen und Veröffentlichen von Terminen
+(einmal pro Anfrage, nach dem Senden der Antwort), beim Speichern des Kalenders, täglich per Cron und über die
+Systemwartung neu erzeugt. Beginnt oder endet die Veröffentlichung eines Termins zu einer bestimmten Zeit, wirkt sich das
+erst beim nächsten Neuaufbau aus. Alternativ liefert eine Seite vom Typ `ics_feed` oder das Inhaltselement „iCal“ die Termine
 ausgewählter Kalender. Ein dort eingetragenes Präfix wird dem Titel jedes Termins vorangestellt; ohne Angabe gilt das
 Präfix des jeweiligen Kalenders.
 
@@ -82,7 +85,9 @@ Geschützte Kalender
 
 Geschützte Kalender (`protected` mit Mitgliedergruppen) werden nur an Frontend-Mitglieder der erlaubten Gruppen
 exportiert. Das gilt für den Export einzelner Termine, den Eventlisten-Export, die Seite vom Typ `ics_feed` und das
-Inhaltselement „iCal“. Unveröffentlichte Termine werden nie exportiert.
+Inhaltselement „iCal“. Unveröffentlichte Termine werden nie exportiert. Eine Eventliste (Modul oder Inhaltselement) wird nur exportiert, wenn
+sie für den Besucher sichtbar ist; bei Inhaltselementen gilt das auch für den Artikel, die Seite und übergeordnete
+Elemente (veröffentlicht, Zugriffsschutz).
 
 Kalender-Apps melden sich nicht als Contao-Mitglied an. Ein Feed mit geschützten Kalendern enthält für sie daher keine
 Termine dieser Kalender; er wird zudem nie in einem gemeinsamen Cache abgelegt.

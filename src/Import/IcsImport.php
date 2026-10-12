@@ -35,14 +35,11 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class IcsImport extends AbstractImport
 {
-    /**
-     * @var array<mixed>
-     */
-    private readonly array $arrMonths;
+    private const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
     private const IMPORT_LOCK_TIMEOUT = 120;
 
-    private readonly int $maxRepeatCount;
+    private int|null $maxRepeatCount = null;
 
     public function __construct(
         private readonly Connection $db,
@@ -53,18 +50,22 @@ class IcsImport extends AbstractImport
         private readonly RemoteIcsDownloader $downloader,
     ) {
         parent::__construct($slug);
+    }
 
-        $this->contaoFramework->initialize();
-
-        System::loadLanguageFile('default', 'en', true);
-        $this->arrMonths = $GLOBALS['TL_LANG']['MONTHS'];
-        System::loadLanguageFile('default');
-
-        try {
-            $this->maxRepeatCount = System::getContainer()->getParameter('cgoit_calendar_extended.max_repeat_count');
-        } catch (InvalidArgumentException) {
-            $this->maxRepeatCount = 365;
+    /**
+     * The maximum number of recurrences, configured by the calendar-extended-bundle if it is installed.
+     */
+    private function getMaxRepeatCount(): int
+    {
+        if (null === $this->maxRepeatCount) {
+            try {
+                $this->maxRepeatCount = (int) System::getContainer()->getParameter('cgoit_calendar_extended.max_repeat_count');
+            } catch (InvalidArgumentException) {
+                $this->maxRepeatCount = 365;
+            }
         }
+
+        return $this->maxRepeatCount;
     }
 
     /**
@@ -128,6 +129,8 @@ class IcsImport extends AbstractImport
      */
     public function importFromIcsFile(Vcalendar $cal, CalendarModel $objCalendar, Date $startDate, Date $endDate, array|bool $tz, string|null $filterEventTitle, string|null $patternEventTitle, string|null $replacementEventTitle, bool $deleteCalendar = false, int $timeshift = 0): void
     {
+        $this->contaoFramework->initialize();
+        System::loadLanguageFile('default');
         static::loadDataContainer('tl_calendar_events');
 
         // Without a time zone in the ics file (or if none was selected) the time zone of the system applies
@@ -628,7 +631,7 @@ class IcsImport extends AbstractImport
             ++$repeatCount;
 
             // check if we reached the configured max value
-            if ($repeatCount === $this->maxRepeatCount) {
+            if ($repeatCount === $this->getMaxRepeatCount()) {
                 break;
             }
         }
@@ -665,7 +668,7 @@ class IcsImport extends AbstractImport
 
         // The year limit protects against endless loops
         while ($year <= 2200) {
-            $strtotime = strtotime($arg.' '.$unit.' of '.$this->arrMonths[$month - 1].' '.$year, $start);
+            $strtotime = strtotime($arg.' '.$unit.' of '.self::MONTHS[$month - 1].' '.$year, $start);
 
             if (false === $strtotime) {
                 break;
@@ -690,7 +693,7 @@ class IcsImport extends AbstractImport
             ++$repeatCount;
 
             // check if we reached the configured max value
-            if ($repeatCount === $this->maxRepeatCount) {
+            if ($repeatCount === $this->getMaxRepeatCount()) {
                 break;
             }
         }
@@ -787,7 +790,7 @@ class IcsImport extends AbstractImport
                         ++$year;
                     }
 
-                    $timetoadd = $arg.' '.$unit.' of '.$this->arrMonths[$month - 1].' '.$year;
+                    $timetoadd = $arg.' '.$unit.' of '.self::MONTHS[$month - 1].' '.$year;
                     $strtotime = strtotime($timetoadd, $next);
 
                     if (false === $strtotime) {
@@ -803,7 +806,7 @@ class IcsImport extends AbstractImport
             $i = 0;
 
             while ($next <= $repeatEnd) {
-                $timetoadd = $arg.' '.$unit.' of '.$this->arrMonths[$month - 1].' '.$year;
+                $timetoadd = $arg.' '.$unit.' of '.self::MONTHS[$month - 1].' '.$year;
                 $strtotime = strtotime($timetoadd, $next);
 
                 if (false === $strtotime) {
@@ -820,7 +823,7 @@ class IcsImport extends AbstractImport
                 }
 
                 // check if we reached the configured max value
-                if (++$i === $this->maxRepeatCount) {
+                if (++$i === $this->getMaxRepeatCount()) {
                     return $next;
                 }
             }

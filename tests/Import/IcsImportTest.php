@@ -47,7 +47,6 @@ final class IcsImportTest extends ContaoTestCase
         $reflection = new \ReflectionClass(IcsImport::class);
         $this->import = $reflection->newInstanceWithoutConstructor();
         $reflection->getProperty('maxRepeatCount')->setValue($this->import, 365);
-        $reflection->getProperty('arrMonths')->setValue($this->import, ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']);
     }
 
     protected function tearDown(): void
@@ -253,6 +252,19 @@ final class IcsImportTest extends ContaoTestCase
         $event = $this->event(['startDate' => strtotime('2024-05-01'), 'repeatEnd' => strtotime('2024-06-01')]);
 
         $this->assertSame(0, $this->call('calculateRecurrenceCount', $event));
+    }
+
+    public function testMaxRepeatCountIsReadLazilyFromTheContainer(): void
+    {
+        $import = (new \ReflectionClass(IcsImport::class))->newInstanceWithoutConstructor();
+        $method = new \ReflectionMethod(IcsImport::class, 'getMaxRepeatCount');
+
+        $this->assertSame(365, $method->invoke($import), 'default without calendar-extended-bundle');
+
+        $this->bootContao(['cgoit_calendar_extended.max_repeat_count' => '50']);
+        $import = (new \ReflectionClass(IcsImport::class))->newInstanceWithoutConstructor();
+
+        $this->assertSame(50, $method->invoke($import));
     }
 
     public function testDateValueIsReadAsMidnightInTheCalendarTimezone(): void
