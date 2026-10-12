@@ -4,65 +4,68 @@
 [![Installations via composer total](http://img.shields.io/packagist/dt/cgoit/contao-calendar-ical-bundle.svg?style=flat)](https://packagist.org/packages/cgoit/contao-calendar-ical-bundle)
 
 Contao 5 Calendar iCal Bundle
-=======================
+=============================
 
-iCal support for calendar of Contao OpenSource CMS. Forked from https://github.com/Craffft/contao-calendar-ical-bundle. PHP-8 ready.
+iCal-Unterstützung für den Kalender von Contao Open Source CMS. Fork von https://github.com/Craffft/contao-calendar-ical-bundle. PHP-8-ready.
 
 Installation
 ------------
 
-Open a command console, enter your project directory and execute the
-following command to download the latest stable version of this bundle:
+Öffnen Sie eine Konsole, wechseln Sie in Ihr Projektverzeichnis und führen Sie den folgenden Befehl aus, um die
+neueste stabile Version des Bundles zu installieren:
 
 ```bash
 $ composer require cgoit/contao-calendar-ical-bundle
 ```
 
-This command requires you to have Composer installed globally, as explained
-in the [installation chapter](https://getcomposer.org/doc/00-intro.md)
-of the Composer documentation.
+Dafür muss Composer global installiert sein, wie im
+[Installationskapitel](https://getcomposer.org/doc/00-intro.md) der Composer-Dokumentation beschrieben.
 
-Contao 5 support
-----------------
+Unterstützte Contao-Versionen
+-----------------------------
 
-Starting with version 5 of this bundle Contao 5 is supported. Contao 4.13 is no longer supported; use an older release of this bundle for Contao 4.
+Das Bundle unterstützt Contao 5 (ab 5.3) und Symfony 6.4 bzw. 7.3 oder neuer. Contao 4.13 und Symfony 5.4 werden nicht
+mehr unterstützt; für Contao 4 verwenden Sie bitte eine ältere Version des Bundles.
 
-Export single events as ics
----------------------------
+Einzelne Termine als ICS exportieren
+------------------------------------
 
-To export a single event as ics (e.g. to give a user the ability to import it into his own calendar) you can add a link to the url
-`/_event/ics-export/{id}` where `id` is the id of the event you want to export. You can also use the route name `event_frontend_ics_export`
-in combination with the parameter `id` for that.
+Um einen einzelnen Termin als ICS zu exportieren (z. B. damit Besucher ihn in den eigenen Kalender importieren können),
+können Sie einen Link auf die URL `/_event/ics-export/{id}` setzen, wobei `id` die ID des Termins ist. Alternativ
+können Sie den Routennamen `event_frontend_ics_export` mit dem Parameter `id` verwenden.
 
-For example you can add the following snippet to your `event_full.html5` template.
+Zum Beispiel können Sie das folgende Snippet in Ihr Template `event_full.html5` einfügen:
 
 ```html
-<a href="<?= $this->route('event_frontend_ics_export', ['id' => $this->id]) ?>" class="ics-export" rel="nofollow" title="Export event as ics">
+<a href="<?= $this->route('event_frontend_ics_export', ['id' => $this->id]) ?>" class="ics-export" rel="nofollow" title="Termin als ICS exportieren">
     <img src="/bundles/cgoitcontaocalendarical/ics.svg" width="32" height="32" alt="">
 </a>
 ```
 
-Export eventlist as ics
----------------------------
+Eventliste als ICS exportieren
+------------------------------
 
-To export an eventlist (module) as ics (e.g. to give a user the ability to import it into his own calendar) you can add a link to the url
-`/_eventlist/ics-export/{id}` where `id` is the id of the eventlist module you want to export. You can also use the route name `eventlist_frontend_ics_export`
-in combination with the parameter `id` for that.
+Um eine Eventliste (Modul) als ICS zu exportieren (z. B. damit Besucher sie in den eigenen Kalender importieren
+können), können Sie einen Link auf die URL `/_eventlist/ics-export/{id}` setzen, wobei `id` die ID des
+Eventlisten-Moduls ist. Alternativ können Sie den Routennamen `eventlist_frontend_ics_export` mit dem Parameter `id`
+verwenden.
 
-For example you can add the following snippet to your `mod_eventlist.html5` template.
+Zum Beispiel können Sie das folgende Snippet in Ihr Template `mod_eventlist.html5` einfügen:
 
 ```html
-<a href="<?= $this->route('eventlist_frontend_ics_export', ['id' => $this->id]) ?>" class="ics-export" rel="nofollow" title="Export as ics">
+<a href="<?= $this->route('eventlist_frontend_ics_export', ['id' => $this->id]) ?>" class="ics-export" rel="nofollow" title="Als ICS exportieren">
   <img src="/bundles/cgoitcontaocalendarical/ics.svg" width="32" height="32" alt="">
 </a>
 ```
 
-Important
----------
+Wichtig
+-------
 
-If you have overwritten the default difference between start and end date in your `localconfig.php` via setting a value for `$GLOBALS['calendar_ical']['endDateTimeDifferenceInDays']` you have to put this value now into your `config.yml`.
+Wenn Sie den Standardwert für die Differenz zwischen Start- und Enddatum in Ihrer `localconfig.php` über
+`$GLOBALS['calendar_ical']['endDateTimeDifferenceInDays']` überschrieben haben, müssen Sie diesen Wert jetzt in Ihre
+`config.yml` übernehmen:
 
-```
+```yaml
 cgoit_contao_calendar_ical:
     end_date_time_difference_in_days: 365
 ```
