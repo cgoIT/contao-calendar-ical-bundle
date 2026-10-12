@@ -25,16 +25,15 @@ use Symfony\Component\HttpFoundation\Response;
 #[AsPage(type: IcsFeedController::TYPE, contentComposition: false, urlSuffix: IcsFeedController::URL_SUFFIX)]
 class IcsFeedController extends AbstractController
 {
-    final public const TYPE = 'ics_feed';
+    final public const string TYPE = 'ics_feed';
 
-    private const URL_SUFFIX = '.ics';
+    private const string URL_SUFFIX = '.ics';
 
-    private const MIME_TYPE = 'text/calendar';
+    private const string MIME_TYPE = 'text/calendar';
 
     public function __construct(
         private readonly IcsExport $icsExport,
         private readonly ExportAccessChecker $accessChecker,
-        private readonly int $defaultEndTimeDifference,
     ) {
     }
 
@@ -42,9 +41,7 @@ class IcsFeedController extends AbstractController
     {
         $this->initializeContaoFramework();
 
-        $startDate = !empty($pageModel->ical_start) ? (int) $pageModel->ical_start : time();
-        $endDate = !empty($pageModel->ical_end) ? (int) $pageModel->ical_end :
-            time() + $this->defaultEndTimeDifference * 24 * 3600;
+        [$startDate, $endDate] = $this->icsExport->getTimeRange($pageModel);
 
         $arrAllCalendars = CalendarModel::findMultipleByIds(StringUtil::deserialize($pageModel->ical_calendar, true));
         $arrCalendars = $this->accessChecker->filterCalendars($arrAllCalendars);

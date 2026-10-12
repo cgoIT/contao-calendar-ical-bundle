@@ -18,6 +18,7 @@ use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
 use Contao\CoreBundle\InsertTag\InsertTagParser;
 use Contao\Model\Registry;
+use Contao\PageModel;
 use Kigkonsult\Icalcreator\Vevent;
 
 final class IcsExportTest extends ContaoTestCase
@@ -38,6 +39,24 @@ final class IcsExportTest extends ContaoTestCase
 
         $this->export = new IcsExport($parser);
         $this->createCalendar(1, ['title' => 'Club calendar']);
+    }
+
+    public function testTimeRangeUsesConfiguredBoundaries(): void
+    {
+        $source = new PageModel();
+        $source->ical_start = (string) $this->ts('2024-05-01 00:00');
+        $source->ical_end = (string) $this->ts('2024-06-01 00:00');
+
+        $this->assertSame([$this->ts('2024-05-01 00:00'), $this->ts('2024-06-01 00:00')], $this->export->getTimeRange($source));
+    }
+
+    public function testTimeRangeFallsBackToDefaultDifference(): void
+    {
+        $before = time();
+        [$start, $end] = $this->export->getTimeRange(new PageModel());
+
+        $this->assertGreaterThanOrEqual($before, $start);
+        $this->assertEqualsWithDelta($start + 365 * 24 * 3600, $end, 5);
     }
 
     public function testAllDayEventIsExportedAsDate(): void

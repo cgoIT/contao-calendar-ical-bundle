@@ -24,10 +24,8 @@ use Symfony\Component\Filesystem\Filesystem;
 
 class ExportController extends Backend
 {
-    public function __construct(
-        private readonly IcsExport $icsExport,
-        private readonly int $defaultEndTimeDifference,
-    ) {
+    public function __construct(private readonly IcsExport $icsExport)
+    {
     }
 
     /**
@@ -142,9 +140,7 @@ class ExportController extends Backend
      */
     private function generateFile(CalendarModel $objCalendar): bool|string
     {
-        $startdate = !empty($objCalendar->ical_start) ? (int) $objCalendar->ical_start : time();
-        $enddate = !empty($objCalendar->ical_end) ? (int) $objCalendar->ical_end :
-            (time() + $this->defaultEndTimeDifference * 24 * 3600);
+        [$startdate, $enddate] = $this->icsExport->getTimeRange($objCalendar);
         $filename = $this->getSubscriptionFileName($objCalendar);
         if (
             null !== $ical = $this->icsExport->getVcalendar([$objCalendar], $startdate, $enddate)

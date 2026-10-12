@@ -16,6 +16,7 @@ use Cgoit\ContaoCalendarIcalBundle\Backend\ExportController;
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
 use Cgoit\ContaoCalendarIcalBundle\Tests\ContaoTestCase;
 use Contao\CalendarModel;
+use Contao\CoreBundle\InsertTag\InsertTagParser;
 use Psr\Log\NullLogger;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -94,18 +95,17 @@ final class ExportControllerTest extends ContaoTestCase
      */
     private function controller(array $calendars = []): ExportController
     {
-        $icsExport = (new \ReflectionClass(IcsExport::class))->newInstanceWithoutConstructor();
+        $icsExport = new IcsExport($this->createStub(InsertTagParser::class));
 
-        return new class($icsExport, 365, $calendars) extends ExportController {
+        return new class($icsExport, $calendars) extends ExportController {
             /**
              * @param array<CalendarModel> $calendars
              */
             public function __construct(
                 IcsExport $icsExport,
-                int $days,
                 private readonly array $calendars,
             ) {
-                parent::__construct($icsExport, $days);
+                parent::__construct($icsExport);
             }
 
             protected function findAllCalendars(): iterable

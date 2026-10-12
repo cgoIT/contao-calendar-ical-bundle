@@ -17,6 +17,7 @@ use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
 use Contao\Config;
 use Contao\CoreBundle\InsertTag\InsertTagParser;
+use Contao\Model;
 use Contao\Model\Collection;
 use Contao\StringUtil;
 use Kigkonsult\Icalcreator\IcalInterface;
@@ -35,8 +36,10 @@ class IcsExport extends Backend
      */
     private readonly array $posMap;
 
-    public function __construct(private readonly InsertTagParser $insertTagParser)
-    {
+    public function __construct(
+        private readonly InsertTagParser $insertTagParser,
+        private readonly int $defaultEndTimeDifference = 365,
+    ) {
         $this->dayMap = [
             'monday' => Vcalendar::MO,
             'tuesday' => Vcalendar::TU,
@@ -55,6 +58,20 @@ class IcsExport extends Backend
             'fifth' => 5,
             'last' => -1,
         ];
+    }
+
+    /**
+     * Returns the export time range of a calendar, page or content element: the configured
+     * start (default: now) and end (default: start of the range plus the configured difference in days).
+     *
+     * @return array{0: int, 1: int}
+     */
+    public function getTimeRange(Model $source): array
+    {
+        $start = !empty($source->ical_start) ? (int) $source->ical_start : time();
+        $end = !empty($source->ical_end) ? (int) $source->ical_end : time() + $this->defaultEndTimeDifference * 24 * 3600;
+
+        return [$start, $end];
     }
 
     /**
