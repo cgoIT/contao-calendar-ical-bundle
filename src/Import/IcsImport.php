@@ -130,6 +130,11 @@ class IcsImport extends AbstractImport
     {
         static::loadDataContainer('tl_calendar_events');
 
+        // Without a time zone in the ics file (or if none was selected) the time zone of the system applies
+        if (!\is_array($tz) || empty($tz[1])) {
+            $tz = [Config::get('timeZone'), Config::get('timeZone')];
+        }
+
         $schemaManager = $this->db->createSchemaManager();
         $fields = $schemaManager->listTableColumns('tl_calendar_events');
 
@@ -330,7 +335,8 @@ class IcsImport extends AbstractImport
                         };
 
                         $objEvent->repeatEachExt = serialize($repeatEachExt);
-                        $repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEachExt, $timezone, $timeshift, true);
+                        $repeatEndEach = $repeatEachExt;
+                        $repeatEndExtended = true;
                     } else {
                         $objEvent->recurring = true;
                         if (\in_array('recurringExt', $fieldNames, true)) {
@@ -371,25 +377,11 @@ class IcsImport extends AbstractImport
                             $repeatEach['value'] = $rrule['INTERVAL'] ?? 1;
                         }
                         $objEvent->repeatEach = serialize($repeatEach);
-                        $repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEach, $timezone, $timeshift);
+                        $repeatEndEach = $repeatEach;
+                        $repeatEndExtended = false;
                     }
 
-                    if (false === $repeatEnd) {
-                        $objEvent->repeatEnd = 0;
-                        $objEvent->recurring = false;
-                        $objEvent->recurringExt = false;
-                        $objEvent->recurrences = 0;
-                    } else {
-                        $objEvent->repeatEnd = $repeatEnd;
-
-                        $recurrences = 0;
-                        if (\array_key_exists('COUNT', $rrule)) {
-                            $recurrences = ((int) $rrule['COUNT']) - 1;
-                        } elseif (\array_key_exists('UNTIL', $rrule)) {
-                            $recurrences = $this->calculateRecurrenceCount($objEvent);
-                        }
-                        $objEvent->recurrences = $recurrences;
-                    }
+                    $this->applyRecurrenceEnd($objEvent, $rrule, $repeatEndEach, $timezone, $timeshift, $repeatEndExtended);
                 }
                 $this->handleRecurringExceptions($objEvent, $fieldNames, $vevent, $timezone, $timeshift);
 
@@ -432,6 +424,14 @@ class IcsImport extends AbstractImport
         if ($pc->hasParamKey(IcalInterface::TZID)) {
             $timezone = $pc->getParams(IcalInterface::TZID);
             $date = $pc->getValue();
+        } elseif ($pc->hasParamValue(IcalInterface::DATE) || $pc->hasParamKey(IcalInterface::ISLOCALTIME)) {
+            // Date values and floating times carry no time zone; iCalcreator returns them as UTC.
+            // They have to be read as wall-clock time of the calendar.
+            $timezone = $tz;
+            $date = new \DateTime(
+                $pc->getValue()->format(DateTimeFactory::$YmdHis),
+                DateTimeZoneFactory::factory($tz),
+            );
         } else {
             if ($pc->getValue()->getTimezone()) {
                 $timezone = $pc->getValue()->getTimezone()->getName();
@@ -678,6 +678,38 @@ class IcsImport extends AbstractImport
     }
 
     /**
+     * Sets "recurrences" and "repeatEnd" of the event from COUNT/UNTIL of the rule. The number of
+     * recurrences has to be known before the end is calculated.
+     *
+     * @param array<mixed> $rrule
+     * @param array<mixed> $repeatEach
+     *
+     * @throws \Exception
+     */
+    protected function applyRecurrenceEnd(CalendarEventsModel $objEvent, array $rrule, array $repeatEach, string $timezone, int $timeshift, bool $blnExtended): void
+    {
+        // 0 means "unlimited", an UNTIL date is converted into a count below
+        $objEvent->recurrences = \array_key_exists('COUNT', $rrule) ? ((int) $rrule['COUNT']) - 1 : 0;
+
+        $repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEach, $timezone, $timeshift, $blnExtended);
+
+        if (false === $repeatEnd) {
+            $objEvent->repeatEnd = 0;
+            $objEvent->recurring = false;
+            $objEvent->recurringExt = false;
+            $objEvent->recurrences = 0;
+
+            return;
+        }
+
+        $objEvent->repeatEnd = $repeatEnd;
+
+        if (!\array_key_exists('COUNT', $rrule) && \array_key_exists('UNTIL', $rrule)) {
+            $objEvent->recurrences = $this->calculateRecurrenceCount($objEvent);
+        }
+    }
+
+    /**
      * @param array<mixed> $rrule
      * @param array<mixed> $repeatEach
      *
@@ -740,7 +772,7 @@ class IcsImport extends AbstractImport
             $i = 0;
 
             while ($next <= $repeatEnd) {
-                $timetoadd = $arg.' '.$unit.' of '.$GLOBALS['TL_LANG']['MONTHS'][$month - 1].' '.$year;
+                $timetoadd = $arg.' '.$unit.' of '.$this->arrMonths[$month - 1].' '.$year;
                 $strtotime = strtotime($timetoadd, $next);
 
                 if (false === $strtotime) {

@@ -47,6 +47,7 @@ final class IcsImportTest extends ContaoTestCase
         $reflection = new \ReflectionClass(IcsImport::class);
         $this->import = $reflection->newInstanceWithoutConstructor();
         $reflection->getProperty('maxRepeatCount')->setValue($this->import, 365);
+        $reflection->getProperty('arrMonths')->setValue($this->import, ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']);
     }
 
     protected function tearDown(): void
@@ -203,6 +204,111 @@ final class IcsImportTest extends ContaoTestCase
         $event = $this->event(['startDate' => strtotime('2024-05-01'), 'repeatEnd' => strtotime('2024-06-01')]);
 
         $this->assertSame(0, $this->call('calculateRecurrenceCount', $event));
+    }
+
+    public function testDateValueIsReadAsMidnightInTheCalendarTimezone(): void
+    {
+        foreach (['UTC', 'Europe/Berlin', 'America/New_York'] as $phpTimezone) {
+            date_default_timezone_set($phpTimezone);
+
+            [$date, $timezone] = $this->import->getDateFromPc($this->dtstart('DTSTART;VALUE=DATE:20240501'), 'America/New_York');
+
+            $this->assertSame('America/New_York', $timezone);
+            $this->assertSame('2024-05-01 00:00', $date->format('Y-m-d H:i'));
+            $this->assertSame((new \DateTime('2024-05-01 00:00', new \DateTimeZone('America/New_York')))->getTimestamp(), $date->getTimestamp());
+        }
+    }
+
+    public function testFloatingTimeIsReadInTheCalendarTimezone(): void
+    {
+        [$date, $timezone] = $this->import->getDateFromPc($this->dtstart('DTSTART:20240501T100000'), 'Europe/Berlin');
+
+        $this->assertSame('Europe/Berlin', $timezone);
+        $this->assertSame((new \DateTime('2024-05-01 10:00', new \DateTimeZone('Europe/Berlin')))->getTimestamp(), $date->getTimestamp());
+    }
+
+    public function testUtcTimeStaysUtc(): void
+    {
+        [$date] = $this->import->getDateFromPc($this->dtstart('DTSTART:20240501T100000Z'), 'America/New_York');
+
+        $this->assertSame((new \DateTime('2024-05-01 10:00', new \DateTimeZone('UTC')))->getTimestamp(), $date->getTimestamp());
+    }
+
+    public function testRecurrenceCountIsKnownBeforeTheRepeatEndIsCalculated(): void
+    {
+        // A new event has no "recurrences" yet; COUNT=4 means 3 additional occurrences
+        $event = $this->event([
+            'startDate' => strtotime('2024-05-01'),
+            'startTime' => strtotime('2024-05-01'),
+            'endTime' => strtotime('2024-05-01 23:59:59'),
+            'recurring' => true,
+        ]);
+
+        $this->call('applyRecurrenceEnd', $event, ['FREQ' => 'WEEKLY', 'COUNT' => 4], ['unit' => 'weeks', 'value' => 1], 'Europe/Berlin', 0, false);
+
+        $this->assertSame(3, $event->recurrences);
+        $this->assertSame(strtotime('+ 3 weeks', strtotime('2024-05-01 23:59:59')), $event->repeatEnd);
+    }
+
+    public function testRecurrenceWithoutCountAndUntilIsUnlimited(): void
+    {
+        $event = $this->event(['startDate' => strtotime('2024-05-01'), 'endTime' => strtotime('2024-05-01 23:59:59'), 'recurring' => true]);
+
+        $this->call('applyRecurrenceEnd', $event, ['FREQ' => 'WEEKLY'], ['unit' => 'weeks', 'value' => 1], 'Europe/Berlin', 0, false);
+
+        $this->assertSame(0, $event->recurrences);
+        $this->assertSame(4_294_967_295, $event->repeatEnd);
+    }
+
+    public function testRecurrenceWithUntilStoresTheEndAndTheCount(): void
+    {
+        $event = $this->event([
+            'startDate' => strtotime('2024-05-01'),
+            'startTime' => strtotime('2024-05-01 18:00'),
+            'endTime' => strtotime('2024-05-01 19:00'),
+            'recurring' => true,
+            'repeatEach' => serialize(['unit' => 'weeks', 'value' => 1]),
+        ]);
+
+        $this->call('applyRecurrenceEnd', $event, ['FREQ' => 'WEEKLY', 'UNTIL' => new \DateTime('2024-05-29 18:00', new \DateTimeZone('UTC'))], ['unit' => 'weeks', 'value' => 1], 'Europe/Berlin', 0, false);
+
+        $this->assertSame((new \DateTime('2024-05-29 18:00', new \DateTimeZone('Europe/Berlin')))->getTimestamp(), $event->repeatEnd);
+        $this->assertGreaterThan(0, $event->recurrences);
+    }
+
+    public function testRecurrenceEndingBeforeTheStartIsNotRecurring(): void
+    {
+        $event = $this->event(['startDate' => strtotime('2024-05-01'), 'endTime' => strtotime('2024-05-01 23:59:59'), 'recurring' => true]);
+
+        $this->call('applyRecurrenceEnd', $event, ['FREQ' => 'WEEKLY', 'UNTIL' => new \DateTime('2024-04-01', new \DateTimeZone('UTC'))], ['unit' => 'weeks', 'value' => 1], 'Europe/Berlin', 0, false);
+
+        $this->assertFalse($event->recurring);
+        $this->assertSame(0, $event->repeatEnd);
+    }
+
+    public function testRepeatEndOfWeekdayRulesDoesNotDependOnTheBackendLanguage(): void
+    {
+        $GLOBALS['TL_LANG']['MONTHS'] = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+
+        $event = $this->event([
+            'startDate' => strtotime('2024-05-02'),
+            'startTime' => strtotime('2024-05-02 18:00'),
+            'endTime' => strtotime('2024-05-02 19:00'),
+            'recurrences' => -1,
+        ]);
+
+        $repeatEnd = $this->call('getRepeatEnd', $event, ['FREQ' => 'MONTHLY'], ['unit' => 'thursday', 'value' => 'first'], 'Europe/Berlin', 0, true);
+
+        $this->assertGreaterThan(strtotime('2024-05-02'), $repeatEnd);
+    }
+
+    private function dtstart(string $line): Pc
+    {
+        $ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:x\r\nBEGIN:VEVENT\r\nUID:1\r\nDTSTAMP:20240101T000000Z\r\n".$line."\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        $calendar = new Vcalendar();
+        $calendar->parse($ics);
+
+        return $calendar->getComponent(IcalInterface::VEVENT)->getDtstart(true);
     }
 
     public function testAllDayEndIsTheEndOfTheLastDay(): void

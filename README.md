@@ -112,6 +112,10 @@ Titel, Ort, Beschreibung, Teilnehmer und Kontakte aus ICS- und CSV-Dateien werde
 (HTML wird als Text angezeigt, Insert-Tags werden entfernt). Das gilt für den Web-Import wie für den Import im Backend.
 Bereits importierte Termine werden beim nächsten Import entsprechend aktualisiert.
 
+Datumswerte ohne Uhrzeit (ganztägige Termine) und Zeiten ohne Zeitzone („floating time“) werden in der Zeitzone des
+Kalenders gelesen (Web-Quelle: Einstellung „Zeitzone“; sonst Zeitzone der ICS-Datei bzw. des Systems). Zeiten in UTC oder
+mit `TZID` behalten ihre Zeitzone.
+
 Der reguläre Ausdruck für die Titel-Umschreibung wird beim Speichern des Kalenders geprüft und benötigt Trennzeichen,
 z. B. `/^\[Verein\] /`. Das Feld „Benutzername:Passwort“ für den Proxy wird verdeckt angezeigt und ist nicht
 durchsuchbar. Hochgeladene Dateien für den Backend-Import werden nach dem Import aus `system/tmp` gelöscht.

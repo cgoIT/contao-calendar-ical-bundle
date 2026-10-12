@@ -40,7 +40,7 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
 {
     use WidgetTrait;
 
-    private string $filterEventTitle;
+    private string $filterEventTitle = '';
 
     public function __construct(
         private readonly RequestStack $requestStack,
@@ -144,7 +144,7 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
                     $startDate = new Date($objTemplate->startDate->value, Config::get('dateFormat'));
                     $endDate = new Date($objTemplate->endDate->value, Config::get('dateFormat'));
                     $deleteCalendar = (bool) $objTemplate->deleteCalendar->value;
-                    $this->filterEventTitle = $objTemplate->filterEventTitle->value;
+                    $this->filterEventTitle = (string) $objTemplate->filterEventTitle->value;
                     $timeshift = (int) $objTemplate->timeshift->value;
                     $file = new File($arrFiles[0]);
                     if ('ics' === $file->extension) {
@@ -175,7 +175,7 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
             $endDate = new Date(Input::post('endDate'), Config::get('dateFormat')); // @phpstan-ignore-line
             $filename = (string) Input::post('icssource', true);
             $deleteCalendar = (bool) Input::post('deleteCalendar');
-            $this->filterEventTitle = Input::post('filterEventTitle');
+            $this->filterEventTitle = (string) Input::post('filterEventTitle');
             $timeshift = (int) Input::post('timeshift');
 
             if (!empty(Input::post('timezone'))) {
