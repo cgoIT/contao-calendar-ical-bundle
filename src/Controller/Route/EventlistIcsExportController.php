@@ -110,9 +110,11 @@ class EventlistIcsExportController extends Events
 
         $exception = $this->responseUtil->sendFileForDownload($iCal, $filename);
 
+        // The result depends on the visitor (access protection of the element, the article, the page and the calendars)
+        $exception->getResponse()->setPrivate();
+
         $calendars = CalendarModel::findMultipleByIds(StringUtil::deserialize($objEventlist->cal_calendar, true));
         if ($objEventlist->protected || $this->accessChecker->hasProtectedCalendar($calendars)) {
-            $exception->getResponse()->setPrivate();
             $exception->getResponse()->headers->addCacheControlDirective('no-store');
         }
 

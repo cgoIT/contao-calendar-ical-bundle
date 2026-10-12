@@ -272,7 +272,7 @@ final class IcsExportTest extends ContaoTestCase
         $this->assertStringContainsString('CONTACT:Mr. Contact', $ics);
     }
 
-    public function testParticipantWithoutEmailAddressIsExportedWithCommonName(): void
+    public function testParticipantWithoutEmailAddressIsSkipped(): void
     {
         // iCalcreator only accepts e-mail addresses as ATTENDEE; a name must not abort the export
         $event = $this->createEvent(['cep_participants' => 'Max Mustermann, jane@example.com, broken@']);
