@@ -95,10 +95,34 @@ Termine dieser Kalender; er wird zudem nie in einem gemeinsamen Cache abgelegt.
 Die Option „iCal Abonnement erstellen“ schreibt eine **öffentliche** Datei nach `share/`. Sie steht daher für
 geschützte Kalender nicht zur Verfügung; verwenden Sie stattdessen eine Seite vom Typ `ics_feed`.
 
+Kalender im Backend importieren (ICS und CSV)
+---------------------------------------------
+
+In der Terminliste eines Kalenders öffnet die Schaltfläche „Kalender importieren“ (Menü „…“ in neueren Contao-Versionen)
+den Import. Er steht Benutzern zur Verfügung, die das Modul „Events“ nutzen und den Kalender bearbeiten dürfen.
+
+1. **Datei und Einstellungen:** Wählen Sie eine ICS- oder CSV-Datei, den Zeitraum (Startdatum, optional Enddatum), eine
+   manuelle Zeitverschiebung in Stunden, ob die bestehenden Termine des Kalenders vorher entfernt werden sollen und
+   optional einen **Termin-Titel-Filter**: Nur Termine, deren Titel diese Zeichenkette enthält (ohne Beachtung der
+   Groß-/Kleinschreibung), werden importiert.
+2. **ICS – Zeitzone:** Unterscheidet sich die Zeitzone der Datei von der Zeitzone des Systems, oder enthält die Datei keine,
+   fragt der Import nach: Sie können die Zeitzone der Datei durch die des Systems ersetzen („Zeitzone korrigieren“)
+   bzw. eine Zeitzone für die Termine wählen.
+3. **CSV – Spalten zuordnen:** Jede Spalte der Datei wird einem Feld des Termins zugeordnet (Titel, Start/Ende, Beschreibung,
+   Ort, ...). Spalten, deren Name einem Feld entspricht, sind vorbelegt. Zeichencodierung, Datums- und Zeitformat sind
+   einstellbar; „Überprüfen“ liest die Vorschau mit den geänderten Einstellungen neu ein.
+
+Die hochgeladene Datei bleibt nur bis zum Ende des Imports (oder einer Stunde) liegen. „Abbrechen“ verwirft sie sofort.
+Werden bei „Bestehende Termine entfernen“ keine Termine gelesen (leere oder unlesbare Datei, keine Spalte zugeordnet),
+bleibt der Kalender unverändert.
+
 Kalender aus einer Web-Quelle importieren
 -----------------------------------------
 
 Ein Kalender kann seine Termine regelmäßig aus einer ICS-URL übernehmen („Web-Quelle“).
+
+Mit „Termin-Titel filtern“ (`ical_filter_event_title`) werden nur Termine importiert, deren Titel die Zeichenkette enthält;
+„Termin-Titel Pattern“ und „Replacement“ schreiben den Titel mit einem regulären Ausdruck um (siehe unten).
 
 Ab Version 6.0 werden Web-Quellen **nicht mehr beim Seitenaufruf**, sondern nur noch im Hintergrund aktualisiert: Der
 Contao-Cron (stündlich) importiert jeden Kalender, dessen Cache-Dauer („Cache-Dauer in Sekunden“, Standard 86400)
@@ -171,6 +195,13 @@ weiterhin, sind aber deprecated. Bitte stellen Sie auf `ModifyExportEventsEvent`
 
 Wichtig
 -------
+
+**Update auf Version 6.0 (Breaking Changes beim Import im Backend):** Der Import im Backend ist eine neue Seite
+(`/contao/calendar-ical/import/{id}`) mit anderem Ablauf. Die Templates `be_import_calendar.html5`,
+`be_import_calendar_confirmation.html5` und `be_import_calendar_csv_headers.html5` sowie der Backend-Modul-Schlüssel
+`import` (`?do=calendar&key=import`) entfallen; haben Sie die Templates überschrieben, werden sie nicht mehr verwendet.
+Die globale Operation in `tl_calendar_events` heißt jetzt `import` (vorher `export`). Das Bundle benötigt PHP 8.3 und
+läuft mit Contao 5.3 und neueren Versionen.
 
 Wenn Sie den Standardwert für die Differenz zwischen Start- und Enddatum in Ihrer `localconfig.php` über
 `$GLOBALS['calendar_ical']['endDateTimeDifferenceInDays']` überschrieben haben, müssen Sie diesen Wert jetzt in Ihre
