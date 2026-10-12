@@ -196,7 +196,46 @@ final class IcsImportTest extends ContaoTestCase
 
     public function testExtendedRecurrenceCountForFirstThursdayOfMonth(): void
     {
-        $this->markTestSkipped('Unclear behavior: for a first-Thursday event starting 2024-05-02 with repeatEnd 2024-08-31 the count is 5, i.e. the first Thursday of September 2024 (after repeatEnd) is counted. To be clarified and fixed (see TODO.md); then expect 4 (or 3 without the original).');
+        // First Thursday: 2024-05-02 (the event), 06-06, 07-04, 08-01 are within the range, 09-05 is after the end
+        $event = $this->extendedEvent('2024-05-02', '2024-08-31');
+
+        $this->assertSame(3, $this->call('calculateRecurrenceCount', $event));
+    }
+
+    public function testExtendedRecurrenceCountIncludesTheLastDay(): void
+    {
+        $event = $this->extendedEvent('2024-05-02', '2024-08-01');
+
+        $this->assertSame(3, $this->call('calculateRecurrenceCount', $event));
+    }
+
+    public function testExtendedRecurrenceCountWithoutRecurrenceInRange(): void
+    {
+        $event = $this->extendedEvent('2024-05-02', '2024-06-05');
+
+        $this->assertSame(0, $this->call('calculateRecurrenceCount', $event));
+    }
+
+    public function testExtendedRecurrenceCountCountsDateLaterInTheStartMonth(): void
+    {
+        // The event starts on a Wednesday, the first Thursday of the month follows two days later
+        $event = $this->extendedEvent('2024-05-01', '2024-06-30');
+
+        $this->assertSame(2, $this->call('calculateRecurrenceCount', $event));
+    }
+
+    private function extendedEvent(string $start, string $repeatEnd): CalendarEventsModel
+    {
+        return $this->event([
+            'addTime' => '1',
+            'recurringExt' => '1',
+            'repeatEachExt' => serialize(['unit' => 'thursday', 'value' => 'first']),
+            'startDate' => strtotime($start),
+            'startTime' => strtotime($start.' 18:00'),
+            'endDate' => strtotime($start),
+            'endTime' => strtotime($start.' 19:00'),
+            'repeatEnd' => strtotime($repeatEnd.' 23:59:59'),
+        ]);
     }
 
     public function testRecurrenceCountIsZeroForNonRecurringEvent(): void

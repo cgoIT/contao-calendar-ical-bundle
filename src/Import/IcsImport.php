@@ -631,46 +631,56 @@ class IcsImport extends AbstractImport
         return $repeatCount;
     }
 
+    /**
+     * Counts the recurrences after the first event up to (and including) the repeat end.
+     */
     private function calculateRecurrenceCountExtended(CalendarEventsModel $objEvent): int
     {
-        $englishMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         $repeatCount = 0;
         $arrRange = StringUtil::deserialize($objEvent->repeatEachExt, true);
 
-        if (!empty($arrRange) && !empty($arrRange['value']) && !empty($arrRange['unit'])) {
-            $arg = $arrRange['value'];
-            $unit = $arrRange['unit'];
+        if (empty($arrRange) || empty($arrRange['value']) || empty($arrRange['unit'])) {
+            return 0;
+        }
 
-            // next month of the event
-            $month = (int) date('n', $objEvent->startDate);
-            // year of the event
-            $year = (int) date('Y', $objEvent->startDate);
-            // search date for the next event
-            $next = strtotime(date('Y-m-d', $objEvent->startDate).' '.($objEvent->addTime ? date('H:i', $objEvent->startTime) : '00:00'));
-            $nextEnd = strtotime(date('Y-m-d', $objEvent->endDate).' '.($objEvent->addTime ? date('H:i', $objEvent->endTime) : '23:59'));
+        $arg = $arrRange['value'];
+        $unit = $arrRange['unit'];
+        $time = $objEvent->addTime ? date('H:i', $objEvent->startTime) : '00:00';
 
-            $end = $objEvent->repeatEnd;
+        $month = (int) date('n', $objEvent->startDate);
+        $year = (int) date('Y', $objEvent->startDate);
+        $start = (int) strtotime(date('Y-m-d', $objEvent->startDate).' '.$time);
+        $end = $objEvent->repeatEnd;
 
-            while ($next <= $end) {
-                $timetoadd = $arg.' '.$unit.' of '.$englishMonthNames[$month - 1].' '.$year;
-                $strtotime = strtotime($timetoadd, $next);
+        // The year limit protects against endless loops
+        while ($year <= 2200) {
+            $strtotime = strtotime($arg.' '.$unit.' of '.$this->arrMonths[$month - 1].' '.$year, $start);
 
-                if (false === $strtotime) {
-                    break;
-                }
+            if (false === $strtotime) {
+                break;
+            }
 
-                $next = strtotime(date('Y-m-d', $strtotime).' '.date('H:i', $objEvent->startTime));
+            if (++$month > 12) {
+                $month = 1;
+                ++$year;
+            }
 
-                $strtotime = strtotime($timetoadd, $nextEnd);
-                $nextEnd = strtotime(date('Y-m-d', $strtotime).' '.date('H:i', $objEvent->endTime));
-                ++$repeatCount;
+            $next = (int) strtotime(date('Y-m-d', $strtotime).' '.$time);
 
-                ++$month;
+            // the first event itself (or a date before it) is no recurrence
+            if ($next <= $start) {
+                continue;
+            }
 
-                if (0 === $month % 13) {
-                    $month = 1;
-                    ++$year;
-                }
+            if ($next > $end) {
+                break;
+            }
+
+            ++$repeatCount;
+
+            // check if we reached the configured max value
+            if ($repeatCount === $this->maxRepeatCount) {
+                break;
             }
         }
 
