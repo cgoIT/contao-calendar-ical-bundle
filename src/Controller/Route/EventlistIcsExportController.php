@@ -56,28 +56,55 @@ class EventlistIcsExportController
         return $this->exportEventlist($request, (int) $id);
     }
 
+    protected function findFallbackPage(Request $request): PageModel|null
+    {
+        return PageModel::findPublishedFallbackByHostname($request->getHost(), ['fallbackToEmpty' => true]);
+    }
+
+    protected function loadLanguageFiles(): void
+    {
+        System::loadLanguageFile('default');
+        System::loadLanguageFile('tl_calendar');
+        System::loadLanguageFile('tl_calendar_events');
+    }
+
+    /**
+     * The id could be of a module or a content element.
+     */
+    protected function findEventlist(int $id): ContentModel|ModuleModel|null
+    {
+        $element = ModuleModel::findById($id);
+
+        if (null === $element || !$this->isEventlist($element)) {
+            $element = ContentModel::findById($id);
+        }
+
+        if (null !== $element && $this->isEventlist($element)) {
+            return $element;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<CalendarModel>
+     */
+    protected function findCalendars(ContentModel|ModuleModel $objEventlist): array
+    {
+        return CalendarModel::findMultipleByIds(StringUtil::deserialize($objEventlist->cal_calendar, true))?->getModels() ?? [];
+    }
+
     /**
      * @throws \Exception
      */
     private function exportEventlist(Request $request, int $eventlistId): Response
     {
         $this->contaoFramework->initialize();
-        System::loadLanguageFile('default');
-        System::loadLanguageFile('tl_calendar');
-        System::loadLanguageFile('tl_calendar_events');
+        $this->loadLanguageFiles();
 
-        // The id could be of a module or a content element. Only eventlists the current visitor
-        // is allowed to see can be exported.
-        $objEventlist = ModuleModel::findById($eventlistId);
-        if (null === $objEventlist || !$this->isEventlist($objEventlist)) {
-            $objEventlist = ContentModel::findById($eventlistId);
-
-            if (null === $objEventlist || !$this->isEventlist($objEventlist)) {
-                throw new NotFoundHttpException('Eventlist not found');
-            }
-        }
-
-        if (!$this->accessChecker->isElementVisible($objEventlist)) {
+        // Only eventlists the current visitor is allowed to see can be exported
+        $objEventlist = $this->findEventlist($eventlistId);
+        if (null === $objEventlist || !$this->accessChecker->isElementVisible($objEventlist)) {
             throw new NotFoundHttpException('Eventlist not found');
         }
 
@@ -94,8 +121,7 @@ class EventlistIcsExportController
         // The result depends on the visitor (access protection of the element, the article, the page and the calendars)
         $response->setPrivate();
 
-        $calendars = CalendarModel::findMultipleByIds(StringUtil::deserialize($objEventlist->cal_calendar, true));
-        if ($objEventlist->protected || $this->accessChecker->hasProtectedCalendar($calendars)) {
+        if ($objEventlist->protected || $this->accessChecker->hasProtectedCalendar($this->findCalendars($objEventlist))) {
             $response->headers->addCacheControlDirective('no-store');
         }
 
@@ -114,7 +140,7 @@ class EventlistIcsExportController
     {
         $calendarIds = array_map(
             static fn (CalendarModel $calendar): int => (int) $calendar->id,
-            $this->accessChecker->filterCalendars(CalendarModel::findMultipleByIds(StringUtil::deserialize($objEventlist->cal_calendar, true))),
+            $this->accessChecker->filterCalendars($this->findCalendars($objEventlist)),
         );
 
         if ([] === $calendarIds) {
@@ -199,10 +225,11 @@ class EventlistIcsExportController
      */
     private function withPageContext(Request $request, callable $callback): mixed
     {
+        $hadGlobalPage = \array_key_exists('objPage', $GLOBALS);
         $originalGlobalPage = $GLOBALS['objPage'] ?? null;
         $originalRequestPage = $request->attributes->get('pageModel');
 
-        $page = $originalGlobalPage ?: PageModel::findPublishedFallbackByHostname($request->getHost(), ['fallbackToEmpty' => true]);
+        $page = $originalGlobalPage ?: $this->findFallbackPage($request);
 
         $GLOBALS['objPage'] = $page;
 
@@ -213,8 +240,17 @@ class EventlistIcsExportController
         try {
             return $callback();
         } finally {
-            $GLOBALS['objPage'] = $originalGlobalPage;
-            $request->attributes->set('pageModel', $originalRequestPage);
+            if ($hadGlobalPage) {
+                $GLOBALS['objPage'] = $originalGlobalPage;
+            } else {
+                unset($GLOBALS['objPage']);
+            }
+
+            if (null === $originalRequestPage) {
+                $request->attributes->remove('pageModel');
+            } else {
+                $request->attributes->set('pageModel', $originalRequestPage);
+            }
         }
     }
 

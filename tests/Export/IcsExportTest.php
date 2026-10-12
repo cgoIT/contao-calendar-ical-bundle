@@ -448,6 +448,18 @@ final class IcsExportTest extends ContaoTestCase
         $this->assertStringContainsString('SUMMARY:Changed by Original', $this->exportEvent($event));
     }
 
+    #[IgnoreDeprecations]
+    public function testGetAllEventsHookReturningNothingKeepsTheEvents(): void
+    {
+        $GLOBALS['TL_HOOKS']['icalGetAllEvents'] = [[VeventHook::class, 'nothing']];
+        $keep = $this->createEvent(['title' => 'Keep']);
+
+        $method = new \ReflectionMethod($this->export, 'modifyEvents');
+        $result = $method->invoke($this->export, [$keep], CalendarModel::findById(1), [CalendarModel::findById(1)], 0, 1);
+
+        $this->assertSame([$keep], $result);
+    }
+
     public function testModifyExportEventsEventCanRemoveEvents(): void
     {
         $this->dispatcher->addListener(
@@ -561,6 +573,10 @@ final class IcsExportTest extends ContaoTestCase
 
 class VeventHook
 {
+    public function nothing(): void
+    {
+    }
+
     public function modify(Vevent $vevent): Vevent
     {
         return $vevent->setSummary('Changed by hook');

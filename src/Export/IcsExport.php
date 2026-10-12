@@ -496,7 +496,11 @@ class IcsExport
 
             foreach ($GLOBALS['TL_HOOKS']['icalGetAllEvents'] as $callback) {
                 $result = System::importStatic($callback[0])->{$callback[1]}($events, $calendars, $start, $end, $this);
-                $events = $result instanceof Collection ? $result->getModels() : (array) $result;
+                if ($result instanceof Collection) {
+                    $events = $result->getModels();
+                } elseif (\is_array($result)) {
+                    $events = $result;
+                }
             }
         }
 
