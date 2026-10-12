@@ -20,7 +20,7 @@ $GLOBALS['TL_LANG']['tl_calendar_events']['importStartDate']['1'] = 'Please ente
 $GLOBALS['TL_LANG']['tl_calendar_events']['importStartDate']['1'] = 'Please enter the start date for the calendar import. All events occurring before the start date will be omitted.';
 
 $GLOBALS['TL_LANG']['tl_calendar_events']['importEndDate']['0'] = 'End date';
-$GLOBALS['TL_LANG']['tl_calendar_events']['importEndDate']['1'] = 'Please enter the end date for the calendar import. All events occurring after the end date will be omitted.';
+$GLOBALS['TL_LANG']['tl_calendar_events']['importEndDate']['1'] = 'Please enter the end date for the calendar import. All events occurring after the end date will be omitted. Without a date the 31st of December of the year after next applies.';
 
 $GLOBALS['TL_LANG']['tl_calendar_events']['encoding']['0'] = 'Encoding';
 $GLOBALS['TL_LANG']['tl_calendar_events']['encoding']['1'] = 'Please select the text encoding of your import data.';

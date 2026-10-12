@@ -118,10 +118,10 @@ final class DC_IcalImportTest extends ContaoTestCase
         $this->assertStringContainsString('&lt;script&gt;', (string) $label);
     }
 
-    public function testCalculatesTheDefaultDatesOfTheCurrentYear(): void
+    public function testTheDefaultPeriodRunsFromThisYearToTheEndOfTheYearAfterNext(): void
     {
         $this->assertSame(date('Y').'-01-01', $this->driver->getDefaultDate(true));
-        $this->assertSame(date('Y').'-12-31', $this->driver->getDefaultDate(false));
+        $this->assertSame((date('Y') + 2).'-12-31', $this->driver->getDefaultDate(false));
     }
 
     private function setStep(string $step): void

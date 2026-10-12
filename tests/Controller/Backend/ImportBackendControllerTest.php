@@ -365,17 +365,39 @@ final class ImportBackendControllerTest extends ContaoTestCase
             ->with('system/tmp/events.csv')
         ;
 
+        $captured = new \stdClass();
+        $captured->end = null;
+
         $this->csvImport
             ->expects($this->once())
             ->method('import')
-            ->with('system/tmp/events.csv', 3, [[0, 'title'], [1, 'startDate']], 'utf8', 'd.m.Y', 'H:i', $this->isInstanceOf(Date::class), null, false, 0, '')
-            ->willReturn([4])
+            ->with(
+                'system/tmp/events.csv',
+                3,
+                [[0, 'title'], [1, 'startDate']],
+                'utf8',
+                'd.m.Y',
+                'H:i',
+                $this->isInstanceOf(Date::class),
+                $this->isInstanceOf(Date::class),
+                false,
+                0,
+                '',
+            )
+            ->willReturnCallback(
+                static function (string $file, int $calendarId, array $mapping, string $encoding, string $dateFormat, string $timeFormat, Date $start, Date|null $end) use ($captured): array {
+                    $captured->end = $end;
+
+                    return [4];
+                },
+            )
         ;
 
         $response = $this->call($this->request(['import' => '1']));
 
         $this->assertSame('/back', $response->getTargetUrl());
         $this->assertFalse($this->session->has(self::SESSION_KEY));
+        $this->assertSame('2028-12-31', $captured->end?->date, 'An empty end date is replaced by the default one');
     }
 
     public function testDropsAStateIfTheUploadedFileIsGone(): void
@@ -612,7 +634,7 @@ final class ImportBackendControllerTest extends ContaoTestCase
 
         $this->dataContainer
             ->method('getDefaultDate')
-            ->willReturn('2026-12-31')
+            ->willReturn('2028-12-31')
         ;
     }
 

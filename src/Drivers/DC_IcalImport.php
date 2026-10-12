@@ -187,9 +187,13 @@ class DC_IcalImport extends DataContainer
         return $this->getUploader()->uploadTo($folder);
     }
 
-    public function getDefaultDate(bool $startOfYear): string
+    /**
+     * The default period of an import: from the first day of the current year to the last day of the year after next.
+     * The end is also used if the end date is left empty, so the number of imported recurrences is limited.
+     */
+    public function getDefaultDate(bool $start): string
     {
-        $time = $startOfYear ? mktime(0, 0, 0, 1, 1, (int) date('Y')) : mktime(0, 0, 0, 12, 31, (int) date('Y'));
+        $time = $start ? mktime(0, 0, 0, 1, 1, (int) date('Y')) : mktime(0, 0, 0, 12, 31, (int) date('Y') + 2);
 
         return date((string) Config::get('dateFormat'), (int) $time);
     }

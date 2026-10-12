@@ -101,7 +101,8 @@ Kalender im Backend importieren (ICS und CSV)
 In der Terminliste eines Kalenders öffnet die Schaltfläche „Kalender importieren“ (Menü „…“ in neueren Contao-Versionen)
 den Import. Er steht Benutzern zur Verfügung, die das Modul „Events“ nutzen und den Kalender bearbeiten dürfen.
 
-1. **Datei und Einstellungen:** Wählen Sie eine ICS- oder CSV-Datei, den Zeitraum (Startdatum, optional Enddatum), eine
+1. **Datei und Einstellungen:** Wählen Sie eine ICS- oder CSV-Datei, den Zeitraum (Startdatum und Enddatum; ohne Enddatum
+   gilt der 31.12. des übernächsten Jahres, bei ICS und CSV gleichermaßen), eine
    manuelle Zeitverschiebung in Stunden, ob die bestehenden Termine des Kalenders vorher entfernt werden sollen und
    optional einen **Termin-Titel-Filter**: Nur Termine, deren Titel diese Zeichenkette enthält (ohne Beachtung der
    Groß-/Kleinschreibung), werden importiert.

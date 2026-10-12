@@ -20,7 +20,7 @@ $GLOBALS['TL_LANG']['tl_calendar_events']['importStartDate']['0'] = 'Startdatum'
 $GLOBALS['TL_LANG']['tl_calendar_events']['importStartDate']['1'] = 'Geben Sie das Startdatum für den Kalenderimport an. Alle Termine, die vor diesem Datum auftreten, werden nicht berücksichtigt.';
 
 $GLOBALS['TL_LANG']['tl_calendar_events']['importEndDate']['0'] = 'Enddatum';
-$GLOBALS['TL_LANG']['tl_calendar_events']['importEndDate']['1'] = 'Geben Sie das Enddatum für den Kalenderimport an. Alle Termine, die nach diesem Datum auftreten, werden nicht berücksichtigt.';
+$GLOBALS['TL_LANG']['tl_calendar_events']['importEndDate']['1'] = 'Geben Sie das Enddatum für den Kalenderimport an. Alle Termine, die nach diesem Datum auftreten, werden nicht berücksichtigt. Ohne Angabe gilt der 31.12. des übernächsten Jahres.';
 
 $GLOBALS['TL_LANG']['tl_calendar_events']['encoding']['0'] = 'Zeichencodierung';
 $GLOBALS['TL_LANG']['tl_calendar_events']['encoding']['1'] = 'Bitte geben Sie die Zeichencodierung Ihrer zu importierenden Daten an.';

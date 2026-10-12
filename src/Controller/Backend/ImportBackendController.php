@@ -311,7 +311,7 @@ class ImportBackendController extends AbstractBackendController
                 (string) $values['dateFormat'],
                 (string) $values['timeFormat'],
                 new Date($state['startDate'], $dateFormat),
-                '' !== $state['endDate'] ? new Date($state['endDate'], $dateFormat) : null,
+                new Date('' !== $state['endDate'] ? $state['endDate'] : $this->dataContainer->getDefaultDate(false), $dateFormat),
                 $state['deleteCalendar'],
                 $state['timeshift'],
                 $state['filterEventTitle'],
