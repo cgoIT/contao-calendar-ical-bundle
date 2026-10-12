@@ -418,6 +418,16 @@ final class IcsExportTest extends ContaoTestCase
         $this->assertStringContainsString('SUMMARY:Second', $ics);
     }
 
+    public function testExportEventsExportsEveryEventOnlyOnce(): void
+    {
+        $event = $this->createEvent(['id' => 10, 'title' => 'Weekly']);
+
+        // Every occurrence of an event is an entry of the list, as arrays (events generator) or models
+        $ics = $this->export->exportEvents([['id' => 10], $event, ['id' => 10]])->createCalendar();
+
+        $this->assertSame(1, substr_count($ics, 'BEGIN:VEVENT'));
+    }
+
     public function testExportEventsWithoutEventsContainsNoVevent(): void
     {
         $ics = $this->export->exportEvents([])->createCalendar();

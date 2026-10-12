@@ -120,6 +120,8 @@ class IcsExport
      */
     public function exportEvents(array $arrEvents): Vcalendar
     {
+        $exported = [];
+
         $ical = new Vcalendar();
         $ical->setMethod(IcalInterface::PUBLISH);
         $ical->setXprop(IcalInterface::X_WR_TIMEZONE, Config::get('timeZone'));
@@ -130,7 +132,11 @@ class IcsExport
                 $objEvent = CalendarEventsModel::findById($arrEvent['id']);
             }
 
-            if (!empty($objEvent)) {
+            // The events of a list contain an entry for every occurrence (recurrences, events of several days)
+            // but the Vevent already carries the recurrence rule, so every event is exported only once
+            if (!empty($objEvent) && !isset($exported[$objEvent->id])) {
+                $exported[$objEvent->id] = true;
+
                 foreach ($this->getVevents($objEvent) as $vevent) {
                     $ical->setComponent($vevent);
                 }
