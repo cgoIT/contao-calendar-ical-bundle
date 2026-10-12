@@ -153,6 +153,22 @@ Der reguläre Ausdruck für die Titel-Umschreibung wird beim Speichern des Kalen
 z. B. `/^\[Verein\] /`. Das Feld „Benutzername:Passwort“ für den Proxy wird verdeckt angezeigt und ist nicht
 durchsuchbar. Hochgeladene Dateien für den Backend-Import werden nach dem Import aus `system/tmp` gelöscht.
 
+Erweiterungspunkte
+------------------
+
+Das Bundle stellt Symfony-Events bereit (Namespace `Cgoit\ContaoCalendarIcalBundle\Event`), die Sie mit einem
+`#[AsEventListener]` abonnieren können:
+
+| Event | Zeitpunkt |
+|---|---|
+| `BeforeImportItemEvent` | Vor dem Import eines Termins; mit `$event->skip = true` wird der Termin übersprungen, der Termin (`calendarEventModel`) kann angepasst werden. |
+| `AfterImportItemEvent` | Nach dem Import eines Termins. |
+| `ModifyExportEventsEvent` | Vor dem Export der Termine eines Kalenders; `$event->events` kann gefiltert oder ergänzt werden. |
+| `ModifyVeventEvent` | Für jeden exportierten Termin; `$event->vevent` kann angepasst oder ersetzt werden. |
+
+Die Hooks `$GLOBALS['TL_HOOKS']['icalGetAllEvents']` und `$GLOBALS['TL_HOOKS']['icalModifyVevent']` funktionieren
+weiterhin, sind aber deprecated. Bitte stellen Sie auf `ModifyExportEventsEvent` bzw. `ModifyVeventEvent` um.
+
 Wichtig
 -------
 

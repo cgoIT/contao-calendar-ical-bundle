@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Tests\Export;
 
+use Cgoit\ContaoCalendarIcalBundle\Event\ModifyExportEventsEvent;
+use Cgoit\ContaoCalendarIcalBundle\Event\ModifyVeventEvent;
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
 use Cgoit\ContaoCalendarIcalBundle\Tests\ContaoTestCase;
 use Contao\CalendarEventsModel;
@@ -20,10 +22,14 @@ use Contao\CoreBundle\InsertTag\InsertTagParser;
 use Contao\Model\Registry;
 use Contao\PageModel;
 use Kigkonsult\Icalcreator\Vevent;
+use PHPUnit\Framework\Attributes\IgnoreDeprecations;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class IcsExportTest extends ContaoTestCase
 {
     private IcsExport $export;
+
+    private EventDispatcher $dispatcher;
 
     protected function setUp(): void
     {
@@ -37,7 +43,8 @@ final class IcsExportTest extends ContaoTestCase
             ->willReturnArgument(0)
         ;
 
-        $this->export = new IcsExport($parser);
+        $this->dispatcher = new EventDispatcher();
+        $this->export = new IcsExport($parser, $this->dispatcher);
         $this->createCalendar(1, ['title' => 'Club calendar']);
     }
 
@@ -419,12 +426,44 @@ final class IcsExportTest extends ContaoTestCase
         $this->assertStringContainsString('METHOD:PUBLISH', $ics);
     }
 
+    #[IgnoreDeprecations]
     public function testModifyVeventHookCanChangeTheEvent(): void
     {
         $GLOBALS['TL_HOOKS']['icalModifyVevent'] = [[VeventHook::class, 'modify']];
         $event = $this->createEvent(['title' => 'Original']);
 
         $this->assertStringContainsString('SUMMARY:Changed by hook', $this->exportEvent($event));
+    }
+
+    public function testModifyVeventEventCanChangeTheEvent(): void
+    {
+        $this->dispatcher->addListener(
+            ModifyVeventEvent::class,
+            static function (ModifyVeventEvent $event): void {
+                $event->vevent->setSummary('Changed by '.$event->calendarEventModel->title);
+            },
+        );
+        $event = $this->createEvent(['title' => 'Original']);
+
+        $this->assertStringContainsString('SUMMARY:Changed by Original', $this->exportEvent($event));
+    }
+
+    public function testModifyExportEventsEventCanRemoveEvents(): void
+    {
+        $this->dispatcher->addListener(
+            ModifyExportEventsEvent::class,
+            static function (ModifyExportEventsEvent $event): void {
+                $event->events = array_values(array_filter($event->events, static fn (CalendarEventsModel $model): bool => 'Keep' === $model->title));
+            },
+        );
+        $keep = $this->createEvent(['id' => 10, 'title' => 'Keep']);
+        $drop = $this->createEvent(['id' => 11, 'title' => 'Drop']);
+
+        $events = [$keep, $drop];
+        $method = new \ReflectionMethod($this->export, 'modifyEvents');
+        $result = $method->invoke($this->export, $events, CalendarModel::findById(1), [CalendarModel::findById(1)], 0, 1);
+
+        $this->assertSame([$keep], $result);
     }
 
     /**

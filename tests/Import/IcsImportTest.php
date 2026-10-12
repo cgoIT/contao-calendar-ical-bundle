@@ -24,6 +24,7 @@ use Kigkonsult\Icalcreator\Pc;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Kigkonsult\Icalcreator\Vevent;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * Covers the parts of the importer that do not need a database. The importer's constructor
@@ -463,7 +464,7 @@ final class IcsImportTest extends ContaoTestCase
             'endTime' => $endTime,
         ]);
 
-        $ics = (new IcsExport($parser))->exportEvent($event)->createCalendar();
+        $ics = (new IcsExport($parser, new EventDispatcher()))->exportEvent($event)->createCalendar();
 
         $this->assertStringContainsString('DTSTART;VALUE=DATE:20240501', $ics);
         $this->assertStringContainsString('DTEND;VALUE=DATE:20240504', $ics);

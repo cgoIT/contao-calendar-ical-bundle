@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Export;
 
+use Cgoit\ContaoCalendarIcalBundle\Event\ModifyExportEventsEvent;
+use Cgoit\ContaoCalendarIcalBundle\Event\ModifyVeventEvent;
 use Contao\Backend;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
@@ -23,6 +25,7 @@ use Contao\StringUtil;
 use Kigkonsult\Icalcreator\IcalInterface;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Kigkonsult\Icalcreator\Vevent;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class IcsExport extends Backend
 {
@@ -38,6 +41,7 @@ class IcsExport extends Backend
 
     public function __construct(
         private readonly InsertTagParser $insertTagParser,
+        private readonly EventDispatcherInterface $eventDispatcher,
         private readonly int $defaultEndTimeDifference = 365,
     ) {
         $this->dayMap = [
@@ -97,16 +101,9 @@ class IcsExport extends Backend
                 $arrEvents = CalendarEventsModel::findCurrentByPid($objCalendar->id, $intStart, $intEnd);
 
                 if (null !== $arrEvents) {
-                    // HOOK: modify the result set
-                    if (isset($GLOBALS['TL_HOOKS']['icalGetAllEvents']) && \is_array($GLOBALS['TL_HOOKS']['icalGetAllEvents'])) {
-                        foreach ($GLOBALS['TL_HOOKS']['icalGetAllEvents'] as $callback) {
-                            $this->import($callback[0]);
-                            $arrEvents = $this->{$callback[0]}->{$callback[1]}($arrEvents->getModels(), $arrCalendars, $intStart, $intEnd, $this);
-                        }
-                    }
+                    $events = $this->modifyEvents($arrEvents->getModels(), $objCalendar, $arrCalendars, $intStart, $intEnd);
 
-                    /** @var CalendarEventsModel $objEvent */
-                    foreach ($arrEvents as $objEvent) {
+                    foreach ($events as $objEvent) {
                         foreach ($this->getVevents($objEvent, $prefix) as $vevent) {
                             $ical->setComponent($vevent);
                         }
@@ -475,12 +472,36 @@ class IcsExport extends Backend
 
         // HOOK: modify the $vevent
         if (isset($GLOBALS['TL_HOOKS']['icalModifyVevent']) && \is_array($GLOBALS['TL_HOOKS']['icalModifyVevent'])) {
+            trigger_deprecation('cgoit/contao-calendar-ical-bundle', '6.0', 'Using the "icalModifyVevent" hook is deprecated, use an event listener for "%s" instead.', ModifyVeventEvent::class);
+
             foreach ($GLOBALS['TL_HOOKS']['icalModifyVevent'] as $callback) {
                 $this->import($callback[0]);
                 $vevent = $this->{$callback[0]}->{$callback[1]}($vevent, $objEvent, $objCalendar, $this);
             }
         }
 
-        return $vevent;
+        return $this->eventDispatcher->dispatch(new ModifyVeventEvent($vevent, $objEvent, $objCalendar))->vevent;
+    }
+
+    /**
+     * @param array<CalendarEventsModel> $events
+     * @param array<CalendarModel>       $calendars
+     *
+     * @return array<CalendarEventsModel>
+     */
+    private function modifyEvents(array $events, CalendarModel $objCalendar, array $calendars, int $start, int $end): array
+    {
+        // HOOK: modify the result set
+        if (isset($GLOBALS['TL_HOOKS']['icalGetAllEvents']) && \is_array($GLOBALS['TL_HOOKS']['icalGetAllEvents'])) {
+            trigger_deprecation('cgoit/contao-calendar-ical-bundle', '6.0', 'Using the "icalGetAllEvents" hook is deprecated, use an event listener for "%s" instead.', ModifyExportEventsEvent::class);
+
+            foreach ($GLOBALS['TL_HOOKS']['icalGetAllEvents'] as $callback) {
+                $this->import($callback[0]);
+                $result = $this->{$callback[0]}->{$callback[1]}($events, $calendars, $start, $end, $this);
+                $events = $result instanceof Collection ? $result->getModels() : (array) $result;
+            }
+        }
+
+        return $this->eventDispatcher->dispatch(new ModifyExportEventsEvent($events, $objCalendar, $calendars, $start, $end))->events;
     }
 }

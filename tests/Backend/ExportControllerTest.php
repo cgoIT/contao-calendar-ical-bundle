@@ -18,6 +18,7 @@ use Cgoit\ContaoCalendarIcalBundle\Tests\ContaoTestCase;
 use Contao\CalendarModel;
 use Contao\CoreBundle\InsertTag\InsertTagParser;
 use Psr\Log\NullLogger;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Filesystem\Filesystem;
 
 final class ExportControllerTest extends ContaoTestCase
@@ -95,7 +96,7 @@ final class ExportControllerTest extends ContaoTestCase
      */
     private function controller(array $calendars = []): ExportController
     {
-        $icsExport = new IcsExport($this->createStub(InsertTagParser::class));
+        $icsExport = new IcsExport($this->createStub(InsertTagParser::class), new EventDispatcher());
 
         return new class($icsExport, $calendars) extends ExportController {
             /**
