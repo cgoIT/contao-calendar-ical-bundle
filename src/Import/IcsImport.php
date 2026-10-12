@@ -381,7 +381,10 @@ class IcsImport extends AbstractImport
                         $repeatEndExtended = false;
                     }
 
-                    $this->applyRecurrenceEnd($objEvent, $rrule, $repeatEndEach, $timezone, $timeshift, $repeatEndExtended);
+                    // UNTIL is a UTC time, except for date values and floating times where it is a local time, too
+                    $untilIsLocal = !empty($dtstart) && $this->isWithoutTimezone($dtstart);
+
+                    $this->applyRecurrenceEnd($objEvent, $rrule, $repeatEndEach, $timezone, $timeshift, $repeatEndExtended, $untilIsLocal);
                 }
                 $this->handleRecurringExceptions($objEvent, $fieldNames, $vevent, $timezone, $timeshift);
 
@@ -424,7 +427,7 @@ class IcsImport extends AbstractImport
         if ($pc->hasParamKey(IcalInterface::TZID)) {
             $timezone = $pc->getParams(IcalInterface::TZID);
             $date = $pc->getValue();
-        } elseif ($pc->hasParamValue(IcalInterface::DATE) || $pc->hasParamKey(IcalInterface::ISLOCALTIME)) {
+        } elseif ($this->isWithoutTimezone($pc)) {
             // Date values and floating times carry no time zone; iCalcreator returns them as UTC.
             // They have to be read as wall-clock time of the calendar.
             $timezone = $tz;
@@ -449,6 +452,14 @@ class IcsImport extends AbstractImport
         }
 
         return [$date, $timezone];
+    }
+
+    /**
+     * Date values and floating times carry no time zone; iCalcreator returns them as UTC.
+     */
+    public function isWithoutTimezone(Pc $pc): bool
+    {
+        return $pc->hasParamValue(IcalInterface::DATE) || $pc->hasParamKey(IcalInterface::ISLOCALTIME);
     }
 
     /**
@@ -595,8 +606,8 @@ class IcsImport extends AbstractImport
                 break;
             }
 
-            // check if we are at the end
-            if ($next >= $end) {
+            // the recurrence on the last day (UNTIL is inclusive) is counted
+            if ($next > $end) {
                 break;
             }
 
@@ -696,12 +707,22 @@ class IcsImport extends AbstractImport
      *
      * @throws \Exception
      */
-    protected function applyRecurrenceEnd(CalendarEventsModel $objEvent, array $rrule, array $repeatEach, string $timezone, int $timeshift, bool $blnExtended): void
+    protected function applyRecurrenceEnd(CalendarEventsModel $objEvent, array $rrule, array $repeatEach, string $timezone, int $timeshift, bool $blnExtended, bool $untilIsLocal = false): void
     {
+        // A series with a single occurrence is no recurring event; 0 recurrences would mean "unlimited"
+        if (\array_key_exists('COUNT', $rrule) && (int) $rrule['COUNT'] <= 1) {
+            $objEvent->repeatEnd = 0;
+            $objEvent->recurring = false;
+            $objEvent->recurringExt = false;
+            $objEvent->recurrences = 0;
+
+            return;
+        }
+
         // 0 means "unlimited", an UNTIL date is converted into a count below
         $objEvent->recurrences = \array_key_exists('COUNT', $rrule) ? ((int) $rrule['COUNT']) - 1 : 0;
 
-        $repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEach, $timezone, $timeshift, $blnExtended);
+        $repeatEnd = $this->getRepeatEnd($objEvent, $rrule, $repeatEach, $timezone, $timeshift, $blnExtended, $untilIsLocal);
 
         if (false === $repeatEnd) {
             $objEvent->repeatEnd = 0;
@@ -725,9 +746,9 @@ class IcsImport extends AbstractImport
      *
      * @throws \Exception
      */
-    private function getRepeatEnd(CalendarEventsModel $objEvent, array $rrule, array $repeatEach, string $timezone, int $timeshift = 0, bool $blnExtended = false): bool|int
+    private function getRepeatEnd(CalendarEventsModel $objEvent, array $rrule, array $repeatEach, string $timezone, int $timeshift = 0, bool $blnExtended = false, bool $untilIsLocal = false): bool|int
     {
-        $repeatEnd = $this->getRecurringUntilDate($rrule, $timezone, $timeshift, $objEvent->startDate);
+        $repeatEnd = $this->getRecurringUntilDate($rrule, $timezone, $timeshift, $objEvent->startDate, $untilIsLocal);
         if (false === $repeatEnd) {
             return false;
         }
@@ -865,14 +886,19 @@ class IcsImport extends AbstractImport
      *
      * @throws \DateMalformedStringException
      */
-    private function getRecurringUntilDate(array $rrule, string $timezone, int $timeshift, int $eventStartTime): bool|int|null
+    /**
+     * Returns the time stamp of the UNTIL value. It is an exact point in time (UTC) unless the event starts with a
+     * date or a floating time; then the value is a local time and is read in the given time zone.
+     */
+    private function getRecurringUntilDate(array $rrule, string $timezone, int $timeshift, int $eventStartTime, bool $untilIsLocal = false): bool|int|null
     {
         if (($until = $rrule[IcalInterface::UNTIL] ?? null) instanceof \DateTime) {
-            // convert UNTIL date to current timezone
-            $until = new \DateTime(
-                $until->format(DateTimeFactory::$YmdHis),
-                DateTimeZoneFactory::factory($timezone),
-            );
+            if ($untilIsLocal) {
+                $until = new \DateTime(
+                    $until->format(DateTimeFactory::$YmdHis),
+                    DateTimeZoneFactory::factory($timezone),
+                );
+            }
 
             $timestamp = $until->getTimestamp();
             if (0 !== $timeshift) {
