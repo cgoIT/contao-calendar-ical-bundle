@@ -5,27 +5,13 @@ services:
         public: false
         bind:
             $projectDir: '%kernel.project_dir%'
-            $requestStack: '@request_stack'
-            $db: '@database_connection'
-            $slug: '@contao.slug'
-            $contaoFramework: '@contao.framework'
-            $insertTagParser: '@contao.insert_tag.parser'
             $csrfTokenManager: '@contao.csrf.token_manager'
             $csrfTokenName: '%contao.csrf_token_name%'
             $defaultEndTimeDifference: '%calendar_ical.end_date_time_difference_in_days%'
-            $calendarExport: '@Cgoit\ContaoCalendarIcalBundle\Backend\ExportController'
-            $icsExport: '@Cgoit\ContaoCalendarIcalBundle\Export\IcsExport'
-            $timezoneUtil: '@Cgoit\ContaoCalendarIcalBundle\Util\TimezoneUtil'
-            $responseUtil: '@Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil'
-
-    _instanceof:
-        Cgoit\ContaoCalendarIcalBundle\Util\TimezoneUtilAwareInterface:
-            calls:
-                - [ 'setTimezoneUtil', [ '@Cgoit\ContaoCalendarIcalBundle\Util\TimezoneUtil' ] ]
-
 
     Cgoit\ContaoCalendarIcalBundle\:
         resource: ../src/*
+        exclude: '../src/{ContaoManager,DependencyInjection,Event,Widgets}'
 
     Cgoit\ContaoCalendarIcalBundle\Backend\ImportFileController:
         public: true

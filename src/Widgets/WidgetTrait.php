@@ -30,11 +30,6 @@ trait WidgetTrait
 
     private TimezoneUtil $timezoneUtil;
 
-    public function setTimezoneUtil(TimezoneUtil $timezoneUtil): void
-    {
-        $this->timezoneUtil = $timezoneUtil;
-    }
-
     /**
      * Return the delete calendar widget as object.
      */

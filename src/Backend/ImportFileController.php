@@ -14,7 +14,7 @@ namespace Cgoit\ContaoCalendarIcalBundle\Backend;
 
 use Cgoit\ContaoCalendarIcalBundle\Import\CsvImport;
 use Cgoit\ContaoCalendarIcalBundle\Import\IcsImport;
-use Cgoit\ContaoCalendarIcalBundle\Util\TimezoneUtilAwareInterface;
+use Cgoit\ContaoCalendarIcalBundle\Util\TimezoneUtil;
 use Cgoit\ContaoCalendarIcalBundle\Util\UploadedIcsFileResolver;
 use Cgoit\ContaoCalendarIcalBundle\Widgets\WidgetTrait;
 use Contao\Backend;
@@ -36,7 +36,7 @@ use Kigkonsult\Icalcreator\Vcalendar;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
-class ImportFileController extends Backend implements TimezoneUtilAwareInterface
+class ImportFileController extends Backend
 {
     use WidgetTrait;
 
@@ -50,8 +50,11 @@ class ImportFileController extends Backend implements TimezoneUtilAwareInterface
         private readonly CsvImport $csvImport,
         private readonly string $projectDir,
         private readonly UploadedIcsFileResolver $uploadedIcsFileResolver,
+        TimezoneUtil $timezoneUtil,
     ) {
         parent::__construct();
+
+        $this->timezoneUtil = $timezoneUtil;
     }
 
     public function importCalendar(DataContainer $dc): string

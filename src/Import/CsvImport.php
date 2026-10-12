@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Import;
 
 use Cgoit\ContaoCalendarIcalBundle\Import\Csv\CsvParser;
+use Cgoit\ContaoCalendarIcalBundle\Util\TimezoneUtil;
 use Cgoit\ContaoCalendarIcalBundle\Widgets\WidgetTrait;
 use Contao\BackendTemplate;
 use Contao\BackendUser;
@@ -39,8 +40,11 @@ class CsvImport extends AbstractImport
         private readonly string $csrfTokenName,
         private readonly string $projectDir,
         Slug $slug,
+        TimezoneUtil $timezoneUtil,
     ) {
         parent::__construct($slug);
+
+        $this->timezoneUtil = $timezoneUtil;
     }
 
     public function importFromCSVFile(bool $prepare = true): string
