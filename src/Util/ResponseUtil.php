@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 class ResponseUtil
 {
-    public function sendFileForDownload(string $fileContent, string $fileName, string $contentType = 'text/calendar', string $contentDisposition = ResponseHeaderBag::DISPOSITION_ATTACHMENT): ResponseException
+    public function createDownloadResponse(string $fileContent, string $fileName, string $contentType = 'text/calendar', string $contentDisposition = ResponseHeaderBag::DISPOSITION_ATTACHMENT): Response
     {
         $icalResponse = new Response($fileContent);
         $icalResponse->headers->set('Content-Type', $contentType);
@@ -27,7 +27,15 @@ class ResponseUtil
             HeaderUtils::makeDisposition($contentDisposition, $fileName, $this->getFilenameFallback($fileName)),
         );
 
-        return new ResponseException($icalResponse);
+        return $icalResponse;
+    }
+
+    /**
+     * For fragment controllers (e.g. content elements), whose response would otherwise be embedded in the page.
+     */
+    public function sendFileForDownload(string $fileContent, string $fileName, string $contentType = 'text/calendar', string $contentDisposition = ResponseHeaderBag::DISPOSITION_ATTACHMENT): ResponseException
+    {
+        return new ResponseException($this->createDownloadResponse($fileContent, $fileName, $contentType, $contentDisposition));
     }
 
     private function getFilenameFallback(string $filename): string

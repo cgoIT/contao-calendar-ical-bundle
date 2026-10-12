@@ -108,17 +108,17 @@ class EventlistIcsExportController extends Events
         $iCal = $this->icsExport->exportEvents($arrEvents)->createCalendar();
         $filename = StringUtil::sanitizeFileName($objEventlist->name ?? $eventlistId).'.ics';
 
-        $exception = $this->responseUtil->sendFileForDownload($iCal, $filename);
+        $response = $this->responseUtil->createDownloadResponse($iCal, $filename);
 
         // The result depends on the visitor (access protection of the element, the article, the page and the calendars)
-        $exception->getResponse()->setPrivate();
+        $response->setPrivate();
 
         $calendars = CalendarModel::findMultipleByIds(StringUtil::deserialize($objEventlist->cal_calendar, true));
         if ($objEventlist->protected || $this->accessChecker->hasProtectedCalendar($calendars)) {
-            $exception->getResponse()->headers->addCacheControlDirective('no-store');
+            $response->headers->addCacheControlDirective('no-store');
         }
 
-        throw $exception;
+        return $response;
     }
 
     private function isEventlist(ContentModel|ModuleModel $element): bool

@@ -20,8 +20,7 @@ final class ResponseUtilTest extends TestCase
 {
     public function testCreatesDownloadResponse(): void
     {
-        $exception = (new ResponseUtil())->sendFileForDownload('BEGIN:VCALENDAR', 'calendar.ics');
-        $response = $exception->getResponse();
+        $response = (new ResponseUtil())->createDownloadResponse('BEGIN:VCALENDAR', 'calendar.ics');
 
         $this->assertSame('BEGIN:VCALENDAR', $response->getContent());
         $this->assertSame('text/calendar', $response->headers->get('Content-Type'));
@@ -30,8 +29,7 @@ final class ResponseUtilTest extends TestCase
 
     public function testSupportsInlineDisposition(): void
     {
-        $exception = (new ResponseUtil())->sendFileForDownload('x', 'calendar.ics', 'text/plain', ResponseHeaderBag::DISPOSITION_INLINE);
-        $response = $exception->getResponse();
+        $response = (new ResponseUtil())->createDownloadResponse('x', 'calendar.ics', 'text/plain', ResponseHeaderBag::DISPOSITION_INLINE);
 
         $this->assertSame('text/plain', $response->headers->get('Content-Type'));
         $this->assertStringStartsWith('inline;', (string) $response->headers->get('Content-Disposition'));
@@ -39,10 +37,18 @@ final class ResponseUtilTest extends TestCase
 
     public function testUsesAsciiFallbackForUmlautsInFileName(): void
     {
-        $exception = (new ResponseUtil())->sendFileForDownload('x', 'Termine Köln.ics');
-        $disposition = (string) $exception->getResponse()->headers->get('Content-Disposition');
+        $response = (new ResponseUtil())->createDownloadResponse('x', 'Termine Köln.ics');
+        $disposition = (string) $response->headers->get('Content-Disposition');
 
         $this->assertStringContainsString('filename="Termine K_ln.ics"', $disposition);
         $this->assertStringContainsString("filename*=utf-8''Termine%20K%C3%B6ln.ics", $disposition);
+    }
+
+    public function testWrapsDownloadResponseInException(): void
+    {
+        $exception = (new ResponseUtil())->sendFileForDownload('x', 'calendar.ics');
+
+        $this->assertSame('x', $exception->getResponse()->getContent());
+        $this->assertSame('text/calendar', $exception->getResponse()->headers->get('Content-Type'));
     }
 }

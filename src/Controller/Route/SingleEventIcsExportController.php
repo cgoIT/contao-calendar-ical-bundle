@@ -73,13 +73,13 @@ class SingleEventIcsExportController extends AbstractController
         $icsEvent = $this->icsExport->exportEvent($objEvent)->createCalendar();
         $filename = StringUtil::sanitizeFileName($objEvent->title ?? $eventId).'.ics';
 
-        $exception = $this->responseUtil->sendFileForDownload($icsEvent, $filename);
+        $response = $this->responseUtil->createDownloadResponse($icsEvent, $filename);
 
         if ($objCalendar->protected) {
-            $exception->getResponse()->setPrivate();
-            $exception->getResponse()->headers->addCacheControlDirective('no-store');
+            $response->setPrivate();
+            $response->headers->addCacheControlDirective('no-store');
         }
 
-        throw $exception;
+        return $response;
     }
 }
