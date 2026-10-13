@@ -284,6 +284,8 @@ class IcsImport extends AbstractImport
             $eventsDictionary[$event->ical_uuid] = $event;
         }
 
+        $publish = $this->publishImportedEvents($objCalendar);
+
         $eventArray = $cal->selectComponents((int) date('Y', (int) $startDate->tstamp), (int) date('m', (int) $startDate->tstamp),
             (int) date('d', (int) $startDate->tstamp), (int) date('Y', (int) $endDate->tstamp), (int) date('m', (int) $endDate->tstamp),
             (int) date('d', (int) $endDate->tstamp), IcalInterface::VEVENT, true);
@@ -311,9 +313,9 @@ class IcsImport extends AbstractImport
                     continue;
                 }
 
+                $isNew = null === $objEvent->id;
                 $objEvent->tstamp = time();
                 $objEvent->pid = $objCalendar->id;
-                $objEvent->published = true;
 
                 foreach ($defaultFields as $field => $value) {
                     $varValue = $value['default'];
@@ -321,6 +323,13 @@ class IcsImport extends AbstractImport
                         $varValue = $varValue();
                     }
                     $objEvent->{$field} = $varValue;
+                }
+
+                // Events that exist already keep their state if the imported events are not published
+                if ($publish) {
+                    $objEvent->published = true;
+                } elseif ($isNew) {
+                    $objEvent->published = false;
                 }
 
                 $objEvent->author = BackendUser::getInstance()->id ?? 0;

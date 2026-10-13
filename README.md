@@ -162,6 +162,11 @@ läuft in einer Transaktion: Bei einem Fehler bleibt der Kalender unverändert, 
 Importierte Inhalte
 -------------------
 
+Ob importierte Termine sofort veröffentlicht werden, steuert die Einstellung „Importierte Termine veröffentlichen“ am
+Kalender (Legende „iCal-Einstellungen“, Standard: ja). Sie gilt für ICS-Dateien, CSV-Dateien und die Web-Quelle. Ohne die
+Einstellung werden neue Termine unveröffentlicht angelegt; bereits vorhandene Termine behalten beim erneuten Import ihren
+Zustand.
+
 Titel, Ort, Beschreibung, Teilnehmer und Kontakte aus ICS- und CSV-Dateien werden beim Import kodiert gespeichert
 (HTML wird als Text angezeigt, Insert-Tags werden entfernt). Das gilt für den Web-Import wie für den Import im Backend.
 Bereits importierte Termine werden beim nächsten Import entsprechend aktualisiert.

@@ -16,6 +16,7 @@ use Cgoit\ContaoCalendarIcalBundle\Import\Csv\CsvParser;
 use Cgoit\ContaoCalendarIcalBundle\Util\UploadedFileResolver;
 use Contao\BackendUser;
 use Contao\CalendarEventsModel;
+use Contao\CalendarModel;
 use Contao\Controller;
 use Contao\CoreBundle\Slug\Slug;
 use Contao\Date;
@@ -135,6 +136,7 @@ class CsvImport extends AbstractImport
 
             $done = false;
             $record = 1; // the header
+            $publish = $this->publishImportedEvents(CalendarModel::findById($calendarId));
 
             // Get all default values for new entries
             $defaultFields = array_filter($GLOBALS['TL_DCA']['tl_calendar_events']['fields'], static fn ($val) => isset($val['default']));
@@ -149,7 +151,6 @@ class CsvImport extends AbstractImport
                     $objEvent = new CalendarEventsModel();
                     $objEvent->tstamp = time();
                     $objEvent->pid = $calendarId;
-                    $objEvent->published = true;
 
                     foreach ($defaultFields as $field => $value) {
                         $varValue = $value['default'];
@@ -159,6 +160,7 @@ class CsvImport extends AbstractImport
                         $objEvent->{$field} = $varValue;
                     }
 
+                    $objEvent->published = $publish;
                     $objEvent->author = BackendUser::getInstance()->id ?? 0;
 
                     foreach ($mapping as [$foundindex, $value]) {

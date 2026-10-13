@@ -14,6 +14,7 @@ use Contao\CoreBundle\DataContainer\PaletteManipulator;
 use Contao\DataContainer;
 
 PaletteManipulator::create()->addLegend('ical_legend', 'comments_legend', PaletteManipulator::POSITION_AFTER)
+    ->addField('ical_publish_imported', 'ical_legend', PaletteManipulator::POSITION_APPEND)
     ->addField('make_ical', 'ical_legend', PaletteManipulator::POSITION_APPEND)
     ->addField('ical_source', 'ical_legend', PaletteManipulator::POSITION_APPEND)
     ->applyToPalette('default', 'tl_calendar')
@@ -26,6 +27,15 @@ $GLOBALS['TL_DCA']['tl_calendar']['palettes']['__selector__'] = array_merge(
 
 $GLOBALS['TL_DCA']['tl_calendar']['subpalettes']['make_ical'] = 'ical_alias,ical_prefix,ical_description,ical_start,ical_end';
 $GLOBALS['TL_DCA']['tl_calendar']['subpalettes']['ical_source'] = 'ical_url,ical_proxy,ical_bnpw,ical_port,ical_filter_event_title,ical_pattern_event_title,ical_replacement_event_title,ical_timezone,ical_cache,ical_source_start,ical_source_end';
+
+$GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_publish_imported'] = [
+    'default' => true,
+    'exclude' => true,
+    'filter' => true,
+    'inputType' => 'checkbox',
+    'eval' => ['tl_class' => 'clr w50 m12'],
+    'sql' => ['type' => 'string', 'length' => 1, 'fixed' => true, 'default' => '1'],
+];
 
 $GLOBALS['TL_DCA']['tl_calendar']['fields']['make_ical'] = [
     'exclude' => true,
