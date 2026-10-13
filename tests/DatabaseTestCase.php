@@ -13,18 +13,25 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Tests;
 
 use Ausi\SlugGenerator\SlugGenerator;
+use Cgoit\ContaoCalendarIcalBundle\Import\IcsImport;
+use Cgoit\ContaoCalendarIcalBundle\Import\RemoteIcsDownloader;
 use Contao\BackendUser;
+use Contao\CalendarModel;
 use Contao\CoreBundle\DataContainer\VirtualFieldsHandler;
 use Contao\CoreBundle\Framework\Adapter;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Security\Authentication\Token\TokenChecker;
 use Contao\CoreBundle\Slug\Slug;
 use Contao\Database;
+use Contao\Date;
 use Contao\DcaLoader;
 use Contao\System;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Kigkonsult\Icalcreator\Vcalendar;
 use Psr\Log\NullLogger;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -114,6 +121,60 @@ abstract class DatabaseTestCase extends ContaoTestCase
         DcaLoader::reset();
 
         parent::tearDown();
+    }
+
+    protected function vevent(string $uid, string ...$lines): string
+    {
+        return "BEGIN:VEVENT\r\nUID:".$uid."\r\nDTSTAMP:20240101T000000Z\r\n".implode("\r\n", $lines)."\r\nEND:VEVENT\r\n";
+    }
+
+    protected function importIcs(string $events, bool $deleteCalendar = false, string|null $filter = null, string|null $pattern = null, string|null $replacement = null): void
+    {
+        $this->runImport($this->createImport(), $events, $deleteCalendar, $filter, $pattern, $replacement);
+    }
+
+    protected function createImport(EventDispatcher|null $dispatcher = null): IcsImport
+    {
+        $pageAdapter = $this->createMock(Adapter::class);
+        $pageAdapter
+            ->method('__call')
+            ->willReturn(null)
+        ;
+
+        $framework = $this->createMock(ContaoFramework::class);
+        $framework
+            ->method('getAdapter')
+            ->willReturn($pageAdapter)
+        ;
+
+        return new IcsImport(
+            $this->db,
+            $this->createSlug(),
+            $framework,
+            365,
+            $dispatcher ?? new EventDispatcher(),
+            $this->createMock(RemoteIcsDownloader::class),
+            new NullLogger(),
+            new ParameterBag(['cgoit_contao_calendar_ical.max_repeat_count' => 365]),
+        );
+    }
+
+    protected function runImport(IcsImport $import, string $events, bool $deleteCalendar = false, string|null $filter = null, string|null $pattern = null, string|null $replacement = null): void
+    {
+        $cal = new Vcalendar();
+        $cal->parse("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:test\r\n".$events."END:VCALENDAR\r\n");
+
+        $import->importFromIcsFile(
+            $cal,
+            CalendarModel::findById(1),
+            new Date(mktime(0, 0, 0, 1, 1, 2024), 'Y-m-d'),
+            new Date(mktime(0, 0, 0, 12, 31, 2024), 'Y-m-d'),
+            ['Europe/Berlin', 'Europe/Berlin'],
+            $filter,
+            $pattern,
+            $replacement,
+            $deleteCalendar,
+        );
     }
 
     protected function createFramework(): ContaoFramework
