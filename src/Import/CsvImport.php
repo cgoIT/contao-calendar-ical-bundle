@@ -141,6 +141,9 @@ class CsvImport extends AbstractImport
             // Get all default values for new entries
             $defaultFields = array_filter($GLOBALS['TL_DCA']['tl_calendar_events']['fields'], static fn ($val) => isset($val['default']));
 
+            // The times default to the time of the import, an event only has them if the file contains them
+            unset($defaultFields['startTime'], $defaultFields['endTime']);
+
             while (!$done) {
                 $data = $parser->getDataArray();
 
@@ -226,6 +229,17 @@ class CsvImport extends AbstractImport
 
                     if ((!empty($objEvent->startTime) && $objEvent->startDate !== $objEvent->startTime) || (!empty($objEvent->endTime) && $objEvent->endDate !== $objEvent->endTime)) {
                         $objEvent->addTime = true;
+                    }
+
+                    // Contao stores the start as time stamp and the end of an event without a time at its last second
+                    if (empty($objEvent->startTime)) {
+                        $objEvent->startTime = $objEvent->startDate;
+                    }
+
+                    if (empty($objEvent->endTime)) {
+                        $objEvent->endTime = $objEvent->addTime
+                            ? $objEvent->endDate + $objEvent->startTime - $objEvent->startDate
+                            : $objEvent->endDate + 86399;
                     }
 
                     if (empty($objEvent->title)) {

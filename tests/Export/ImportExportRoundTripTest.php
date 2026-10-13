@@ -16,6 +16,7 @@ use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
 use Cgoit\ContaoCalendarIcalBundle\Tests\DatabaseTestCase;
 use Contao\CalendarModel;
 use Contao\CoreBundle\InsertTag\InsertTagParser;
+use Kigkonsult\Icalcreator\Vcalendar;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
@@ -174,7 +175,7 @@ final class ImportExportRoundTripTest extends DatabaseTestCase
         $export = new IcsExport($parser, new EventDispatcher());
         $ical = $export->getVcalendar([CalendarModel::findById(1)], mktime(0, 0, 0, 1, 1, 2024), mktime(0, 0, 0, 1, 1, 2025));
 
-        $this->assertInstanceOf(\Kigkonsult\Icalcreator\Vcalendar::class, $ical);
+        $this->assertInstanceOf(Vcalendar::class, $ical);
 
         // Long lines are folded
         return str_replace("\r\n ", '', $ical->createCalendar());

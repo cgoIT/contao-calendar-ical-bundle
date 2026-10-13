@@ -42,6 +42,7 @@ final class CsvImportDatabaseTest extends DatabaseTestCase
         $this->assertSame(mktime(0, 0, 0, 5, 1, 2024), (int) $training['startDate']);
         $this->assertSame(mktime(0, 0, 0, 5, 1, 2024), (int) $training['endDate'], 'without an end date the event ends on its first day');
         $this->assertSame(mktime(18, 30, 0, 5, 1, 2024), (int) $training['startTime']);
+        $this->assertSame(mktime(18, 30, 0, 5, 1, 2024), (int) $training['endTime'], 'without an end time the event ends when it starts, not at the time of the import');
         $this->assertSame('1', $training['addTime']);
 
         $texts = $this->db->fetchFirstColumn("SELECT text FROM tl_content WHERE ptable = 'tl_calendar_events' AND pid = ".(int) $training['id']);
@@ -50,6 +51,8 @@ final class CsvImportDatabaseTest extends DatabaseTestCase
 
         $this->assertSame('Spiel', $game['title']);
         $this->assertEmpty($game['addTime']);
+        $this->assertSame(mktime(0, 0, 0, 5, 8, 2024), (int) $game['startTime']);
+        $this->assertSame(mktime(23, 59, 59, 5, 8, 2024), (int) $game['endTime'], 'an event without a time ends at the last second of its day');
         $this->assertSame(1, (int) $this->db->fetchOne('SELECT COUNT(*) FROM tl_content'));
     }
 

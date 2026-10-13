@@ -95,6 +95,8 @@ abstract class DatabaseTestCase extends ContaoTestCase
         $cacheDir = $container->getParameter('kernel.cache_dir');
         $fields = ['pid', 'tstamp', 'title', 'alias', 'author', 'addTime', 'startTime', 'endTime', 'startDate', 'endDate', 'source', 'teaser', 'start', 'stop', 'recurring', 'repeatEach', 'repeatEnd', 'recurrences', 'singleSRC', 'published', 'ical_uuid'];
         $dca = "<?php\n\$GLOBALS['TL_DCA']['tl_calendar_events']['fields'] = ".var_export(array_fill_keys($fields, []), true).";\n";
+        // Like in the DCA of the calendar bundle: the times default to the time of the request
+        $dca .= "\$GLOBALS['TL_DCA']['tl_calendar_events']['fields']['startTime']['default'] = time();\n\$GLOBALS['TL_DCA']['tl_calendar_events']['fields']['endTime']['default'] = time();\n";
         (new Filesystem())->dumpFile($cacheDir.'/contao/dca/tl_calendar_events.php', $dca);
         (new Filesystem())->dumpFile($cacheDir.'/contao/config/column-types.php', "<?php return ['tl_calendar' => [], 'tl_calendar_events' => ['startTime' => 'int', 'endTime' => 'int', 'startDate' => 'int', 'endDate' => 'int', 'id' => 'int', 'pid' => 'int'], 'tl_content' => [], 'tl_module' => [], 'tl_article' => [], 'tl_page' => []];\n");
 
