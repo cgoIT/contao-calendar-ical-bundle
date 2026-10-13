@@ -1,5 +1,74 @@
 # Changelog
 
+## [6.0.0](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.17...v6.0.0) (2026-10-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* **content-element:** render the iCal download element with Twig
+* **backend:** The templates be_import_calendar*.html5 and the back end module key "import" no longer exist.
+* **dca:** The global operation of tl_calendar_events that opens the import is now called "import" instead of "export". Adjust DCA modifications that reference the old key.
+* **import:** Web sources are no longer updated when a page is requested, only by the Contao cron (hourly, depending on the cache time of the calendar) and when the calendar is saved in the back end. The Contao cron has to be set up.
+* **import:** Imported titles, descriptions, locations, attendees and contacts are stored encoded now. HTML in imported descriptions (e.g. links) is shown as plain text and insert tags are removed. Existing events are rewritten on the next import.
+* **import:** The TLS certificate of web sources is verified now. Calendars whose source uses a self-signed or expired certificate can no longer be imported. Targets in private networks (localhost, 192.168.x.x, ...) are blocked unless a proxy is configured.
+* Contao 4.13 and Symfony 5.4 are no longer supported. The bundle now requires contao/*: ^5.3 and symfony/*: ^6.4 || ^7.3.
+
+### Features
+
+* **backend:** import csv files with the back end route ([66ba8fa](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/66ba8fac007a831100278a5d1ac6fdf1096919ad))
+* **backend:** import ics files with a back end route that renders the Contao widgets ([96df6ef](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/96df6ef0eb641b1c3f709f3b79943210667f28ed))
+* **backend:** use the end of the year after next if the end date of an import is empty ([13c3c3b](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/13c3c3b1b5a114a46063e64ef69daa406a221967))
+* **calendar:** store the dates of the calendar as integers ([ed4e4eb](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/ed4e4ebae7f636c14f10523eaf515e6a813fff10))
+* **content-element:** render the iCal download element with Twig ([6a9358c](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/6a9358c6fc792800cba5386c0946e518b8df0919))
+* drop contao 4.13 and symfony 5.4 support ([efd7f3b](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/efd7f3b4bd73daf44b42e225e196e9af59fa5a97))
+* **export:** add events to modify exported events, deprecate the legacy hooks ([99ddcb3](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/99ddcb38895c1c6d385d9892e48c97a230b3797d))
+* **import:** import exceptions of recurring events (EXDATE, RECURRENCE-ID) ([0fea936](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/0fea936ffceb73c0590d273ac139431e2fc3a82a))
+* **import:** make publishing of imported events configurable per calendar ([0526555](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/0526555a0128b68e4d8d825765ceb9c22466fbe5))
+
+
+### Bug Fixes
+
+* **backend:** do not exclude the fields of the import form ([2b5c813](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/2b5c8131a20ce78537051cc8bc3d46f78c01efb9))
+* **backend:** do not lose events if an import cannot be read, rename UploadedIcsFileResolver ([5f6062f](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/5f6062fdb80ecdae07093c44b064f53d59f62153))
+* **backend:** label the start date of the import form in English ([9e834a7](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/9e834a78cd828bb924c334bec3d697a85e663b32))
+* **csv:** robust csv reading and strict date parsing ([c4dfbcf](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/c4dfbcfe44445fc9e14c7d3d7a66948a083d6267))
+* **dca:** rename the global operation key of the import from export to import ([7ee2cba](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/7ee2cba10e133c6769e7e2bf12db65d0942846b7))
+* **export:** check published state and calendar protection in all exports ([0f4c88d](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/0f4c88da2c90293f914db37e0c6d68bcc8a6e043))
+* **export:** collect the events of the event list in a way that works with Contao 5.3 ([47e6947](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/47e6947880096c05d96b006b1394c2a432df64b6))
+* **export:** decode HTML entities in the calendar name, description and download file name ([9ad95f6](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/9ad95f6786cafcc34c381aaa9d0d6cb52af663f6))
+* **export:** export COUNT including the first event of a recurring event ([e24e3f4](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/e24e3f4d61f8fd61e6aff79925768eefa12178d3))
+* **export:** export every event of an event list only once ([8bb2e3c](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/8bb2e3c2a4b6c402ac51fd8095024b565d1b3b08))
+* **export:** export moved recurrences and survive invalid participants ([89d9cf0](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/89d9cf0c5a2b246887a65efd739c83175089deec))
+* **export:** honor feed prefix, handle empty calendars and all-day end dates ([092bfc0](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/092bfc06a0410861001d3e7a2c14b9faf68afa13))
+* **export:** keep the events if a legacy hook returns nothing, test the eventlist export ([7581100](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/75811004b98028d4376f5659a9a50e9c99a403fe))
+* **export:** mark the eventlist export as private ([130424f](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/130424f0aba9f531e83c19e385a39ba9b797e3c3))
+* **export:** rebuild subscription files on changes, check parents of eventlists ([01d91d7](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/01d91d76122f0442ba2eaf11da519efbb90accc7))
+* **import:** count only recurrences within the range for weekday rules ([aa1253e](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/aa1253ee5237fb71c8b23023819c12b423fd50da))
+* **import:** encode imported text, validate paths and patterns ([6f7558b](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/6f7558beeca61c56a8b9f0417d7aaba8cae85d09))
+* **import:** handle the end of recurrences correctly ([dfcf469](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/dfcf469ff33243330803229ea866066961d16053))
+* **import:** harden remote ics download ([62f865e](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/62f865e7dc1b72d6ed62e657513b2c1d5603688a))
+* **import:** ignore the columns of extensions that are not installed ([ce0529d](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/ce0529d8d1e7a15e1fb458edfdf3717923db6482))
+* **import:** import web sources only by cron and lock correctly ([d5c2a8c](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/d5c2a8c07f9d57ff3b492077bec8e54840c5b7b5))
+* **import:** interpret date-only and floating values in the calendar timezone ([a5f6d4c](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/a5f6d4c421ff2e8b0837f042c816f5ceb48b361b))
+* **import:** keep each text of an imported event in its own content element ([7c50e78](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/7c50e78e9f0284b368561d8b213b777ca385db66))
+* **import:** keep the events if the web source contains no events ([563b30d](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/563b30d82bdc5012902494a4c7d55eeeb06472a8))
+* **import:** keep the last recurrence if UNTIL is only a date ([2e68c2f](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/2e68c2f929ccbd7e1dc1b4cf23b31113c16a7470))
+* **import:** remove the match of the title pattern if there is no replacement ([d3ce32c](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/d3ce32ca449a1c22ed290d7a6a7bf9887120a479))
+* **import:** set the times of imported csv records like Contao does ([7a77c8e](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/7a77c8e7edd72d55337cd1adc3f515174ea17696))
+* **import:** take the import lock atomically and import in one transaction ([f50a8e6](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/f50a8e65d4bb9c11620d0a94498f6c6813cf7c61))
+* **util:** build the ascii file name fallback without ord() on multibyte strings ([ff1247f](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/ff1247f999f55fb2e2dcfad1bb6cd6768bc7efb3))
+
+
+### Miscellaneous Chores
+
+* ignore claude.md and todo.md ([7debe2c](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/7debe2ce7f4c824c5ace34251e406da4e038fb34))
+* set minimum php version to 8.3 ([7dd3245](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/7dd32459df9d602c9cfac8af7af4bfc790ff7632))
+
+
+### Code Refactoring
+
+* **backend:** remove the old import and open the new one from the event list ([1759bf5](https://github.com/cgoIT/contao-calendar-ical-bundle/commit/1759bf527a0fa02a8162ed75142cc504741918c5))
+
 ## [5.9.17](https://github.com/cgoIT/contao-calendar-ical-bundle/compare/v5.9.16...v5.9.17) (2026-07-21)
 
 
