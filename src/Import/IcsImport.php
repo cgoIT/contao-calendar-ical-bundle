@@ -326,11 +326,11 @@ class IcsImport extends AbstractImport
                 $objEvent->{$field} = $varValue;
             }
 
+            $published = $this->getPublishedState($publish, $isNew);
+
             // Events that exist already keep their state if the imported events are not published
-            if ($publish) {
-                $objEvent->published = true;
-            } elseif ($isNew) {
-                $objEvent->published = false;
+            if (null !== $published) {
+                $objEvent->published = $published;
             }
 
             $objEvent->author = BackendUser::getInstance()->id ?? 0;

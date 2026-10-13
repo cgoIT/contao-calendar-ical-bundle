@@ -258,6 +258,14 @@ final class IcsImportExceptionsTest extends ContaoTestCase
         $this->assertFalse($this->call('publishImportedEvents', $calendar));
     }
 
+    public function testPublishedStateOfImportedEvents(): void
+    {
+        $this->assertTrue($this->call('getPublishedState', true, true));
+        $this->assertTrue($this->call('getPublishedState', true, false), 'published again if the calendar publishes imported events');
+        $this->assertFalse($this->call('getPublishedState', false, true));
+        $this->assertNull($this->call('getPublishedState', false, false), 'an existing event keeps its state');
+    }
+
     private function calendar(): Vcalendar
     {
         $cal = new Vcalendar();

@@ -39,6 +39,19 @@ class AbstractImport
     }
 
     /**
+     * The state of an imported event: published if the calendar publishes imported events, otherwise new events are
+     * unpublished and existing ones keep their state (null).
+     */
+    protected function getPublishedState(bool $publishImported, bool $isNew): bool|null
+    {
+        if ($publishImported) {
+            return true;
+        }
+
+        return $isNew ? false : null;
+    }
+
+    /**
      * Encodes text from an external source (ics/csv) before it is stored. Contao stores form input
      * encoded as well, so the value can be output in templates as usual. Insert tags are removed
      * to prevent that foreign content triggers them.
