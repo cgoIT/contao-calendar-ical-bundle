@@ -622,7 +622,7 @@ class IcsImport extends AbstractImport
     /**
      * @param array<mixed> $timezone
      *
-     * @return bool True if the source could be downloaded and parsed
+     * @return bool True if the source could be downloaded and parsed and contains events
      */
     private function importFromWebICS(CalendarModel $objCalendar, Date $startDate, Date $endDate, array $timezone): bool
     {
@@ -644,6 +644,13 @@ class IcsImport extends AbstractImport
             $cal->parse($content);
         } catch (\Throwable $e) {
             $this->logger->error('Could not import ics file from URL "'.$objCalendar->ical_url.'": '.$e->getMessage());
+
+            return false;
+        }
+
+        // A feed without any event is more likely an error of the source than an emptied calendar; the events stay
+        if ([] === $cal->getComponents(IcalInterface::VEVENT)) {
+            $this->logger->warning('Skip the import of the iCal Web Calendar '.$objCalendar->title.' ('.$objCalendar->id.'): The source "'.$objCalendar->ical_url.'" contains no events, the existing events are kept');
 
             return false;
         }

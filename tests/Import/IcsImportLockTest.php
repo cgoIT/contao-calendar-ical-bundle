@@ -29,7 +29,9 @@ use Psr\Log\NullLogger;
  */
 final class IcsImportLockTest extends ContaoTestCase
 {
-    private const string ICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:test\r\nEND:VCALENDAR\r\n";
+    private const string ICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:test\r\nBEGIN:VEVENT\r\nUID:1\r\nDTSTAMP:20240101T000000Z\r\nDTSTART:20240501T180000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+
+    private const string EMPTY_ICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:test\r\nEND:VCALENDAR\r\n";
 
     private Connection $db;
 
@@ -53,6 +55,18 @@ final class IcsImportLockTest extends ContaoTestCase
 
         $this->assertSame(0, $import->imports);
         $this->assertSame('', $this->row()['ical_importing']);
+    }
+
+    public function testKeepsTheEventsIfTheSourceContainsNoEvents(): void
+    {
+        $calendar = $this->calendar(['ical_last_sync' => 0, 'ical_cache' => 3600]);
+        $import = $this->import(false, self::EMPTY_ICS);
+
+        $this->assertTrue($import->importIcsForCalendar($calendar));
+
+        $this->assertSame(0, $import->imports);
+        $this->assertSame('', $this->row()['ical_importing']);
+        $this->assertSame(0, (int) $this->row()['ical_last_sync'], 'the next run tries again');
     }
 
     public function testImportsWhenCacheIsOver(): void

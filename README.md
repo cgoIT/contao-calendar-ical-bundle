@@ -131,7 +131,8 @@ abgelaufen ist. Der Contao-Cron muss daher eingerichtet sein (Systemcron oder Po
 Kalenders im Backend wird die Quelle sofort abgerufen, damit geänderte Einstellungen (URL, Filter, Zeitzone, ...) gleich
 wirksam werden. Ein fehlgeschlagener Abruf wird beim nächsten Cron-Lauf erneut versucht. Ein Import läuft nie doppelt (Sperre in der
 Datenbank, eine verwaiste Sperre verfällt nach zwei Minuten) und ersetzt die Termine des Kalenders in einer Transaktion:
-Bei einem Fehler bleiben die bisherigen Termine erhalten. Hat der Kalender ein Abonnement, wird auch dessen Datei neu
+Bei einem Fehler bleiben die bisherigen Termine erhalten. Enthält die Quelle überhaupt keine Termine (z. B. eine leere oder fehlerhafte Antwort des Servers), bleiben die
+vorhandenen Termine ebenfalls erhalten; der Abruf wird als Warnung protokolliert und beim nächsten Cron-Lauf wiederholt. Hat der Kalender ein Abonnement, wird auch dessen Datei neu
 erzeugt.
 
 Der Download ist ab Version 6.0 abgesichert:
