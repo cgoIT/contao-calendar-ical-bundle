@@ -72,17 +72,20 @@ abstract class DatabaseTestCase extends ContaoTestCase
         }
         $container->set('monolog.logger.contao.general', new NullLogger());
 
-        $virtualFields = $this->createMock(VirtualFieldsHandler::class);
-        $virtualFields
-            ->method('expandFields')
-            ->willReturnArgument(0)
-        ;
+        // Only newer versions of Contao expand the virtual fields of a model
+        if (class_exists(VirtualFieldsHandler::class)) {
+            $virtualFields = $this->createMock(VirtualFieldsHandler::class);
+            $virtualFields
+                ->method('expandFields')
+                ->willReturnArgument(0)
+            ;
 
-        $virtualFields
-            ->method('combineFields')
-            ->willReturnArgument(0)
-        ;
-        $container->set('contao.data_container.virtual_fields_handler', $virtualFields);
+            $virtualFields
+                ->method('combineFields')
+                ->willReturnArgument(0)
+            ;
+            $container->set('contao.data_container.virtual_fields_handler', $virtualFields);
+        }
 
         // Nobody is in the preview mode, so only published records are found
         $tokenChecker = $this->createStub(TokenChecker::class);
@@ -100,7 +103,7 @@ abstract class DatabaseTestCase extends ContaoTestCase
         (new Filesystem())->dumpFile($cacheDir.'/contao/dca/tl_calendar_events.php', $dca);
         (new Filesystem())->dumpFile($cacheDir.'/contao/config/column-types.php', "<?php return ['tl_calendar' => [], 'tl_calendar_events' => ['startTime' => 'int', 'endTime' => 'int', 'startDate' => 'int', 'endDate' => 'int', 'id' => 'int', 'pid' => 'int'], 'tl_content' => [], 'tl_module' => [], 'tl_article' => [], 'tl_page' => []];\n");
 
-        DcaLoader::reset();
+        $this->resetDcaLoader();
         (new \ReflectionProperty(Database::class, 'objInstance'))->setValue(null, new SqliteDatabase($this->db));
 
         // The author of the imported events is the current back end user
@@ -120,7 +123,7 @@ abstract class DatabaseTestCase extends ContaoTestCase
         date_default_timezone_set($this->previousTimezone);
         (new \ReflectionProperty(BackendUser::class, 'objInstance'))->setValue(null, null);
         (new \ReflectionProperty(Database::class, 'objInstance'))->setValue(null, null);
-        DcaLoader::reset();
+        $this->resetDcaLoader();
 
         parent::tearDown();
     }
@@ -207,5 +210,20 @@ abstract class DatabaseTestCase extends ContaoTestCase
     protected function events(): array
     {
         return $this->db->fetchAllAssociative('SELECT * FROM tl_calendar_events ORDER BY id');
+    }
+
+    /**
+     * Forgets the loaded data containers; older versions of Contao have no method for it.
+     */
+    private function resetDcaLoader(): void
+    {
+        if ((new \ReflectionClass(DcaLoader::class))->hasMethod('reset')) {
+            DcaLoader::reset();
+
+            return;
+        }
+
+        (new \ReflectionProperty(DcaLoader::class, 'arrLoaded'))->setValue(null, []);
+        unset($GLOBALS['TL_DCA']);
     }
 }
