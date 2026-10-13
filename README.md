@@ -80,6 +80,27 @@ exportiert. Verschobene Wiederholungen („Termin verschieben“) werden als eig
 Als `ATTENDEE` kann ICS nur E-Mail-Adressen aufnehmen. Teilnehmer ohne gültige E-Mail-Adresse werden daher nicht
 exportiert.
 
+Was beim Export aus einem Termin wird, zeigt die folgende Übersicht. Sie gilt für alle Wege (Einzeltermin, Eventliste,
+Abo-Datei, Feed-Seite, Download-Element). „Mit Erweiterung“ meint das `cgoit/calendar-extended-bundle`.
+
+| Im Termin | Ohne Erweiterung | Mit Erweiterung |
+|---|---|---|
+| Termin mit Uhrzeit | `DTSTART`/`DTEND` mit Datum und Uhrzeit in der Zeitzone des Systems; ohne Ende eine Stunde | wie ohne |
+| Ganztägiger Termin | `DTSTART`/`DTEND` als Datum; das Ende ist exklusiv (der Tag nach dem letzten Tag); ohne Ende ein Tag | wie ohne |
+| Termin ohne Startdatum | Wird nicht exportiert | wie ohne |
+| Titel | `SUMMARY`, mit dem Präfix des Kalenders bzw. der Seite/des Elements | wie ohne |
+| Teaser | `DESCRIPTION` (HTML entfernt, Insert-Tags aufgelöst) | wie ohne |
+| Ort (`location`) | `LOCATION`, falls das Feld vorhanden ist | wie ohne |
+| Teilnehmer, Kontakt | `ATTENDEE` (nur gültige E-Mail-Adressen) und `CONTACT`, falls die Felder vorhanden sind | wie ohne |
+| Einfache Wiederholung | `RRULE` mit Einheit (täglich bis jährlich) und `INTERVAL` | wie ohne |
+| Erweiterte Wiederholung („erster Donnerstag“) | Nicht verfügbar | `RRULE` monatlich mit `BYDAY` (z. B. `1TH`) |
+| Wiederholung mit Ende | `COUNT` (Anzahl der Wiederholungen) | wie ohne |
+| Ausnahme „Termin nicht anzeigen“ (einzeln oder für einen Zeitraum) | Nicht verfügbar | `EXDATE` (als Datum oder Datum mit Uhrzeit, passend zum Termin) |
+| Ausnahme „Termin verschieben“ | Nicht verfügbar | Zusätzlicher Termin mit gleicher `UID` und `RECURRENCE-ID` der ursprünglichen Wiederholung |
+| Unveröffentlichter Termin, Termin außerhalb des Zeitraums | Wird nicht exportiert | wie ohne |
+| Termin eines geschützten Kalenders | Nur für berechtigte Mitglieder, nie in Abo-Dateien | wie ohne |
+| Termin mit mehreren Einträgen in einer Eventliste | Wird nur einmal exportiert; die `RRULE` trägt die Wiederholungen | wie ohne |
+
 Geschützte Kalender
 -------------------
 
@@ -180,16 +201,40 @@ Bei Wiederholungen gilt `UNTIL` einschließlich der letzten Wiederholung; es wir
 ganztägigen Terminen und Zeiten ohne Zeitzone als Ortszeit des Kalenders). Eine Serie mit `COUNT=1` ist ein einzelner
 Termin. Gibt ein Feed `UNTIL` nur als Datum an, obwohl der Termin eine Uhrzeit hat, gilt die Wiederholung dieses Tages noch.
 
-Ausnahmen von Wiederholungen werden mit dem `cgoit/calendar-extended-bundle` übernommen: `EXDATE` blendet die
-Wiederholung aus (ein `EXDATE` in UTC ist ein exakter Zeitpunkt, mit `TZID` gilt dessen Zeitzone, bei Datumswerten und
-Zeiten ohne Zeitzone die Ortszeit des Kalenders). Eine einzelne geänderte Wiederholung (gleiche `UID` mit
-`RECURRENCE-ID`, z. B. ein verschobener Termin einer Serie) wird beim Termin der Serie als Ausnahme „verschieben“
-eingetragen (um die Anzahl der Tage, bei anderer Uhrzeit oder Dauer mit den neuen Zeiten); eine abgesagte Wiederholung
-(`STATUS:CANCELLED`) wird ausgeblendet. Andere Änderungen der Wiederholung (Titel, Ort) gehen dabei verloren. Bei
-ganztägigen Terminen wird zudem eine geänderte Dauer einer einzelnen Wiederholung nicht übernommen (nur die Verschiebung
-um Tage). Ist das `calendar-extended-bundle` nicht installiert, wird die geänderte Wiederholung als eigener Termin importiert (Kennung
-`UID#RECURRENCE-ID`); die ursprüngliche Wiederholung der Serie bleibt dann bestehen, weil Contao allein keine Ausnahmen kennt.
-Abgesagte Wiederholungen werden in diesem Fall nicht importiert.
+Was mit den Terminen eines ICS-Feeds beim Import passiert, zeigt die folgende Übersicht. Sie gilt für den Import im
+Backend und für die Web-Quelle. „Mit Erweiterung“ meint das `cgoit/calendar-extended-bundle` (bzw. dessen Felder für
+erweiterte Wiederholungen und Ausnahmen).
+
+| Im Feed | Ohne Erweiterung | Mit Erweiterung |
+|---|---|---|
+| Termin mit Uhrzeit (`DTSTART`/`DTEND`) | Termin mit Start und Ende | wie ohne |
+| Ganztägiger Termin (`VALUE=DATE`) | Ganztägiger Termin; das Ende (`DTEND`) ist exklusiv, der letzte Tag ist der Tag davor | wie ohne |
+| Termin ohne `DTEND` | Termin ohne Ende | wie ohne |
+| Zeit in UTC oder mit `TZID` | Behält ihre Zeitzone | wie ohne |
+| Datum oder Zeit ohne Zeitzone („floating“) | Ortszeit des Kalenders (Einstellung „Zeitzone“) | wie ohne |
+| Termin außerhalb des Zeitraums der Einstellungen | Wird nicht importiert | wie ohne |
+| `RRULE` täglich/wöchentlich/monatlich/jährlich, `INTERVAL` | Wiederholung mit Intervall | wie ohne |
+| `RRULE` mit `COUNT` | Anzahl der Wiederholungen (`COUNT=1`: Einzeltermin) | wie ohne |
+| `RRULE` mit `UNTIL` | Ende einschließlich der letzten Wiederholung | wie ohne |
+| `RRULE` ohne `COUNT` und `UNTIL` | Unbegrenzte Wiederholung | wie ohne |
+| `RRULE` mit Wochentag und Position (z. B. `BYDAY=1TH`, erster Donnerstag im Monat) | Einfache Wiederholung (das Intervall, aber nicht der Wochentag) | Erweiterte Wiederholung („erster Donnerstag“) |
+| `EXDATE` | Wird ignoriert, die Wiederholung bleibt | Ausnahme „Termin nicht anzeigen“ |
+| Geänderte Wiederholung (`UID` mit `RECURRENCE-ID`) | Eigener Termin (Kennung `UID#RECURRENCE-ID`); die ursprüngliche Wiederholung bleibt bestehen | Ausnahme „Termin verschieben“ (um Tage; bei anderer Uhrzeit oder Dauer mit den neuen Zeiten) |
+| Abgesagte Wiederholung (`RECURRENCE-ID` mit `STATUS:CANCELLED`) | Wird nicht importiert, die Wiederholung bleibt bestehen | Ausnahme „Termin nicht anzeigen“ |
+| Geänderte Wiederholung, deren Serie nicht im Zeitraum liegt | Eigener Termin | Eigener Termin |
+| `SUMMARY` | Titel (kodiert, optional gefiltert und umgeschrieben) | wie ohne |
+| `DESCRIPTION` | Text-Element des Termins (kodiert) | wie ohne |
+| `LOCATION` | Zeile „Ort“ im Text-Element, oder das Feld `location`, falls vorhanden | wie ohne |
+| `ATTENDEE` (`CN`), `CONTACT` | Werden nicht übernommen, solange die Felder `cep_participants` und `location_contact` fehlen | Teilnehmer und Kontakt |
+| `UID` | Merkt sich der Termin (`ical_uuid`); beim nächsten Import wird er aktualisiert | wie ohne |
+| Feed ohne jeden Termin (Web-Quelle) | Die vorhandenen Termine bleiben erhalten | wie ohne |
+
+Einschränkungen: Titel, Ort und weitere Änderungen einer einzelnen Wiederholung gehen mit der Erweiterung verloren (nur
+Verschiebung und Zeiten werden übernommen). Bei ganztägigen Terminen wird zudem eine geänderte Dauer einer einzelnen
+Wiederholung nicht übernommen. Ohne Erweiterung kennt Contao keine Ausnahmen; die Serie zeigt deshalb weiterhin den
+ursprünglichen Termin neben dem geänderten. Weitere Wiederholungsregeln (mehrere Wochentage, `BYMONTH`, `BYSETPOS`, ...)
+werden nicht abgebildet. Bei `EXDATE` ist ein Wert in UTC ein exakter Zeitpunkt, mit `TZID` gilt dessen Zeitzone, bei
+Datumswerten und Zeiten ohne Zeitzone die Ortszeit des Kalenders.
 
 Der reguläre Ausdruck für die Titel-Umschreibung wird beim Speichern des Kalenders geprüft und benötigt Trennzeichen,
 z. B. `/^\[Verein\] /`. Das Feld „Benutzername:Passwort“ für den Proxy wird verdeckt angezeigt und ist nicht
