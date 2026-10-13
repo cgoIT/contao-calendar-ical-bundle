@@ -52,6 +52,17 @@ abstract class DatabaseTestCase extends ContaoTestCase
 
         $container = $this->bootContao(['kernel.charset' => 'UTF-8']);
         $container->set('database_connection', $this->db);
+
+        // MySQL function used by the core models
+        $native = $this->db->getNativeConnection();
+
+        if ($native instanceof \PDO) {
+            $findInSet = static fn (mixed $needle, mixed $list): int => false !== ($position = array_search((string) $needle, explode(',', (string) $list), true)) ? $position + 1 : 0;
+
+            // PHP 8.4 moved the method to the driver specific class
+            $method = method_exists($native, 'createFunction') ? 'createFunction' : 'sqliteCreateFunction';
+            \call_user_func([$native, $method], 'FIND_IN_SET', $findInSet, 2);
+        }
         $container->set('monolog.logger.contao.general', new NullLogger());
 
         $virtualFields = $this->createMock(VirtualFieldsHandler::class);

@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Tests;
 
 use Contao\Database;
+use Contao\Database\Statement;
 use Doctrine\DBAL\Connection;
 
 /**
@@ -23,6 +24,33 @@ final class SqliteDatabase extends Database
     public function __construct(private readonly Connection $connection)
     {
         parent::__construct();
+    }
+
+    /**
+     * SQLite reports the rows changed by the last write as the row count of the next SELECT. A statement that
+     * changes nothing is run first, so that Contao finds out the number of rows by counting them.
+     */
+    public function prepare($strQuery): Statement
+    {
+        $connection = $this->connection;
+
+        $statement = new class($connection, $connection) extends Statement {
+            public function __construct(
+                Connection $doctrine,
+                private readonly Connection $connection,
+            ) {
+                parent::__construct($doctrine);
+            }
+
+            public function execute(): mixed
+            {
+                $this->connection->executeStatement('DELETE FROM tl_calendar WHERE 0');
+
+                return parent::execute(...\func_get_args());
+            }
+        };
+
+        return $statement->prepare($strQuery);
     }
 
     /**
