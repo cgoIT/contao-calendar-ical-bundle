@@ -84,11 +84,9 @@ class AbstractImport
         }
 
         foreach ($eventcontent as $content) {
-            if (isset($contentDictionary[$step])) {
-                $cm = $contentDictionary[$step];
-                unset($contentDictionary[$step]);
-            }
-            $cm ??= new ContentModel();
+            // Each text gets its own element; a reused model would overwrite the previous text
+            $cm = $contentDictionary[$step] ?? new ContentModel();
+            unset($contentDictionary[$step]);
             $cm->tstamp = time();
             $cm->pid = $objEvent->id;
             $cm->ptable = 'tl_calendar_events';
