@@ -53,6 +53,7 @@
     "webignition/robots-txt-file": "^3.0"
   },
   "require-dev": {
+    "ausi/slug-generator": "^1.1",
     "contao/manager-plugin": "^2.0",
     "psr/container": "^1.1 || ^2.0",
     "symfony/security-core": "^6.4 || ^7.3",
