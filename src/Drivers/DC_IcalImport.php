@@ -113,6 +113,7 @@ class DC_IcalImport extends DataContainer
             $fields[] = $field;
 
             $GLOBALS['TL_DCA'][self::TABLE]['fields'][$field] = [
+                'exclude' => false,
                 // The name comes from an uploaded file
                 'label' => [StringUtil::specialchars($name), ''],
                 'inputType' => 'select',

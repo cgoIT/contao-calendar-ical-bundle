@@ -15,6 +15,9 @@ use Cgoit\ContaoCalendarIcalBundle\Drivers\DC_IcalImport;
 /*
  * Virtual table of the import form in the back end. There is no such table in the database, the form is
  * rendered with the widgets of the data container (see DC_IcalImport).
+ *
+ * The fields are not excluded ("exclude" => false): the back end user has no permission for the fields of a virtual
+ * table, so Contao would otherwise deny every user who is not an administrator.
  */
 $GLOBALS['TL_DCA']['tl_calendar_ical_import'] = [
     'config' => [
@@ -30,52 +33,62 @@ $GLOBALS['TL_DCA']['tl_calendar_ical_import'] = [
 
     'fields' => [
         'startDate' => [
+            'exclude' => false,
             'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['importStartDate'],
             'inputType' => 'text',
             'eval' => ['mandatory' => true, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'w50 wizard'],
         ],
         'endDate' => [
+            'exclude' => false,
             'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['importEndDate'],
             'inputType' => 'text',
             'eval' => ['maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'w50 wizard'],
         ],
         'timeshift' => [
+            'exclude' => false,
             'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['importTimeShift'],
             'inputType' => 'text',
             'eval' => ['maxlength' => 4, 'rgxp' => 'digit', 'tl_class' => 'clr w50'],
         ],
         'deleteCalendar' => [
+            'exclude' => false,
             'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['importDeleteCalendar'],
             'inputType' => 'checkbox',
             'eval' => ['tl_class' => 'clr w50 m12'],
         ],
         'correctTimezone' => [
+            'exclude' => false,
             'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['correctTimezone'],
             'inputType' => 'checkbox',
             'eval' => ['tl_class' => 'clr m12'],
         ],
         'timezone' => [
+            'exclude' => false,
             'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['timezone'],
             'inputType' => 'select',
             'eval' => ['mandatory' => true, 'chosen' => true, 'tl_class' => 'w50'],
         ],
         'encoding' => [
+            'exclude' => false,
             'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['encoding'],
             'inputType' => 'select',
             'options' => ['utf8' => 'UTF-8', 'latin1' => 'ISO-8859-1 (Windows)'],
             'eval' => ['mandatory' => true, 'tl_class' => 'clr w50'],
         ],
         'dateFormat' => [
+            'exclude' => false,
             'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['importDateFormat'],
             'inputType' => 'text',
             'eval' => ['mandatory' => true, 'maxlength' => 20, 'tl_class' => 'w50'],
         ],
         'timeFormat' => [
+            'exclude' => false,
             'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['importTimeFormat'],
             'inputType' => 'text',
             'eval' => ['mandatory' => true, 'maxlength' => 20, 'tl_class' => 'w50'],
         ],
         'filterEventTitle' => [
+            'exclude' => false,
             'label' => &$GLOBALS['TL_LANG']['tl_calendar_events']['importFilterEventTitle'],
             'inputType' => 'text',
             'eval' => ['maxlength' => 255, 'tl_class' => 'clr w50'],
