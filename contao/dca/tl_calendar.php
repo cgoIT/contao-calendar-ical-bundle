@@ -156,7 +156,7 @@ $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_start'] = [
     'flag' => DataContainer::SORT_MONTH_DESC,
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'clr w50 wizard'],
-    'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],
+    'sql' => ['type' => 'integer', 'length' => 10, 'unsigned' => true, 'notnull' => false],
 ];
 
 $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_end'] = [
@@ -165,29 +165,30 @@ $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_end'] = [
     'flag' => DataContainer::SORT_MONTH_DESC,
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'w50 wizard'],
-    'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],
+    'sql' => ['type' => 'integer', 'length' => 10, 'unsigned' => true, 'notnull' => false],
 ];
 
 $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_source_start'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_calendar']['ical_start'],
-    'default' => time(),
+    // Contao passes the data container to the closure, which a first-class callable of time() does not accept
+    'default' => static fn (DataContainer|null $dc = null): int => time(),
     'exclude' => true,
     'filter' => true,
     'flag' => DataContainer::SORT_MONTH_DESC,
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'clr w50 wizard'],
-    'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],
+    'sql' => ['type' => 'integer', 'length' => 10, 'unsigned' => true, 'notnull' => false],
 ];
 
 $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_source_end'] = [
     'label' => &$GLOBALS['TL_LANG']['tl_calendar']['ical_end'],
-    'default' => time() + 365 * 24 * 3600,
+    'default' => static fn (): int => time() + 365 * 24 * 3600,
     'exclude' => true,
     'filter' => true,
     'flag' => DataContainer::SORT_MONTH_DESC,
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'w50 wizard'],
-    'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],
+    'sql' => ['type' => 'integer', 'length' => 10, 'unsigned' => true, 'notnull' => false],
 ];
 
 $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_last_sync'] = [

@@ -220,6 +220,10 @@ Wichtig
 Die globale Operation in `tl_calendar_events` heißt jetzt `import` (vorher `export`). Das Bundle benötigt PHP 8.3 und
 läuft mit Contao 5.3 und neueren Versionen.
 
+**Datumsfelder des Kalenders:** Start- und Enddatum des Abonnements und der Web-Quelle (`ical_start`, `ical_end`,
+`ical_source_start`, `ical_source_end`) werden nicht mehr als Text, sondern als Zahl gespeichert. Eine Contao-Migration
+(`contao:migrate`) wandelt die Spalten um; leere Werte werden zu `NULL`.
+
 **Content-Element „iCal Download“ (Twig):** Das Element wird jetzt mit `content_element/ical.html.twig` gerendert (statt
 `ce_ical.html5`); haben Sie `ce_ical` überschrieben, legen Sie stattdessen ein Twig-Template an. Das Feld „Template für
 iCal Download-Element“ (`ical_download_template`, `ce_download_*`) entfällt; das Markup des Links steht im Twig-Template.
