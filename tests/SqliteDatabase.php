@@ -10,7 +10,7 @@ declare(strict_types=1);
  * @license    LGPL-3.0-or-later
  */
 
-namespace Cgoit\ContaoCalendarIcalBundle\Tests\Import;
+namespace Cgoit\ContaoCalendarIcalBundle\Tests;
 
 use Contao\Database;
 use Doctrine\DBAL\Connection;

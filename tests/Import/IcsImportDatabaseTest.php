@@ -12,97 +12,24 @@ declare(strict_types=1);
 
 namespace Cgoit\ContaoCalendarIcalBundle\Tests\Import;
 
-use Ausi\SlugGenerator\SlugGenerator;
 use Cgoit\ContaoCalendarIcalBundle\Event\AfterImportItemEvent;
 use Cgoit\ContaoCalendarIcalBundle\Import\IcsImport;
 use Cgoit\ContaoCalendarIcalBundle\Import\RemoteIcsDownloader;
-use Cgoit\ContaoCalendarIcalBundle\Tests\ContaoTestCase;
-use Contao\BackendUser;
+use Cgoit\ContaoCalendarIcalBundle\Tests\DatabaseTestCase;
 use Contao\CalendarModel;
-use Contao\CoreBundle\DataContainer\VirtualFieldsHandler;
 use Contao\CoreBundle\Framework\Adapter;
 use Contao\CoreBundle\Framework\ContaoFramework;
-use Contao\CoreBundle\Slug\Slug;
-use Contao\Database;
 use Contao\Date;
-use Contao\DcaLoader;
-use Contao\System;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\DriverManager;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Psr\Log\NullLogger;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Runs the import of the events against a real (SQLite) database, so that the models are saved and read back.
  */
-final class IcsImportDatabaseTest extends ContaoTestCase
+final class IcsImportDatabaseTest extends DatabaseTestCase
 {
-    private Connection $db;
-
-    private string $previousTimezone;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->previousTimezone = date_default_timezone_get();
-        date_default_timezone_set('Europe/Berlin');
-
-        $this->db = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
-        $this->db->executeStatement('CREATE TABLE tl_calendar (id INTEGER PRIMARY KEY, tstamp INTEGER NOT NULL DEFAULT 0, title TEXT, jumpTo INTEGER NOT NULL DEFAULT 0, ical_publish_imported TEXT DEFAULT NULL)');
-        $this->db->executeStatement('CREATE TABLE tl_calendar_events (id INTEGER PRIMARY KEY, pid INTEGER NOT NULL DEFAULT 0, tstamp INTEGER NOT NULL DEFAULT 0, title TEXT, alias TEXT, author INTEGER NOT NULL DEFAULT 0, addTime TEXT NOT NULL DEFAULT \'\', startTime INTEGER DEFAULT NULL, endTime INTEGER DEFAULT NULL, startDate INTEGER DEFAULT NULL, endDate INTEGER DEFAULT NULL, recurring TEXT NOT NULL DEFAULT \'\', repeatEach TEXT DEFAULT NULL, repeatEnd INTEGER NOT NULL DEFAULT 0, recurrences INTEGER NOT NULL DEFAULT 0, singleSRC BLOB DEFAULT NULL, published TEXT NOT NULL DEFAULT \'\', ical_uuid TEXT DEFAULT NULL)');
-        $this->db->executeStatement('CREATE TABLE tl_content (id INTEGER PRIMARY KEY, pid INTEGER NOT NULL DEFAULT 0, ptable TEXT, sorting INTEGER NOT NULL DEFAULT 0, tstamp INTEGER NOT NULL DEFAULT 0, type TEXT, text TEXT)');
-        $this->db->executeStatement("INSERT INTO tl_calendar (id, title) VALUES (1, 'Test')");
-
-        $container = $this->bootContao(['kernel.charset' => 'UTF-8']);
-        $container->set('database_connection', $this->db);
-        $container->set('monolog.logger.contao.general', new NullLogger());
-
-        $virtualFields = $this->createMock(VirtualFieldsHandler::class);
-        $virtualFields
-            ->method('expandFields')
-            ->willReturnArgument(0)
-        ;
-
-        $virtualFields
-            ->method('combineFields')
-            ->willReturnArgument(0)
-        ;
-        $container->set('contao.data_container.virtual_fields_handler', $virtualFields);
-
-        $cacheDir = $container->getParameter('kernel.cache_dir');
-        $fields = ['pid', 'tstamp', 'title', 'alias', 'author', 'addTime', 'startTime', 'endTime', 'startDate', 'endDate', 'recurring', 'repeatEach', 'repeatEnd', 'recurrences', 'singleSRC', 'published', 'ical_uuid'];
-        $dca = "<?php\n\$GLOBALS['TL_DCA']['tl_calendar_events']['fields'] = ".var_export(array_fill_keys($fields, []), true).";\n";
-        (new Filesystem())->dumpFile($cacheDir.'/contao/dca/tl_calendar_events.php', $dca);
-        (new Filesystem())->dumpFile($cacheDir.'/contao/config/column-types.php', "<?php return ['tl_calendar' => [], 'tl_calendar_events' => ['startTime' => 'int', 'endTime' => 'int', 'startDate' => 'int', 'endDate' => 'int', 'id' => 'int', 'pid' => 'int'], 'tl_content' => [], 'tl_module' => [], 'tl_article' => [], 'tl_page' => []];\n");
-
-        DcaLoader::reset();
-        (new \ReflectionProperty(Database::class, 'objInstance'))->setValue(null, new SqliteDatabase($this->db));
-
-        // The author of the imported events is the current back end user
-        $user = (new \ReflectionClass(BackendUser::class))->newInstanceWithoutConstructor();
-        (new \ReflectionProperty(BackendUser::class, 'arrData'))->setValue($user, ['id' => 7]);
-        (new \ReflectionProperty(BackendUser::class, 'objInstance'))->setValue(null, $user);
-
-        // The language files are not available here, the importer only needs the label of the location
-        $GLOBALS['TL_LANGUAGE'] = 'en';
-        $GLOBALS['TL_LANG']['MSC']['location'] = 'Location';
-        (new \ReflectionProperty(System::class, 'arrLanguageFiles'))->setValue(null, ['default' => ['en' => true]]);
-    }
-
-    protected function tearDown(): void
-    {
-        date_default_timezone_set($this->previousTimezone);
-        (new \ReflectionProperty(BackendUser::class, 'objInstance'))->setValue(null, null);
-        (new \ReflectionProperty(Database::class, 'objInstance'))->setValue(null, null);
-        DcaLoader::reset();
-
-        parent::tearDown();
-    }
-
     public function testImportsATimedEvent(): void
     {
         $this->importIcs($this->vevent('1', 'DTSTART:20240501T180000Z', 'DTEND:20240501T200000Z', 'SUMMARY:Sommerfest', 'DESCRIPTION:Mit <b>Musik</b>', 'LOCATION:Marktplatz'));
@@ -260,14 +187,6 @@ final class IcsImportDatabaseTest extends ContaoTestCase
         $this->assertSame(['Vorhanden'], array_column($this->events(), 'title'), 'the new event is rolled back, the old one is not removed');
     }
 
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private function events(): array
-    {
-        return $this->db->fetchAllAssociative('SELECT * FROM tl_calendar_events ORDER BY id');
-    }
-
     private function vevent(string $uid, string ...$lines): string
     {
         return "BEGIN:VEVENT\r\nUID:".$uid."\r\nDTSTAMP:20240101T000000Z\r\n".implode("\r\n", $lines)."\r\nEND:VEVENT\r\n";
@@ -294,7 +213,7 @@ final class IcsImportDatabaseTest extends ContaoTestCase
 
         return new IcsImport(
             $this->db,
-            new Slug(new SlugGenerator(), $framework),
+            $this->createSlug(),
             $framework,
             365,
             $dispatcher ?? new EventDispatcher(),
