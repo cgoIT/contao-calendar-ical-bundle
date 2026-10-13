@@ -16,7 +16,7 @@ $GLOBALS['TL_LANG']['tl_calendar_events']['icssource']['1'] = 'Please choose the
 $GLOBALS['TL_LANG']['tl_calendar_events']['import']['0'] = 'Calendar import';
 $GLOBALS['TL_LANG']['tl_calendar_events']['import']['1'] = 'Import events from an iCal (.ics) or CSV (.csv) file';
 
-$GLOBALS['TL_LANG']['tl_calendar_events']['importStartDate']['1'] = 'Please enter the start date for the calendar import. All events occurring before the start date will be omitted.';
+$GLOBALS['TL_LANG']['tl_calendar_events']['importStartDate']['0'] = 'Start date';
 $GLOBALS['TL_LANG']['tl_calendar_events']['importStartDate']['1'] = 'Please enter the start date for the calendar import. All events occurring before the start date will be omitted.';
 
 $GLOBALS['TL_LANG']['tl_calendar_events']['importEndDate']['0'] = 'End date';
