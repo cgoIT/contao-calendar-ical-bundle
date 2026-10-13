@@ -187,7 +187,7 @@ final class IcsExportTest extends ContaoTestCase
             'recurrences' => 5,
         ]);
 
-        $this->assertStringContainsString('RRULE:FREQ=DAILY;COUNT=5;INTERVAL=2', $this->exportEvent($event));
+        $this->assertStringContainsString('RRULE:FREQ=DAILY;COUNT=6;INTERVAL=2', $this->exportEvent($event));
     }
 
     public function testWeeklyRecurrenceWithoutLimitHasNoCount(): void
@@ -222,7 +222,7 @@ final class IcsExportTest extends ContaoTestCase
             'recurrences' => 3,
         ]);
 
-        $this->assertStringContainsString('RRULE:FREQ=MONTHLY;COUNT=3;INTERVAL=1;BYDAY=1TH', $this->exportEvent($event));
+        $this->assertStringContainsString('RRULE:FREQ=MONTHLY;COUNT=4;INTERVAL=1;BYDAY=1TH', $this->exportEvent($event));
     }
 
     public function testExtendedMonthlyRecurrenceOnLastWeekday(): void

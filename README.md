@@ -94,7 +94,7 @@ Abo-Datei, Feed-Seite, Download-Element). „Mit Erweiterung“ meint das `cgoit
 | Teilnehmer, Kontakt | `ATTENDEE` (nur gültige E-Mail-Adressen) und `CONTACT`, falls die Felder vorhanden sind | wie ohne |
 | Einfache Wiederholung | `RRULE` mit Einheit (täglich bis jährlich) und `INTERVAL` | wie ohne |
 | Erweiterte Wiederholung („erster Donnerstag“) | Nicht verfügbar | `RRULE` monatlich mit `BYDAY` (z. B. `1TH`) |
-| Wiederholung mit Ende | `COUNT` (Anzahl der Wiederholungen) | wie ohne |
+| Wiederholung mit Ende | `COUNT` (Anzahl der Termine einschließlich des ersten) | wie ohne |
 | Ausnahme „Termin nicht anzeigen“ (einzeln oder für einen Zeitraum) | Nicht verfügbar | `EXDATE` (als Datum oder Datum mit Uhrzeit, passend zum Termin) |
 | Ausnahme „Termin verschieben“ | Nicht verfügbar | Zusätzlicher Termin mit gleicher `UID` und `RECURRENCE-ID` der ursprünglichen Wiederholung |
 | Unveröffentlichter Termin, Termin außerhalb des Zeitraums | Wird nicht exportiert | wie ohne |

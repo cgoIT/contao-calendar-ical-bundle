@@ -346,7 +346,8 @@ class IcsExport
                 $rrule = [Vcalendar::FREQ => $freq];
 
                 if ($objEvent->recurrences > 0) {
-                    $rrule[Vcalendar::COUNT] = $objEvent->recurrences;
+                    // "recurrences" are the repetitions after the first event, COUNT includes the first one
+                    $rrule[Vcalendar::COUNT] = $objEvent->recurrences + 1;
                 }
 
                 if ($arg > 1) {
@@ -369,7 +370,8 @@ class IcsExport
             ];
 
             if ($objEvent->recurrences > 0) {
-                $rrule[Vcalendar::COUNT] = $objEvent->recurrences;
+                // "recurrences" are the repetitions after the first event, COUNT includes the first one
+                $rrule[Vcalendar::COUNT] = $objEvent->recurrences + 1;
             }
 
             $vevent->setRrule($rrule);
