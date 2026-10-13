@@ -49,7 +49,7 @@ $GLOBALS['TL_LANG']['tl_calendar']['ical_pattern_event_title']['0'] = 'Termin-Ti
 $GLOBALS['TL_LANG']['tl_calendar']['ical_pattern_event_title']['1'] = 'Geben Sie eine Zeichenkette ein, nach der im Titel gesucht werden soll - siehe: preg_replace.';
 
 $GLOBALS['TL_LANG']['tl_calendar']['ical_replacement_event_title']['0'] = 'Termin-Titel Replacement';
-$GLOBALS['TL_LANG']['tl_calendar']['ical_replacement_event_title']['1'] = 'Geben Sie eine Zeichenkette ein, nach der im Titel ersetzt werden soll - siehe: preg_replace.';
+$GLOBALS['TL_LANG']['tl_calendar']['ical_replacement_event_title']['1'] = 'Geben Sie eine Zeichenkette ein, nach der im Titel ersetzt werden soll - siehe: preg_replace. Ohne Eingabe wird der Treffer des Patterns aus dem Titel entfernt.';
 
 $GLOBALS['TL_LANG']['tl_calendar']['ical_cache']['0'] = 'Cache-Dauer in Sekunden';
 $GLOBALS['TL_LANG']['tl_calendar']['ical_cache']['1'] = 'Bitte geben Sie die minimale Cache-Dauer in Sekunden für die Pufferung der iCal-Daten an. Die Kalenderdaten werden erst nach dem Ablauf der Cache-Dauer wieder neu aufgebaut.';

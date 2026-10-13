@@ -600,16 +600,17 @@ class IcsImport extends AbstractImport
     }
 
     /**
-     * Rewrites the title with the configured regular expression. An invalid expression or a
+     * Rewrites the title with the configured regular expression; an empty replacement removes the match. An invalid expression or a
      * failing replacement (e.g. backtrack limit) leaves the title untouched.
      */
     private function rewriteTitle(string $summary, string|null $pattern, string|null $replacement): string
     {
-        if (empty($pattern) || empty($replacement)) {
+        // Without a replacement the match is removed
+        if (empty($pattern)) {
             return $summary;
         }
 
-        $title = @preg_replace($pattern, $replacement, $summary);
+        $title = @preg_replace($pattern, $replacement ?? '', $summary);
 
         if (!\is_string($title)) {
             $this->logger->warning('Could not rewrite the title "'.$summary.'" with the pattern "'.$pattern.'": '.preg_last_error_msg());

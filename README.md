@@ -86,6 +86,7 @@ Version 6.0 bringt einige Änderungen mit, die Anpassungen im Projekt erfordern 
 | `ext-curl` | Wird nicht mehr benötigt, stattdessen wird `symfony/http-client` verwendet. |
 | Content-Element „iCal Download“ | Wird mit `content_element/ical.html.twig` gerendert (statt `ce_ical.html5`). Wer `ce_ical` überschrieben hatte, legt stattdessen ein Twig-Template an. Das Feld „Template für iCal Download-Element“ (`ical_download_template`, `ce_download_*`) entfällt; das Markup des Links steht im Twig-Template. |
 | Datumsfelder | Start- und Enddatum von Abonnement und Web-Quelle (`ical_start`, `ical_end`, `ical_source_start`, `ical_source_end`) werden als Zahl statt als Text gespeichert. `contao:migrate` wandelt die Spalten um, leere Werte werden zu `NULL`. |
+| Titel umschreiben | Ist nur ein Pattern, aber kein Replacement eingetragen, wird der Treffer jetzt aus dem Titel entfernt. Früher blieb der Titel in diesem Fall unverändert. |
 | Konfiguration | Der Wert `$GLOBALS['calendar_ical']['endDateTimeDifferenceInDays']` aus der `localconfig.php` wird nicht mehr gelesen, siehe [Konfiguration](#konfiguration). |
 
 Nach dem Update `bin/console contao:migrate` ausführen und die Import-Einstellungen der Kalender mit Web-Quelle
@@ -265,7 +266,7 @@ Kalender; zusätzlich zu URL, Zeitraum und Zeitzone gibt es:
 | Einstellung | Beschreibung |
 |-------------|--------------|
 | **Termin-Titel filtern** (`ical_filter_event_title`) | Nur Termine, deren Titel die Zeichenkette enthält, werden importiert. |
-| **Termin-Titel Pattern** (`ical_pattern_event_title`) und **Replacement** (`ical_replacement_event_title`) | Schreiben den Titel mit einem regulären Ausdruck um. Der Ausdruck wird beim Speichern des Kalenders geprüft und benötigt Trennzeichen, z. B. `/^\[Verein\] /`. |
+| **Termin-Titel Pattern** (`ical_pattern_event_title`) und **Replacement** (`ical_replacement_event_title`) | Schreiben den Titel mit einem regulären Ausdruck um. Der Ausdruck wird beim Speichern des Kalenders geprüft und benötigt Trennzeichen, z. B. `/^\[Verein\] /`. Ohne Ersetzungstext wird der Treffer aus dem Titel entfernt. |
 | **Cache-Dauer in Sekunden** | Nach dieser Zeit wird die Quelle erneut abgerufen (Standard 86400). |
 | **Proxy** | Optionaler Proxy, falls der Server nur darüber ins Internet kommt. Das Feld „Benutzername:Passwort“ wird verdeckt angezeigt und ist nicht durchsuchbar. |
 
