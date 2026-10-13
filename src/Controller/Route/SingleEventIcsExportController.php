@@ -13,18 +13,17 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Controller\Route;
 
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
+use Cgoit\ContaoCalendarIcalBundle\Security\ExportAccessChecker;
 use Cgoit\ContaoCalendarIcalBundle\Util\ResponseUtil;
 use Contao\CalendarEventsModel;
+use Contao\CalendarModel;
 use Contao\CoreBundle\Controller\AbstractController;
 use Contao\StringUtil;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 
-/**
- * @noRector RenameAttributeRector
- */
 #[Route('/_event/ics-export/{id}',
     name: 'event_frontend_ics_export',
     defaults: ['_scope' => 'frontend'])
@@ -34,6 +33,7 @@ class SingleEventIcsExportController extends AbstractController
     public function __construct(
         private readonly ResponseUtil $responseUtil,
         private readonly IcsExport $icsExport,
+        private readonly ExportAccessChecker $accessChecker,
     ) {
     }
 
@@ -53,14 +53,33 @@ class SingleEventIcsExportController extends AbstractController
      */
     private function exportEvent(int $eventId): Response
     {
+        // Only published events (respecting start/stop and the preview mode) of an accessible calendar
         $objEvent = CalendarEventsModel::findById($eventId);
-        if (empty($objEvent)) {
+        if (null !== $objEvent) {
+            $objEvent = CalendarEventsModel::findPublishedByParentAndIdOrAlias((string) $objEvent->id, [(int) $objEvent->pid]);
+
+            // The lookup also matches aliases, so make sure it is the requested event
+            if (null !== $objEvent && (int) $objEvent->id !== $eventId) {
+                $objEvent = null;
+            }
+        }
+
+        $objCalendar = null !== $objEvent ? CalendarModel::findById($objEvent->pid) : null;
+
+        if (null === $objEvent || null === $objCalendar || !$this->accessChecker->canExportCalendar($objCalendar)) {
             throw new NotFoundHttpException('Event not found');
         }
 
         $icsEvent = $this->icsExport->exportEvent($objEvent)->createCalendar();
         $filename = StringUtil::sanitizeFileName($objEvent->title ?? $eventId).'.ics';
 
-        throw $this->responseUtil->sendFileForDownload($icsEvent, $filename);
+        $response = $this->responseUtil->createDownloadResponse($icsEvent, $filename);
+
+        if ($objCalendar->protected) {
+            $response->setPrivate();
+            $response->headers->addCacheControlDirective('no-store');
+        }
+
+        return $response;
     }
 }

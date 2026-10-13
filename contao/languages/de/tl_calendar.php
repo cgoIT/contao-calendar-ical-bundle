@@ -21,6 +21,9 @@ $GLOBALS['TL_LANG']['tl_calendar']['ical_prefix']['1'] = 'Bitte geben Sie ein Pr
 $GLOBALS['TL_LANG']['tl_calendar']['ical_description']['0'] = 'iCal Beschreibung';
 $GLOBALS['TL_LANG']['tl_calendar']['ical_description']['1'] = 'Bitte geben Sie eine kurze Beschreibung des iCal-Abonnements ein';
 
+$GLOBALS['TL_LANG']['tl_calendar']['ical_publish_imported']['0'] = 'Importierte Termine veröffentlichen';
+$GLOBALS['TL_LANG']['tl_calendar']['ical_publish_imported']['1'] = 'Die Termine, die in diesen Kalender importiert werden (iCal-Datei, CSV-Datei und Web-Quelle), sofort veröffentlichen. Ohne diese Option werden neue Termine unveröffentlicht importiert; bereits vorhandene Termine behalten ihren Zustand.';
+
 $GLOBALS['TL_LANG']['tl_calendar']['make_ical']['0'] = 'iCal Abonnement erstellen';
 $GLOBALS['TL_LANG']['tl_calendar']['make_ical']['1'] = 'Eine iCal Abonnement Datei aus dem Kalender generieren';
 
@@ -46,7 +49,7 @@ $GLOBALS['TL_LANG']['tl_calendar']['ical_pattern_event_title']['0'] = 'Termin-Ti
 $GLOBALS['TL_LANG']['tl_calendar']['ical_pattern_event_title']['1'] = 'Geben Sie eine Zeichenkette ein, nach der im Titel gesucht werden soll - siehe: preg_replace.';
 
 $GLOBALS['TL_LANG']['tl_calendar']['ical_replacement_event_title']['0'] = 'Termin-Titel Replacement';
-$GLOBALS['TL_LANG']['tl_calendar']['ical_replacement_event_title']['1'] = 'Geben Sie eine Zeichenkette ein, nach der im Titel ersetzt werden soll - siehe: preg_replace.';
+$GLOBALS['TL_LANG']['tl_calendar']['ical_replacement_event_title']['1'] = 'Geben Sie eine Zeichenkette ein, nach der im Titel ersetzt werden soll - siehe: preg_replace. Ohne Eingabe wird der Treffer des Patterns aus dem Titel entfernt.';
 
 $GLOBALS['TL_LANG']['tl_calendar']['ical_cache']['0'] = 'Cache-Dauer in Sekunden';
 $GLOBALS['TL_LANG']['tl_calendar']['ical_cache']['1'] = 'Bitte geben Sie die minimale Cache-Dauer in Sekunden für die Pufferung der iCal-Daten an. Die Kalenderdaten werden erst nach dem Ablauf der Cache-Dauer wieder neu aufgebaut.';

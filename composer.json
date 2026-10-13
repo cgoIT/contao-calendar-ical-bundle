@@ -30,26 +30,36 @@
     "source": "https://github.com/cgoIT/contao-calendar-ical-bundle"
   },
   "require": {
-    "php": "^8.2",
-    "ext-curl": "*",
+    "php": "^8.3",
+    "ext-filter": "*",
     "ext-mbstring": "*",
-    "contao/core-bundle": "^4.13 || ^5.3",
-    "contao/calendar-bundle": "^4.13 || ^5.3",
+    "contao/core-bundle": "^5.3",
+    "contao/calendar-bundle": "^5.3",
     "doctrine/dbal": "^3.3 || ^4.0",
-    "symfony/config": "^5.4 || ^6.0 || ^7.3",
-    "symfony/dependency-injection": "^5.4 || ^6.0 || ^7.3",
-    "symfony/event-dispatcher": "^5.4 || ^6.0 || ^7.3",
-    "symfony/event-dispatcher-contracts": "^1.0 || ^2.0 || ^3.0",
-    "symfony/http-foundation": "^5.4 || ^6.0 || ^7.3",
-    "symfony/http-kernel": "^5.4 || ^6.0 || ^7.3",
-    "symfony/routing": "^5.4 || ^6.0 || ^7.3",
-    "symfony/security-csrf": "^5.4 || ^6.0 || ^7.3",
+    "psr/log": "^1.1 || ^2.0 || ^3.0",
+    "symfony/config": "^6.4 || ^7.3",
+    "symfony/dependency-injection": "^6.4 || ^7.3",
+    "symfony/deprecation-contracts": "^2.5 || ^3.0",
+    "symfony/event-dispatcher": "^6.4 || ^7.3",
+    "symfony/event-dispatcher-contracts": "^3.0",
+    "symfony/filesystem": "^6.4 || ^7.3",
+    "symfony/http-client": "^6.4 || ^7.3",
+    "symfony/http-client-contracts": "^3.0",
+    "symfony/http-foundation": "^6.4 || ^7.3",
+    "symfony/http-kernel": "^6.4 || ^7.3",
+    "symfony/routing": "^6.4 || ^7.3",
+    "symfony/security-bundle": "^6.4 || ^7.3",
     "kigkonsult/icalcreator": "~2",
     "webignition/robots-txt-file": "^3.0"
   },
   "require-dev": {
+    "ext-pdo": "*",
+    "ausi/slug-generator": "^1.1",
     "contao/manager-plugin": "^2.0",
-    "terminal42/contao-build-tools": "dev-main"
+    "psr/container": "^1.1 || ^2.0",
+    "symfony/security-core": "^6.4 || ^7.3",
+    "terminal42/contao-build-tools": "dev-main",
+    "phpunit/phpunit": "^10.5 || ^11.5"
   },
   "conflict": {
     "contao/manager-plugin": "<2.0 || >=3.0"
@@ -60,6 +70,14 @@
   "autoload": {
     "psr-4": {
       "Cgoit\\ContaoCalendarIcalBundle\\": "src/"
+    },
+    "files": [
+      "config/compat.php"
+    ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Cgoit\\ContaoCalendarIcalBundle\\Tests\\": "tests/"
     }
   },
   "config": {
@@ -75,11 +93,10 @@
   },
   "scripts": {
     "all": [
-      "@ecs",
-      "@twig-cs-fixer",
-      "@rector",
-      "@phpstan",
-      "@depcheck"
-    ]
+      "@fix-tools",
+      "@tests"
+    ],
+    "tests": "phpunit",
+    "coverage": "@php -d extension=pcov -d pcov.enabled=1 vendor/bin/phpunit --coverage-text --coverage-filter src --coverage-html build/coverage"
   }
 }

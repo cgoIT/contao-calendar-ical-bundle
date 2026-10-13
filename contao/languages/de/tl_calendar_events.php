@@ -20,7 +20,7 @@ $GLOBALS['TL_LANG']['tl_calendar_events']['importStartDate']['0'] = 'Startdatum'
 $GLOBALS['TL_LANG']['tl_calendar_events']['importStartDate']['1'] = 'Geben Sie das Startdatum für den Kalenderimport an. Alle Termine, die vor diesem Datum auftreten, werden nicht berücksichtigt.';
 
 $GLOBALS['TL_LANG']['tl_calendar_events']['importEndDate']['0'] = 'Enddatum';
-$GLOBALS['TL_LANG']['tl_calendar_events']['importEndDate']['1'] = 'Geben Sie das Enddatum für den Kalenderimport an. Alle Termine, die nach diesem Datum auftreten, werden nicht berücksichtigt.';
+$GLOBALS['TL_LANG']['tl_calendar_events']['importEndDate']['1'] = 'Geben Sie das Enddatum für den Kalenderimport an. Alle Termine, die nach diesem Datum auftreten, werden nicht berücksichtigt. Ohne Angabe gilt der 31.12. des übernächsten Jahres.';
 
 $GLOBALS['TL_LANG']['tl_calendar_events']['encoding']['0'] = 'Zeichencodierung';
 $GLOBALS['TL_LANG']['tl_calendar_events']['encoding']['1'] = 'Bitte geben Sie die Zeichencodierung Ihrer zu importierenden Daten an.';
@@ -52,9 +52,17 @@ $GLOBALS['TL_LANG']['tl_calendar_events']['importTimeShift']['1'] = 'Bitte geben
 $GLOBALS['TL_LANG']['tl_calendar_events']['confirmationTimezone'] = "Contao hat festgestellt, dass sich die Systemzeitzone '%s' von der Zeitzone '%s' der Import-Datei unterscheidet. Dies kann zu Zeitverschiebungen bei den Terminen führen.";
 $GLOBALS['TL_LANG']['tl_calendar_events']['confirmationMissingTZ'] = "Contao hat festgestellt, dass die Import-Datei ohne Zeitzone erzeugt wurde. Ihre System-Zeitzone ist '%s'. Bitte wählen Sie eine Zeitzone für die Termine der Import-Datei aus. Beachten Sie, dass die Auswahl einer anderen Zeitzone als der ursprünglich für die Termine angedachten zu Zeitverschiebungen bei den Terminen führen kann.";
 $GLOBALS['TL_LANG']['tl_calendar_events']['preview'] = 'Daten-Vorschau';
-$GLOBALS['TL_LANG']['tl_calendar_events']['ical_bundle_fields'] = 'Felder';
 $GLOBALS['TL_LANG']['tl_calendar_events']['check'] = 'Überprüfen';
 $GLOBALS['TL_LANG']['tl_calendar_events']['untitled'] = 'Ohne Titel';
 $GLOBALS['TL_LANG']['tl_calendar_events']['dateFormat'] = 'd.m.Y';
 $GLOBALS['TL_LANG']['tl_calendar_events']['timeFormat'] = 'H:i';
 $GLOBALS['TL_LANG']['tl_content']['error_generating_ical_file'] = 'Beim erzeugen der ics Datei ist ein Fehler aufgetreten.';
+
+$GLOBALS['TL_LANG']['tl_calendar_events']['source_legend'] = 'Quelle';
+$GLOBALS['TL_LANG']['tl_calendar_events']['range_legend'] = 'Zeitraum';
+$GLOBALS['TL_LANG']['tl_calendar_events']['options_legend'] = 'Optionen';
+$GLOBALS['TL_LANG']['tl_calendar_events']['timezone_legend'] = 'Zeitzone';
+$GLOBALS['TL_LANG']['tl_calendar_events']['import_done'] = 'Der Import ist abgeschlossen.';
+$GLOBALS['TL_LANG']['tl_calendar_events']['cancel'] = 'Abbrechen';
+$GLOBALS['TL_LANG']['tl_calendar_events']['csv_legend'] = 'Einstellungen';
+$GLOBALS['TL_LANG']['tl_calendar_events']['mapping_legend'] = 'Felder zuordnen';

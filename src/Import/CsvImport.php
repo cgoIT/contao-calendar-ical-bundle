@@ -2,335 +2,331 @@
 
 declare(strict_types=1);
 
+/*
+ * This file is part of cgoit\contao-calendar-ical-bundle for Contao Open Source CMS.
+ *
+ * @copyright  Copyright (c), cgoIT
+ * @author     cgoIT <https://cgo-it.de>
+ * @license    LGPL-3.0-or-later
+ */
+
 namespace Cgoit\ContaoCalendarIcalBundle\Import;
 
 use Cgoit\ContaoCalendarIcalBundle\Import\Csv\CsvParser;
-use Cgoit\ContaoCalendarIcalBundle\Widgets\WidgetTrait;
-use Contao\BackendTemplate;
+use Cgoit\ContaoCalendarIcalBundle\Util\UploadedFileResolver;
 use Contao\BackendUser;
 use Contao\CalendarEventsModel;
-use Contao\Config;
+use Contao\CalendarModel;
+use Contao\Controller;
 use Contao\CoreBundle\Slug\Slug;
 use Contao\Date;
-use Contao\Environment;
-use Contao\Input;
-use Contao\StringUtil;
 use Doctrine\DBAL\Connection;
-use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
+use Symfony\Component\Filesystem\Filesystem;
 
 class CsvImport extends AbstractImport
 {
-    use WidgetTrait;
-
     public function __construct(
-        private readonly RequestStack $requestStack,
         private readonly Connection $db,
-        private readonly CsrfTokenManagerInterface $csrfTokenManager,
-        private readonly string $csrfTokenName,
         private readonly string $projectDir,
         Slug $slug,
+        private readonly UploadedFileResolver $uploadedFileResolver,
     ) {
         parent::__construct($slug);
     }
 
-    public function importFromCSVFile(bool $prepare = true): string
+    /**
+     * The fields of an event a column of a csv file can be assigned to.
+     *
+     * @return array<string, string> The names of the fields with their labels
+     */
+    public function getCalendarFields(): array
     {
-        static::loadDataContainer('tl_calendar_events');
+        Controller::loadDataContainer('tl_calendar_events');
 
-        $fieldnames = [];
-
-        $schemaManager = $this->db->createSchemaManager();
-        $dbfields = $schemaManager->listTableColumns('tl_calendar_events');
-
-        foreach ($dbfields as $dbfield) {
-            $fieldnames[] = $dbfield->getName();
-        }
-
-        $calfields =
-            [
-                ['title', $GLOBALS['TL_LANG']['tl_calendar_events']['title'][0]],
-                ['startTime', $GLOBALS['TL_LANG']['tl_calendar_events']['startTime'][0]],
-                ['endTime', $GLOBALS['TL_LANG']['tl_calendar_events']['endTime'][0]],
-                ['startDate', $GLOBALS['TL_LANG']['tl_calendar_events']['startDate'][0]],
-                ['endDate', $GLOBALS['TL_LANG']['tl_calendar_events']['endDate'][0]],
-                ['details', $GLOBALS['TL_LANG']['tl_calendar_events']['details'][0]],
-                ['teaser', $GLOBALS['TL_LANG']['tl_calendar_events']['teaser'][0]],
-            ];
-
-        if (\in_array('location', $fieldnames, true)) {
-            $calfields[] = ['location', $GLOBALS['TL_LANG']['tl_calendar_events']['location'][0]];
-        }
-        if (\in_array('cep_participants', $fieldnames, true)) {
-            $calfields[] = ['cep_participants', $GLOBALS['TL_LANG']['tl_calendar_events']['cep_participants'][0]];
-        }
-        if (\in_array('location_contact', $fieldnames, true)) {
-            $calfields[] = ['location_contact', $GLOBALS['TL_LANG']['tl_calendar_events']['location_contact'][0]];
-        }
-
-        $dateFormat = Input::post('dateFormat');
-        $timeFormat = Input::post('timeFormat');
-        $fields = [];
-        $csvvalues = Input::post('csvfield');
-        $calvalues = Input::post('calfield');
-        $encoding = Input::post('encoding');
-
-        if (!\is_array($csvvalues)) {
-            $sessiondata = StringUtil::deserialize(Config::get('calendar_ical.csvimport.data'), true);
-            if (\is_array($sessiondata) && 5 === \count($sessiondata)) {
-                $csvvalues = $sessiondata[0];
-                $calvalues = $sessiondata[1];
-                $dateFormat = $sessiondata[2];
-                $timeFormat = $sessiondata[3];
-                $encoding = $sessiondata[4];
-            }
-        }
-
-        $importSettings = StringUtil::deserialize(
-            $this->requestStack
-                ->getCurrentRequest()
-                ->getSession()
-                ->get('calendar_ical.csvimport.settings'),
-            true,
+        $columns = array_map(
+            static fn ($column): string => $column->getName(),
+            $this->db->createSchemaManager()->listTableColumns('tl_calendar_events'),
         );
 
-        $data = $this->projectDir.'/'.$importSettings['csv_filename'];
-        $parser = new CsvParser($data, !empty((string) $encoding) ? $encoding : 'utf8');
-        $header = $parser->extractHeader();
+        $fields = [];
 
-        for ($i = 0; $i < (!empty($header) ? \count($header) : 0); ++$i) {
-            $objCSV = $this->getFieldSelector($i, 'csvfield', $header,
-                \is_array($csvvalues) ? $csvvalues[$i] : $header[$i]);
-            $objCal = $this->getFieldSelector($i, 'calfield', $calfields, $calvalues[$i] ?? null);
-            $fields[] = [$objCSV, $objCal];
+        foreach (['title', 'startTime', 'endTime', 'startDate', 'endDate', 'details', 'teaser', 'location', 'cep_participants', 'location_contact'] as $name) {
+            // The last three fields exist only if the corresponding bundles are installed
+            if (\in_array($name, ['location', 'cep_participants', 'location_contact'], true) && (!\in_array($name, $columns, true) || !isset($GLOBALS['TL_DCA']['tl_calendar_events']['fields'][$name]))) {
+                continue;
+            }
+
+            $fields[$name] = (string) $GLOBALS['TL_LANG']['tl_calendar_events'][$name][0];
         }
 
-        if ($prepare) {
-            $preview = $parser->getDataArray(5);
-            $objTemplate = new BackendTemplate('be_import_calendar_csv_headers');
-            $objTemplate->request_token = $this->csrfTokenManager->getToken($this->csrfTokenName)->getValue();
+        return $fields;
+    }
 
-            $objTemplate->lngFields = $GLOBALS['TL_LANG']['tl_calendar_events']['ical_bundle_fields'];
-            $objTemplate->lngPreview = $GLOBALS['TL_LANG']['tl_calendar_events']['preview'];
-            $objTemplate->check = $GLOBALS['TL_LANG']['tl_calendar_events']['check'];
-            $objTemplate->header = $header;
+    /**
+     * Reads the header and the first records of a csv file.
+     *
+     * @param string $file The path of the csv file relative to the project directory
+     *
+     * @return array{header: list<string>, rows: list<list<string>>}
+     *
+     * @throws \InvalidArgumentException If the path is not the one of an uploaded csv file
+     */
+    public function readPreview(string $file, string $encoding, int $lines = 5): array
+    {
+        $parser = new CsvParser($this->resolvePath($file), '' !== $encoding ? $encoding : 'utf8');
+        $header = array_map(static fn ($cell): string => (string) $cell, $parser->extractHeader());
+        $rows = [];
 
-            if (!empty($preview)) {
-                foreach ($preview as $idx => $line) {
-                    if (\is_array($line)) {
-                        foreach ($line as $key => $value) {
-                            $preview[$idx][$key] = StringUtil::specialchars($value);
+        $data = $parser->getDataArray($lines);
+
+        foreach (\is_array($data) ? $data : [] as $row) {
+            if (\is_array($row)) {
+                $rows[] = array_map(static fn ($cell): string => (string) $cell, array_values($row));
+            }
+        }
+
+        return ['header' => $header, 'rows' => $rows];
+    }
+
+    /**
+     * Deletes an uploaded csv file, which is not needed anymore.
+     */
+    public function delete(string $file): void
+    {
+        $resolved = $this->uploadedFileResolver->resolve($file, ['csv']);
+
+        if (null !== $resolved) {
+            (new Filesystem())->remove($this->projectDir.'/'.$resolved);
+        }
+    }
+
+    /**
+     * Imports the events of a csv file.
+     *
+     * @param string                         $file      The path of the csv file relative to the project directory
+     * @param list<array{0: int, 1: string}> $mapping   The index of the column in the file and the field of the event, for every imported column
+     * @param Date                           $startDate The first day to import
+     * @param Date|null                      $endDate   The last day to import, null for no end
+     *
+     * @return list<int> The numbers of the records that were skipped because of a wrong date or time
+     *
+     * @throws \InvalidArgumentException If the file is not an uploaded csv file or has no header
+     */
+    public function import(string $file, int $calendarId, array $mapping, string $encoding, string $dateFormat, string $timeFormat, Date $startDate, Date|null $endDate, bool $deleteCalendar, int $timeshift, string $filterEventTitle): array
+    {
+        $parser = new CsvParser($this->resolvePath($file), '' !== $encoding ? $encoding : 'utf8');
+
+        // Check the file before anything is deleted: without a header nothing could be imported
+        if ([] === $parser->extractHeader()) {
+            throw new \InvalidArgumentException('The csv file is empty or cannot be read');
+        }
+
+        Controller::loadDataContainer('tl_calendar_events');
+
+        $skippedRecords = [];
+
+        // Either everything or nothing is imported (also if the calendar is emptied before)
+        $this->db->beginTransaction();
+
+        try {
+            if ($deleteCalendar) {
+                $objEvents = CalendarEventsModel::findByPid($calendarId);
+                $this->deleteEvents($objEvents);
+            }
+
+            $done = false;
+            $record = 1; // the header
+            $publish = $this->publishImportedEvents(CalendarModel::findById($calendarId));
+
+            // Get all default values for new entries
+            $defaultFields = array_filter($GLOBALS['TL_DCA']['tl_calendar_events']['fields'], static fn ($val) => isset($val['default']));
+
+            // The times default to the time of the import, an event only has them if the file contains them
+            unset($defaultFields['startTime'], $defaultFields['endTime']);
+
+            while (!$done) {
+                $data = $parser->getDataArray();
+
+                if (false !== $data) {
+                    ++$record;
+                    $eventcontent = [];
+
+                    $objEvent = new CalendarEventsModel();
+                    $objEvent->tstamp = time();
+                    $objEvent->pid = $calendarId;
+
+                    foreach ($defaultFields as $field => $value) {
+                        $varValue = $value['default'];
+                        if ($varValue instanceof \Closure) {
+                            $varValue = $varValue();
                         }
+                        $objEvent->{$field} = $varValue;
                     }
-                }
-            }
 
-            $objTemplate->preview = $preview;
-            $objTemplate->encoding = $this->getEncodingWidget($encoding);
+                    $objEvent->published = $publish;
+                    $objEvent->author = BackendUser::getInstance()->id ?? 0;
 
-            if (\function_exists('date_parse_from_format')) {
-                $objTemplate->dateFormat = $this->getDateFormatWidget($dateFormat);
-                $objTemplate->timeFormat = $this->getTimeFormatWidget($timeFormat);
-            }
-
-            $objTemplate->hrefBack = StringUtil::ampersand(str_replace('&key=import', '', (string) Environment::get('request')));
-            $objTemplate->goBack = $GLOBALS['TL_LANG']['MSC']['goBack'];
-            $objTemplate->headline = $GLOBALS['TL_LANG']['MSC']['import_calendar'][0];
-            $objTemplate->request = StringUtil::ampersand(Environment::get('request'), true);
-            $objTemplate->submit = StringUtil::specialchars($GLOBALS['TL_LANG']['tl_calendar_events']['proceed'][0]);
-            $objTemplate->fields = $fields;
-
-            return $objTemplate->parse();
-        }
-        // save config
-        Config::set('calendar_ical.csvimport.data', serialize([
-            $csvvalues,
-            $calvalues,
-            Input::post('dateFormat'),
-            Input::post('timeFormat'),
-            Input::post('encoding'),
-        ]));
-
-        if (!empty($importSettings['csv_deletecalendar']) && !empty($importSettings['csv_pid'])) {
-            $objEvents = CalendarEventsModel::findByPid($importSettings['csv_pid']);
-            $this->deleteEvents($objEvents);
-        }
-
-        $done = false;
-
-        // Get all default values for new entries
-        $defaultFields = array_filter($GLOBALS['TL_DCA']['tl_calendar_events']['fields'], static fn ($val) => isset($val['default']));
-
-        while (!$done) {
-            $data = $parser->getDataArray();
-
-            if (false !== $data) {
-                $eventcontent = [];
-
-                $objEvent = new CalendarEventsModel();
-                $objEvent->tstamp = time();
-                $objEvent->pid = $importSettings['csv_pid'];
-                $objEvent->published = true;
-
-                foreach ($defaultFields as $field => $value) {
-                    $varValue = $value['default'];
-                    if ($varValue instanceof \Closure) {
-                        $varValue = $varValue();
-                    }
-                    $objEvent->{$field} = $varValue;
-                }
-
-                $objEvent->author = BackendUser::getInstance()->id ?? 0;
-
-                foreach ($calvalues as $idx => $value) {
-                    if (!empty($value)) {
-                        $indexfield = $csvvalues[$idx];
-                        $foundindex = array_search($indexfield, $header, true);
-
-                        if (false !== $foundindex && !empty($data[$foundindex])) {
+                    foreach ($mapping as [$foundindex, $value]) {
+                        if (!empty($value) && !empty($data[$foundindex])) {
                             switch ($value) {
                                 case 'startDate':
                                 case 'endDate':
-                                    if (\function_exists('date_parse_from_format')) {
-                                        $res = date_parse_from_format(Input::post('dateFormat'), $data[$foundindex]);
+                                    $timestamp = $this->parseDate($dateFormat, (string) $data[$foundindex]);
 
-                                        $objEvent->{$value} = mktime(0, 0, 0, $res['month'], $res['day'], $res['year']);
-                                    } else {
-                                        $objEvent->{$value} = $this->getTimestampFromDefaultDatetime($data[$foundindex]);
+                                    // A wrong date must not silently become another one
+                                    if (null === $timestamp) {
+                                        $skippedRecords[] = $record;
+                                        continue 3;
                                     }
+
+                                    $objEvent->{$value} = $timestamp;
                                     break;
                                 case 'details':
-                                    $eventcontent[] = StringUtil::specialchars($data[$foundindex]);
+                                    $eventcontent[] = $this->encodeImportedText((string) $data[$foundindex]);
                                     break;
                                 case 'title':
-                                    $objEvent->{$value} = StringUtil::specialchars($data[$foundindex]);
-                                    $filterEventTitle = $importSettings['csv_filterEventTitle'];
-                                    if (!empty($filterEventTitle) && !str_contains(mb_strtolower(StringUtil::specialchars($data[$foundindex])), mb_strtolower((string) $filterEventTitle))) {
+                                    $objEvent->{$value} = $this->encodeImportedText((string) $data[$foundindex]);
+                                    if ('' !== $filterEventTitle && !str_contains(mb_strtolower($this->encodeImportedText((string) $data[$foundindex])), mb_strtolower($filterEventTitle))) {
                                         continue 3;
                                     }
                                 // no break
                                 default:
-                                    $objEvent->{$value} = StringUtil::specialchars($data[$foundindex]);
+                                    $objEvent->{$value} = $this->encodeImportedText((string) $data[$foundindex]);
                                     break;
                             }
                         }
                     }
-                }
 
-                if (empty($objEvent->startDate)) {
-                    $today = getdate();
-                    $objEvent->startDate = mktime(0, 0, 0, $today['mon'], $today['mday'], $today['year']);
-                    $objEvent->startTime = $objEvent->startDate;
-                }
+                    if (empty($objEvent->startDate)) {
+                        $today = getdate();
+                        $objEvent->startDate = mktime(0, 0, 0, $today['mon'], $today['mday'], $today['year']);
+                        $objEvent->startTime = $objEvent->startDate;
+                    }
 
-                if (empty($objEvent->endDate)) {
-                    $objEvent->endDate = $objEvent->startDate;
-                }
+                    if (empty($objEvent->endDate)) {
+                        $objEvent->endDate = $objEvent->startDate;
+                    }
 
-                foreach ($calvalues as $idx => $value) {
-                    if (!empty($value)) {
-                        $indexfield = $csvvalues[$idx];
-                        $foundindex = array_search($indexfield, $header, true);
-
-                        if (false !== $foundindex) {
-                            switch ($value) {
-                                case 'startTime':
-                                    if (\function_exists('date_parse_from_format')) {
-                                        $res = date_parse_from_format(Input::post('timeFormat'), $data[$foundindex]);
-
-                                        $objEvent->{$value} = $objEvent->startDate + $res['hour'] * 60 * 60 + $res['minute'] * 60 + $res['second'];
-                                    } else {
-                                        if (preg_match('/(\\d+):(\\d+)/', (string) $data[$foundindex], $matches)) {
-                                            $objEvent->{$value} = $objEvent->startDate + (int) $matches[1] * 60 * 60 + (int) $matches[2] * 60;
-                                        }
-                                    }
+                    foreach ($mapping as [$foundindex, $value]) {
+                        switch ($value) {
+                            case 'startTime':
+                            case 'endTime':
+                                if (empty($data[$foundindex])) {
                                     break;
-                                case 'endTime':
-                                    if (\function_exists('date_parse_from_format')) {
-                                        $res = date_parse_from_format(Input::post('timeFormat'), $data[$foundindex]);
+                                }
 
-                                        $objEvent->{$value} = $objEvent->endDate + $res['hour'] * 60 * 60 + $res['minute'] * 60 + $res['second'];
-                                    } else {
-                                        if (preg_match('/(\\d+):(\\d+)/', (string) $data[$foundindex], $matches)) {
-                                            $objEvent->{$value} = $objEvent->endDate + (int) $matches[1] * 60 * 60 + (int) $matches[2] * 60;
-                                        }
-                                    }
-                                    break;
-                            }
+                                $seconds = $this->parseTime($timeFormat, (string) $data[$foundindex]);
+
+                                if (null === $seconds) {
+                                    $skippedRecords[] = $record;
+                                    continue 3;
+                                }
+
+                                $objEvent->{$value} = ('startTime' === $value ? $objEvent->startDate : $objEvent->endDate) + $seconds;
+                                break;
                         }
                     }
-                }
 
-                if ((!empty($objEvent->startTime) && $objEvent->startDate !== $objEvent->startTime) || (!empty($objEvent->endTime) && $objEvent->endDate !== $objEvent->endTime)) {
-                    $objEvent->addTime = true;
-                }
-
-                if (empty($objEvent->title)) {
-                    $objEvent->title = $GLOBALS['TL_LANG']['tl_calendar_events']['untitled'];
-                }
-
-                $timeshift = (int) $importSettings['csv_timeshift'];
-
-                if (0 !== $timeshift) {
-                    $objEvent->startDate += $timeshift * 3600;
-                    $objEvent->endDate += $timeshift * 3600;
-                    if (!empty($objEvent->startTime)) {
-                        $objEvent->startTime += $timeshift * 3600;
+                    if ((!empty($objEvent->startTime) && $objEvent->startDate !== $objEvent->startTime) || (!empty($objEvent->endTime) && $objEvent->endDate !== $objEvent->endTime)) {
+                        $objEvent->addTime = true;
                     }
-                    if (!empty($objEvent->endTime)) {
-                        $objEvent->endTime += $timeshift * 3600;
+
+                    // Contao stores the start as time stamp and the end of an event without a time at its last second
+                    if (empty($objEvent->startTime)) {
+                        $objEvent->startTime = $objEvent->startDate;
                     }
-                }
 
-                $startDate = new Date($importSettings['csv_startdate'], $GLOBALS['TL_CONFIG']['dateFormat']);
-                $endDate = new Date($importSettings['csv_enddate'], $GLOBALS['TL_CONFIG']['dateFormat']);
+                    if (empty($objEvent->endTime)) {
+                        $objEvent->endTime = $objEvent->addTime
+                            ? $objEvent->endDate + $objEvent->startTime - $objEvent->startDate
+                            : $objEvent->endDate + 86399;
+                    }
 
-                if (empty($objEvent->source)) {
-                    $objEvent->source = 'default';
-                }
+                    if (empty($objEvent->title)) {
+                        $objEvent->title = $GLOBALS['TL_LANG']['tl_calendar_events']['untitled'];
+                    }
 
-                if ($objEvent->endDate < $startDate->tstamp || (!empty((string) $importSettings['csv_enddate']) && ($objEvent->startDate > $endDate->tstamp))) {
-                    // date is not in range
+                    if (0 !== $timeshift) {
+                        $objEvent->startDate += $timeshift * 3600;
+                        $objEvent->endDate += $timeshift * 3600;
+                        if (!empty($objEvent->startTime)) {
+                            $objEvent->startTime += $timeshift * 3600;
+                        }
+                        if (!empty($objEvent->endTime)) {
+                            $objEvent->endTime += $timeshift * 3600;
+                        }
+                    }
+
+                    if (empty($objEvent->source)) {
+                        $objEvent->source = 'default';
+                    }
+
+                    if ($objEvent->endDate < $startDate->tstamp || (null !== $endDate && ($objEvent->startDate > $endDate->tstamp))) {
+                        // date is not in range
+                    } else {
+                        $objEvent = $objEvent->save();
+                        if (!empty($eventcontent)) {
+                            $this->addEventContent($objEvent, $eventcontent);
+                        }
+
+                        $this->generateAlias($objEvent);
+                    }
                 } else {
-                    $objEvent = $objEvent->save();
-                    if (!empty($eventcontent)) {
-                        $this->addEventContent($objEvent, $eventcontent);
-                    }
-
-                    $this->generateAlias($objEvent);
+                    $done = true;
                 }
-            } else {
-                $done = true;
             }
+
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+
+            throw $e;
         }
 
-        $this->requestStack
-            ->getCurrentRequest()
-            ->getSession()
-            ->remove('calendar_ical.csvimport.settings')
-        ;
-
-        static::redirect(str_replace('&key=import', '', (string) Environment::get('request')));
+        return $skippedRecords;
     }
 
-    private function getTimestampFromDefaultDatetime(string $strDate): bool|int
+    /**
+     * The absolute path of an uploaded csv file.
+     *
+     * @throws \InvalidArgumentException If the path is not the one of an uploaded csv file
+     */
+    private function resolvePath(string $file): string
     {
-        $tstamp = time();
+        $resolved = $this->uploadedFileResolver->resolve($file, ['csv']);
 
-        if (preg_match('/(\\d{4})-(\\d{2})-(\\d{2})\\s+(\\d{2}):(\\d{2}):(\\d{2})/', $strDate, $matches)) {
-            $tstamp = mktime((int) $matches[4], (int) $matches[5], (int) $matches[6], (int) $matches[2], (int) $matches[3],
-                (int) $matches[1]);
-        } elseif (preg_match('/(\\d{4})-(\\d{2})-(\\d{2})\\s+(\\d{2}):(\\d{2})/', $strDate, $matches)) {
-            $tstamp = mktime((int) $matches[4], (int) $matches[5], 0, (int) $matches[2], (int) $matches[3],
-                (int) $matches[1]);
-        } elseif (preg_match('/(\\d{4})-(\\d{2})-(\\d{2})/', $strDate, $matches)) {
-            $tstamp = mktime(0, 0, 0, (int) $matches[2], (int) $matches[3], (int) $matches[1]);
-        } else {
-            if (false !== strtotime($strDate)) {
-                $tstamp = strtotime($strDate);
-            }
+        if (null === $resolved) {
+            throw new \InvalidArgumentException('Invalid csv file path');
         }
 
-        return $tstamp;
+        return $this->projectDir.'/'.$resolved;
+    }
+
+    /**
+     * Parses a date with the given format; returns the timestamp of midnight or null if the value does not match.
+     */
+    private function parseDate(string $format, string $value): int|null
+    {
+        $res = date_parse_from_format($format, trim($value));
+
+        if ($res['error_count'] > 0 || $res['warning_count'] > 0 || false === $res['year'] || false === $res['month'] || false === $res['day']) {
+            return null;
+        }
+
+        return mktime(0, 0, 0, $res['month'], $res['day'], $res['year']);
+    }
+
+    /**
+     * Parses a time with the given format; returns the seconds since midnight or null if the value does not match.
+     */
+    private function parseTime(string $format, string $value): int|null
+    {
+        $res = date_parse_from_format($format, trim($value));
+
+        if ($res['error_count'] > 0 || $res['warning_count'] > 0 || false === $res['hour'] || false === $res['minute']) {
+            return null;
+        }
+
+        return $res['hour'] * 3600 + $res['minute'] * 60 + $res['second'];
     }
 }

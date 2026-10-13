@@ -1,0 +1,11 @@
+{% extends '@Contao/content_element/_base.html.twig' %}
+
+{% block content %}
+    {% if href is defined %}
+        <p class="download-element ext-ics">
+            <a href="{{ href }}" title="{{ title }}" type="text/calendar">{{ link }} <span class="size">({{ filesize }})</span></a>
+        </p>
+    {% elseif error is defined %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+{% endblock %}

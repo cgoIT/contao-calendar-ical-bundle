@@ -21,6 +21,9 @@ $GLOBALS['TL_LANG']['tl_calendar']['ical_prefix']['1'] = 'Here you can enter a p
 $GLOBALS['TL_LANG']['tl_calendar']['ical_description']['0'] = 'iCal description';
 $GLOBALS['TL_LANG']['tl_calendar']['ical_description']['1'] = 'Please enter a short description of the calendar.';
 
+$GLOBALS['TL_LANG']['tl_calendar']['ical_publish_imported']['0'] = 'Publish imported events';
+$GLOBALS['TL_LANG']['tl_calendar']['ical_publish_imported']['1'] = 'Publish the events that are imported into this calendar (iCal file, CSV file and web source) right away. Without it new events are imported as unpublished; events that already exist keep their state.';
+
 $GLOBALS['TL_LANG']['tl_calendar']['make_ical']['0'] = 'Generate iCal subscription';
 $GLOBALS['TL_LANG']['tl_calendar']['make_ical']['1'] = 'Generate an iCal subscription file from the calendar.';
 
@@ -46,7 +49,7 @@ $GLOBALS['TL_LANG']['tl_calendar']['ical_pattern_event_title']['0'] = 'Pattern e
 $GLOBALS['TL_LANG']['tl_calendar']['ical_pattern_event_title']['1'] = 'Please enter a string to search for in the title of the event - see: preg_replace.';
 
 $GLOBALS['TL_LANG']['tl_calendar']['ical_replacement_event_title']['0'] = 'Replacement event title';
-$GLOBALS['TL_LANG']['tl_calendar']['ical_replacement_event_title']['1'] = 'Please enter a string to replace in the title of the event - see: preg_replace.';
+$GLOBALS['TL_LANG']['tl_calendar']['ical_replacement_event_title']['1'] = 'Please enter a string to replace in the title of the event - see: preg_replace. If empty, the match of the pattern is removed from the title.';
 
 $GLOBALS['TL_LANG']['tl_calendar']['ical_cache']['0'] = 'Calendar cache in seconds';
 $GLOBALS['TL_LANG']['tl_calendar']['ical_cache']['1'] = 'Please enter the minimum number of seconds to cache the calender data. The calendar data will be rebuilt from the iCal source when the cache time is up.';

@@ -2,6 +2,14 @@
 
 declare(strict_types=1);
 
+/*
+ * This file is part of cgoit\contao-calendar-ical-bundle for Contao Open Source CMS.
+ *
+ * @copyright  Copyright (c), cgoIT
+ * @author     cgoIT <https://cgo-it.de>
+ * @license    LGPL-3.0-or-later
+ */
+
 namespace Cgoit\ContaoCalendarIcalBundle\EventListener\DataContainer;
 
 use Cgoit\ContaoCalendarIcalBundle\Util\TimezoneUtil;
@@ -9,6 +17,7 @@ use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 
 #[AsCallback(table: 'tl_calendar', target: 'fields.ical_timezone.options')]
+#[AsCallback(table: 'tl_calendar_ical_import', target: 'fields.timezone.options')]
 class TimezoneOptionsCallback
 {
     public function __construct(private readonly TimezoneUtil $timezoneUtil)

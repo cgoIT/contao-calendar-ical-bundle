@@ -1,0 +1,70 @@
+{% extends '@Contao/be_main' %}
+
+{% block main_content %}
+    <div id="tl_buttons">
+        <a href="{{ back_url }}" class="header_back" title="{{ 'MSC.backBTTitle'|trans({}, 'contao_default') }}" accesskey="b">{{ 'MSC.backBT'|trans({}, 'contao_default') }}</a>
+    </div>
+
+    {{ message|raw }}
+    {% if has_errors %}
+        <p class="tl_error">{{ 'ERR.submit'|trans({}, 'contao_default') }}</p>
+    {% endif %}
+
+    <form id="{{ table }}" class="tl_form tl_edit_form" method="post" enctype="multipart/form-data" data-turbo="false">
+        <div class="tl_formbody_edit">
+            <input type="hidden" name="FORM_SUBMIT" value="{{ table }}">
+            <input type="hidden" name="REQUEST_TOKEN" value="{{ request_token }}">
+            <input type="hidden" name="MAX_FILE_SIZE" value="{{ max_file_size }}">
+
+            {% if info %}
+                <p class="tl_info">{{ info }}</p>
+            {% endif %}
+
+            {% for box in boxes %}
+                <fieldset id="pal_{{ box.key }}" class="tl_tbox{{ box.class ? ' ' ~ box.class }}{{ box.label ? '' : ' nolegend' }}">
+                    {% if box.label %}
+                        <legend>{{ box.label }}</legend>
+                    {% endif %}
+                    {% if uploader and loop.first %}
+                        <div class="clr widget">
+                            <h3>{{ upload_label[0] }}</h3>
+                            {{ uploader|raw }}
+                            {% if upload_label[1] is defined %}<p class="tl_help tl_tip">{{ upload_label[1] }}</p>{% endif %}
+                        </div>
+                    {% endif %}
+                    {% for widget in box.widgets %}{{ widget|raw }}{% endfor %}
+                </fieldset>
+            {% endfor %}
+
+            {% if preview %}
+                <fieldset id="pal_preview" class="tl_tbox">
+                    <legend>{{ preview_label }}</legend>
+                    <div class="clr widget">
+                        <table class="tl_listing">
+                            <thead>
+                                <tr>{% for cell in preview.header %}<th>{{ cell }}</th>{% endfor %}</tr>
+                            </thead>
+                            <tbody>
+                                {% for row in preview.rows %}
+                                    <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </fieldset>
+            {% endif %}
+        </div>
+
+        <div class="tl_formbody_submit">
+            <div class="tl_submit_container">
+                {% if check %}
+                    <button type="submit" name="check" class="tl_submit">{{ check }}</button>
+                {% endif %}
+                <button type="submit" name="import" id="save" class="tl_submit" accesskey="s">{{ submit }}</button>
+                {% if abort %}
+                    <button type="submit" name="abort" class="tl_submit" formnovalidate>{{ abort }}</button>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+{% endblock %}

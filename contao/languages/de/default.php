@@ -34,3 +34,10 @@ $GLOBALS['TL_LANG']['tl_maintenance_jobs']['calendar_ical_regen_subscriptions'][
 
 $GLOBALS['TL_LANG']['ERR']['only_one_file'] = 'Bitte wählen Sie nur eine Datei zum Hochladen aus!';
 $GLOBALS['TL_LANG']['ERR']['ics_parse_error'] = 'Die hochgeladene ics-Datei konnte aufgrund eines Formatfehlers nicht verarbeitet werden.';
+$GLOBALS['TL_LANG']['ERR']['ical_protected_calendar'] = 'Für geschützte Kalender kann kein iCal-Abonnement erstellt werden, da die Datei öffentlich im Verzeichnis „share“ abgelegt würde. Nutzen Sie stattdessen eine Seite vom Typ „iCal-Feed“.';
+$GLOBALS['TL_LANG']['ERR']['ical_invalid_pattern'] = 'Der reguläre Ausdruck für die Titel-Umschreibung ist ungültig (er benötigt Trennzeichen, z. B. /muster/): %s';
+$GLOBALS['TL_LANG']['ERR']['csv_records_skipped'] = '%d Datensätze wurden nicht importiert, weil das Datum oder die Uhrzeit nicht dem gewählten Format entspricht (Datensatz Nr.: %s).';
+$GLOBALS['TL_LANG']['MSC']['ical_import_running'] = 'Die iCal-Quelle wird gerade bereits importiert. Die geänderten Einstellungen werden beim nächsten Import übernommen.';
+$GLOBALS['TL_LANG']['ERR']['csv_parse_error'] = 'Die CSV-Datei konnte nicht gelesen werden.';
+$GLOBALS['TL_LANG']['ERR']['csv_no_mapping'] = 'Es wurde keine Spalte einem Feld zugeordnet. Bitte ordnen Sie mindestens eine Spalte zu.';
+$GLOBALS['TL_LANG']['ERR']['import_failed'] = 'Beim Import ist ein Fehler aufgetreten. Details stehen im System-Log.';

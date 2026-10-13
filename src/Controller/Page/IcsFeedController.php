@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Controller\Page;
 
 use Cgoit\ContaoCalendarIcalBundle\Export\IcsExport;
+use Cgoit\ContaoCalendarIcalBundle\Security\ExportAccessChecker;
 use Contao\CalendarModel;
 use Contao\CoreBundle\Controller\AbstractController;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsPage;
@@ -24,15 +25,15 @@ use Symfony\Component\HttpFoundation\Response;
 #[AsPage(type: IcsFeedController::TYPE, contentComposition: false, urlSuffix: IcsFeedController::URL_SUFFIX)]
 class IcsFeedController extends AbstractController
 {
-    final public const TYPE = 'ics_feed';
+    final public const string TYPE = 'ics_feed';
 
-    private const URL_SUFFIX = '.ics';
+    private const string URL_SUFFIX = '.ics';
 
-    private const MIME_TYPE = 'text/calendar';
+    private const string MIME_TYPE = 'text/calendar';
 
     public function __construct(
         private readonly IcsExport $icsExport,
-        private readonly int $defaultEndTimeDifference,
+        private readonly ExportAccessChecker $accessChecker,
     ) {
     }
 
@@ -40,11 +41,10 @@ class IcsFeedController extends AbstractController
     {
         $this->initializeContaoFramework();
 
-        $startDate = !empty($pageModel->ical_start) ? (int) $pageModel->ical_start : time();
-        $endDate = !empty($pageModel->ical_end) ? (int) $pageModel->ical_end :
-            time() + $this->defaultEndTimeDifference * 24 * 3600;
+        [$startDate, $endDate] = $this->icsExport->getTimeRange($pageModel);
 
-        $arrCalendars = CalendarModel::findMultipleByIds(StringUtil::deserialize($pageModel->ical_calendar, true));
+        $arrAllCalendars = CalendarModel::findMultipleByIds(StringUtil::deserialize($pageModel->ical_calendar, true));
+        $arrCalendars = $this->accessChecker->filterCalendars($arrAllCalendars);
         $vCalendar = $this->icsExport->getVcalendar($arrCalendars, $startDate, $endDate,
             $pageModel->ical_title, $pageModel->ical_description, $pageModel->ical_prefix);
 
@@ -53,7 +53,14 @@ class IcsFeedController extends AbstractController
         $response = new Response($vCalendar->createCalendar());
         $response->headers->set('Content-Type', self::MIME_TYPE);
 
-        $this->setCacheHeaders($response, $pageModel);
+        if ($this->accessChecker->hasProtectedCalendar($arrAllCalendars)) {
+            // The content depends on the logged in member and must never be stored in a shared cache
+            $response->setPrivate();
+            $response->headers->addCacheControlDirective('no-store');
+            $response->headers->addCacheControlDirective('must-revalidate');
+        } else {
+            $this->setCacheHeaders($response, $pageModel);
+        }
 
         return $response;
     }

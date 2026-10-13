@@ -2,23 +2,32 @@
 
 declare(strict_types=1);
 
+/*
+ * This file is part of cgoit\contao-calendar-ical-bundle for Contao Open Source CMS.
+ *
+ * @copyright  Copyright (c), cgoIT
+ * @author     cgoIT <https://cgo-it.de>
+ * @license    LGPL-3.0-or-later
+ */
+
 namespace Cgoit\ContaoCalendarIcalBundle\Export;
 
-use Contao\Backend;
+use Cgoit\ContaoCalendarIcalBundle\Event\ModifyExportEventsEvent;
+use Cgoit\ContaoCalendarIcalBundle\Event\ModifyVeventEvent;
 use Contao\CalendarEventsModel;
 use Contao\CalendarModel;
 use Contao\Config;
 use Contao\CoreBundle\InsertTag\InsertTagParser;
-use Contao\Date;
+use Contao\Model;
 use Contao\Model\Collection;
 use Contao\StringUtil;
 use Contao\System;
 use Kigkonsult\Icalcreator\IcalInterface;
-use Kigkonsult\Icalcreator\Util\DateTimeFactory;
 use Kigkonsult\Icalcreator\Vcalendar;
 use Kigkonsult\Icalcreator\Vevent;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
-class IcsExport extends Backend
+class IcsExport
 {
     /**
      * @var array<mixed>
@@ -30,8 +39,11 @@ class IcsExport extends Backend
      */
     private readonly array $posMap;
 
-    public function __construct(private readonly InsertTagParser $insertTagParser)
-    {
+    public function __construct(
+        private readonly InsertTagParser $insertTagParser,
+        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly int $defaultEndTimeDifference = 365,
+    ) {
         $this->dayMap = [
             'monday' => Vcalendar::MO,
             'tuesday' => Vcalendar::TU,
@@ -53,6 +65,20 @@ class IcsExport extends Backend
     }
 
     /**
+     * Returns the export time range of a calendar, page or content element: the configured
+     * start (default: now) and end (default: start of the range plus the configured difference in days).
+     *
+     * @return array{0: int, 1: int}
+     */
+    public function getTimeRange(Model $source): array
+    {
+        $start = !empty($source->ical_start) ? (int) $source->ical_start : time();
+        $end = !empty($source->ical_end) ? (int) $source->ical_end : time() + $this->defaultEndTimeDifference * 24 * 3600;
+
+        return [$start, $end];
+    }
+
+    /**
      * @param Collection<CalendarModel>|array<CalendarModel>|null $arrCalendars
      */
     public function getVcalendar(Collection|array|null $arrCalendars, int $intStart, int $intEnd, string|null $title = null, string|null $description = null, string|null $prefix = null): Vcalendar|null
@@ -61,34 +87,25 @@ class IcsExport extends Backend
             $arrCalendars = $arrCalendars->getModels();
         }
 
+        // The list may be empty, e.g. if the selected calendars were deleted or are not accessible
+        $firstCalendar = !empty($arrCalendars) ? reset($arrCalendars) : null;
+
         $ical = new Vcalendar();
         $ical->setMethod(IcalInterface::PUBLISH);
-        $ical->setXprop(IcalInterface::X_WR_CALNAME, $title ?? reset($arrCalendars)->title);
-        $ical->setXprop(IcalInterface::X_WR_CALDESC, $description ?? reset($arrCalendars)->ical_description);
+        // Titles are stored HTML-encoded by Contao
+        $ical->setXprop(IcalInterface::X_WR_CALNAME, StringUtil::decodeEntities($title ?? $firstCalendar->title ?? ''));
+        $ical->setXprop(IcalInterface::X_WR_CALDESC, StringUtil::decodeEntities($description ?? $firstCalendar->ical_description ?? ''));
         $ical->setXprop(IcalInterface::X_WR_TIMEZONE, Config::get('timeZone'));
 
         if (!empty($arrCalendars)) {
             foreach ($arrCalendars as $objCalendar) {
-                try {
-                    $arrEvents = System::importStatic('\Cgoit\CalendarExtendedBundle\Models\CalendarEventsModelExt')->findCurrentByPid($objCalendar->id, $intStart, $intEnd);
-                } catch (\Exception) {
-                    $arrEvents = CalendarEventsModel::findCurrentByPid($objCalendar->id, $intStart, $intEnd);
-                }
+                $arrEvents = CalendarEventsModel::findCurrentByPid($objCalendar->id, $intStart, $intEnd);
 
                 if (null !== $arrEvents) {
-                    // HOOK: modify the result set
-                    if (isset($GLOBALS['TL_HOOKS']['icalGetAllEvents']) && \is_array($GLOBALS['TL_HOOKS']['icalGetAllEvents'])) {
-                        foreach ($GLOBALS['TL_HOOKS']['icalGetAllEvents'] as $callback) {
-                            $this->import($callback[0]);
-                            $arrEvents = $this->{$callback[0]}->{$callback[1]}($arrEvents->getModels(), $arrCalendars, $intStart, $intEnd, $this);
-                        }
-                    }
+                    $events = $this->modifyEvents($arrEvents->getModels(), $objCalendar, $arrCalendars, $intStart, $intEnd);
 
-                    /** @var CalendarEventsModel $objEvent */
-                    foreach ($arrEvents as $objEvent) {
-                        $vevent = $this->getVevent($objEvent);
-
-                        if (null !== $vevent) {
+                    foreach ($events as $objEvent) {
+                        foreach ($this->getVevents($objEvent, $prefix) as $vevent) {
                             $ical->setComponent($vevent);
                         }
                     }
@@ -104,6 +121,8 @@ class IcsExport extends Backend
      */
     public function exportEvents(array $arrEvents): Vcalendar
     {
+        $exported = [];
+
         $ical = new Vcalendar();
         $ical->setMethod(IcalInterface::PUBLISH);
         $ical->setXprop(IcalInterface::X_WR_TIMEZONE, Config::get('timeZone'));
@@ -114,9 +133,12 @@ class IcsExport extends Backend
                 $objEvent = CalendarEventsModel::findById($arrEvent['id']);
             }
 
-            if (!empty($objEvent)) {
-                $vevent = $this->getVevent($objEvent);
-                if (!empty($vevent)) {
+            // The events of a list contain an entry for every occurrence (recurrences, events of several days)
+            // but the Vevent already carries the recurrence rule, so every event is exported only once
+            if (!empty($objEvent) && !isset($exported[$objEvent->id])) {
+                $exported[$objEvent->id] = true;
+
+                foreach ($this->getVevents($objEvent) as $vevent) {
                     $ical->setComponent($vevent);
                 }
             }
@@ -131,18 +153,127 @@ class IcsExport extends Backend
         $ical->setMethod(IcalInterface::PUBLISH);
         $ical->setXprop(IcalInterface::X_WR_TIMEZONE, Config::get('timeZone'));
 
-        $vevent = $this->getVevent($objEvent);
-        if (null !== $vevent) {
+        foreach ($this->getVevents($objEvent) as $vevent) {
             $ical->setComponent($vevent);
         }
 
         return $ical;
     }
 
-    private function getVevent(CalendarEventsModel $objEvent, string|null $prefix = null): Vevent|null
+    /**
+     * Sets title, description, location, participants and contact.
+     */
+    private function applyDetails(Vevent $vevent, CalendarEventsModel $objEvent, CalendarModel|null $objCalendar, string|null $prefix): void
     {
-        global $objPage;
+        $summary = $objEvent->title;
+        if (!empty($prefix)) {
+            $summary = $prefix.' '.$summary;
+        } elseif (!empty($objCalendar->ical_prefix)) {
+            $summary = $objCalendar->ical_prefix.' '.$summary;
+        }
+        $vevent->setSummary(html_entity_decode($summary, ENT_QUOTES, 'UTF-8'));
 
+        if (!empty($objEvent->teaser)) {
+            $vevent->setDescription(html_entity_decode(strip_tags((string) preg_replace('/<br \\/>/', "\n",
+                $this->insertTagParser->replaceInline($objEvent->teaser))),
+                ENT_QUOTES, 'UTF-8'));
+        }
+
+        if (!empty($objEvent->location)) {
+            $vevent->setLocation(trim(html_entity_decode((string) $objEvent->location, ENT_QUOTES, 'UTF-8')));
+        }
+
+        if (!empty($objEvent->cep_participants)) {
+            $attendees = preg_split('/,/', (string) $objEvent->cep_participants);
+            if (is_countable($attendees) ? \count($attendees) : 0) {
+                foreach ($attendees as $attendee) {
+                    // An ATTENDEE has to be an e-mail address; names without one cannot be exported
+                    $attendee = trim($attendee);
+                    if (false === filter_var($attendee, FILTER_VALIDATE_EMAIL)) {
+                        continue;
+                    }
+
+                    $vevent->setAttendee($attendee);
+                }
+            }
+        }
+
+        if (!empty($objEvent->location_contact)) {
+            $contact = trim((string) $objEvent->location_contact);
+            $vevent->setContact($contact);
+        }
+    }
+
+    /**
+     * Creates the event of a moved recurrence: same UID, RECURRENCE-ID of the original recurrence and the
+     * new date. The rules are the same as in the calendar-extended-bundle (relative move, optional new times).
+     *
+     * @param array<string, mixed> $exception
+     */
+    private function createMovedVevent(Vevent $vevent, CalendarEventsModel $objEvent, CalendarModel|null $objCalendar, string|null $prefix, int $occurrenceStart, array $exception, \DateTimeZone $timezone, \DateTimeImmutable $dtStart, \DateTimeImmutable $dtEnd, string $valueType): Vevent|null
+    {
+        $move = trim((string) ($exception['new_exception'] ?? ''));
+
+        if ('' === $move) {
+            return null;
+        }
+
+        // All calculations use the time zone of the export and do not depend on the default time zone of PHP
+        $original = (new \DateTimeImmutable("@{$occurrenceStart}"))->setTimezone($timezone);
+
+        try {
+            if (!$objEvent->addTime) {
+                $originalStart = $original->setTime(0, 0);
+                $newStartDate = $original->modify($move)->setTime(0, 0);
+                $newEndDate = $newStartDate->modify('+'.max(1, (int) $dtStart->diff($dtEnd)->days).' days');
+            } else {
+                $originalStart = $original;
+
+                if (!empty($exception['new_start']) && !empty($exception['new_end'])) {
+                    $newStartDate = (new \DateTimeImmutable($original->format('Y-m-d').' '.$exception['new_start'], $timezone))->modify($move);
+                    $endDayOffset = (int) (new \DateTimeImmutable($dtStart->format('Y-m-d')))->diff(new \DateTimeImmutable($dtEnd->format('Y-m-d')))->days;
+                    $newEndDate = new \DateTimeImmutable($newStartDate->modify('+'.$endDayOffset.' days')->format('Y-m-d').' '.$exception['new_end'], $timezone);
+                } else {
+                    $newStartDate = $original->modify($move);
+                    $newEndDate = $newStartDate->modify('+'.($dtEnd->getTimestamp() - $dtStart->getTimestamp()).' seconds');
+                }
+            }
+        } catch (\Exception) {
+            // not a valid relative date or time
+            return null;
+        }
+
+        $params = [IcalInterface::VALUE => $valueType];
+
+        $moved = new Vevent();
+        $moved->setUid($vevent->getUid());
+        $moved->setRecurrenceid($originalStart, $params);
+        $moved->setDtstart($newStartDate, $params);
+        $moved->setDtend($newEndDate, $params);
+        $this->applyDetails($moved, $objEvent, $objCalendar, $prefix);
+
+        return $moved;
+    }
+
+    /**
+     * Returns the event and, for recurrences that were moved by an exception, one additional event per
+     * moved recurrence (same UID and RECURRENCE-ID).
+     *
+     * @return array<Vevent>
+     */
+    private function getVevents(CalendarEventsModel $objEvent, string|null $prefix = null): array
+    {
+        $overrides = [];
+        $vevent = $this->getVevent($objEvent, $prefix, $overrides);
+
+        return null === $vevent ? [] : [$vevent, ...$overrides];
+    }
+
+    /**
+     * @param array<Vevent> $overrides collects the events of moved recurrences
+     */
+    private function getVevent(CalendarEventsModel $objEvent, string|null $prefix, array &$overrides): Vevent|null
+    {
         $objCalendar = CalendarModel::findById($objEvent->pid);
 
         $startDate = $objEvent->startDate ?? $objEvent->startTime;
@@ -188,42 +319,7 @@ class IcsExport extends Backend
         $vevent->setDtstart($dtStart, [IcalInterface::VALUE => $valueType]);
         $vevent->setDtend($dtEnd, [IcalInterface::VALUE => $valueType]);
 
-        $summary = $objEvent->title;
-        if (!empty($prefix)) {
-            $summary = $prefix.' '.$summary;
-        } elseif (!empty($objCalendar->ical_prefix)) {
-            $summary = $objCalendar->ical_prefix.' '.$summary;
-        }
-        $vevent->setSummary(html_entity_decode($summary, ENT_QUOTES, 'UTF-8'));
-
-        if (!empty($objEvent->teaser)) {
-            $vevent->setDescription(html_entity_decode(strip_tags((string) preg_replace('/<br \\/>/', "\n",
-                $this->insertTagParser->replaceInline($objEvent->teaser))),
-                ENT_QUOTES, 'UTF-8'));
-        }
-
-        if (!empty($objEvent->location)) {
-            $vevent->setLocation(trim(html_entity_decode((string) $objEvent->location, ENT_QUOTES, 'UTF-8')));
-        }
-
-        if (!empty($objEvent->cep_participants)) {
-            $attendees = preg_split('/,/', (string) $objEvent->cep_participants);
-            if (is_countable($attendees) ? \count($attendees) : 0) {
-                foreach ($attendees as $attendee) {
-                    $attendee = trim($attendee);
-                    if (str_contains($attendee, '@')) {
-                        $vevent->setAttendee($attendee);
-                    } else {
-                        $vevent->setAttendee($attendee, ['CN' => $attendee]);
-                    }
-                }
-            }
-        }
-
-        if (!empty($objEvent->location_contact)) {
-            $contact = trim((string) $objEvent->location_contact);
-            $vevent->setContact($contact);
-        }
+        $this->applyDetails($vevent, $objEvent, $objCalendar, $prefix);
 
         if ($objEvent->recurring) {
             $arrRepeat = StringUtil::deserialize($objEvent->repeatEach, true);
@@ -251,7 +347,8 @@ class IcsExport extends Backend
                 $rrule = [Vcalendar::FREQ => $freq];
 
                 if ($objEvent->recurrences > 0) {
-                    $rrule[Vcalendar::COUNT] = $objEvent->recurrences;
+                    // "recurrences" are the repetitions after the first event, COUNT includes the first one
+                    $rrule[Vcalendar::COUNT] = $objEvent->recurrences + 1;
                 }
 
                 if ($arg > 1) {
@@ -274,7 +371,8 @@ class IcsExport extends Backend
             ];
 
             if ($objEvent->recurrences > 0) {
-                $rrule[Vcalendar::COUNT] = $objEvent->recurrences;
+                // "recurrences" are the repetitions after the first event, COUNT includes the first one
+                $rrule[Vcalendar::COUNT] = $objEvent->recurrences + 1;
             }
 
             $vevent->setRrule($rrule);
@@ -326,12 +424,15 @@ class IcsExport extends Backend
                                 $hideDates = array_merge($hideDates, $exDates);
                                 break;
 
-                                /**
-                                 * Termin verschieben.
-                                 *
-                                 * @todo Hier muss ein weiteres VEvent mit dem neuen Termin erzeugt werden
-                                 */
+                            // Termin verschieben
                             case 'move':
+                                foreach ($affectedDates as $tsDate) {
+                                    $moved = $this->createMovedVevent($vevent, $objEvent, $objCalendar, $prefix, (int) $tsDate, $skipInfo, $timezone, $dtStart, $dtEnd, $valueType);
+
+                                    if (null !== $moved) {
+                                        $overrides[] = $moved;
+                                    }
+                                }
                                 break;
                         }
                     }
@@ -360,49 +461,58 @@ class IcsExport extends Backend
                             $hideDates[] = $exDate;
                             break;
 
-                            /**
-                             * Termin verschieben.
-                             *
-                             * @todo Hier muss ein weiteres VEvent mit dem neuen Termin erzeugt werden
-                             */
+                        // Termin verschieben
                         case 'move':
-                            $dateChangeValue = (string) $skipInfo['new_exception'];
+                            $moved = $this->createMovedVevent($vevent, $objEvent, $objCalendar, $prefix, $startTime, $skipInfo, $timezone, $dtStart, $dtEnd, $valueType);
 
-                            // only change the start and end time if addTime is set to true for the event
-                            if (!empty($objEvent->addTime) && !empty($skipInfo['new_start']) && !empty($skipInfo['new_end'])) {
-                                $newStartTime = strtotime($dateChangeValue,
-                                    strtotime(Date::parse($objPage->dateFormat, $startTime).' '.$skipInfo['new_start']));
-                            } else {
-                                $newStartTime = strtotime($dateChangeValue, $startTime);
+                            if (null !== $moved) {
+                                $overrides[] = $moved;
                             }
-                            $exdate =
-                                \DateTime::createFromFormat(DateTimeFactory::$YmdHis,
-                                    date('Y', $newStartTime).
-                                    date('m', $newStartTime).
-                                    date('d', $newStartTime).
-                                    date('H', $newStartTime).
-                                    date('i', $newStartTime).
-                                    date('s', $newStartTime),
-                                );
-                            $vevent->setExdate($exdate);
                             break;
                     }
                 }
             }
 
             if (!empty($hideDates)) {
-                $vevent->setExdate($hideDates);
+                // The value type has to match the one of DTSTART (RFC 5545)
+                $vevent->setExdate($hideDates, IcalInterface::DATE === $valueType ? [IcalInterface::VALUE => IcalInterface::DATE] : []);
             }
         }
 
         // HOOK: modify the $vevent
         if (isset($GLOBALS['TL_HOOKS']['icalModifyVevent']) && \is_array($GLOBALS['TL_HOOKS']['icalModifyVevent'])) {
+            trigger_deprecation('cgoit/contao-calendar-ical-bundle', '6.0', 'Using the "icalModifyVevent" hook is deprecated, use an event listener for "%s" instead.', ModifyVeventEvent::class);
+
             foreach ($GLOBALS['TL_HOOKS']['icalModifyVevent'] as $callback) {
-                $this->import($callback[0]);
-                $vevent = $this->{$callback[0]}->{$callback[1]}($vevent, $objEvent, $objCalendar, $this);
+                $vevent = System::importStatic($callback[0])->{$callback[1]}($vevent, $objEvent, $objCalendar, $this);
             }
         }
 
-        return $vevent;
+        return $this->eventDispatcher->dispatch(new ModifyVeventEvent($vevent, $objEvent, $objCalendar))->vevent;
+    }
+
+    /**
+     * @param array<CalendarEventsModel> $events
+     * @param array<CalendarModel>       $calendars
+     *
+     * @return array<CalendarEventsModel>
+     */
+    private function modifyEvents(array $events, CalendarModel $objCalendar, array $calendars, int $start, int $end): array
+    {
+        // HOOK: modify the result set
+        if (isset($GLOBALS['TL_HOOKS']['icalGetAllEvents']) && \is_array($GLOBALS['TL_HOOKS']['icalGetAllEvents'])) {
+            trigger_deprecation('cgoit/contao-calendar-ical-bundle', '6.0', 'Using the "icalGetAllEvents" hook is deprecated, use an event listener for "%s" instead.', ModifyExportEventsEvent::class);
+
+            foreach ($GLOBALS['TL_HOOKS']['icalGetAllEvents'] as $callback) {
+                $result = System::importStatic($callback[0])->{$callback[1]}($events, $calendars, $start, $end, $this);
+                if ($result instanceof Collection) {
+                    $events = $result->getModels();
+                } elseif (\is_array($result)) {
+                    $events = $result;
+                }
+            }
+        }
+
+        return $this->eventDispatcher->dispatch(new ModifyExportEventsEvent($events, $objCalendar, $calendars, $start, $end))->events;
     }
 }

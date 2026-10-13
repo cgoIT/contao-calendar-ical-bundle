@@ -13,16 +13,16 @@ declare(strict_types=1);
 namespace Cgoit\ContaoCalendarIcalBundle\Backend;
 
 use Contao\Automator as ContaoAutomator;
-use Contao\System;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
-class Automator extends System
+class Automator
 {
-    private readonly ContaoAutomator $contaoAutomator;
-
-    public function __construct(private readonly ExportController $calendarExport)
-    {
-        parent::__construct();
-        $this->contaoAutomator = new ContaoAutomator();
+    public function __construct(
+        private readonly ExportController $calendarExport,
+        #[Autowire(service: 'monolog.logger.contao.cron')]
+        private readonly LoggerInterface $logger,
+    ) {
     }
 
     /**
@@ -33,8 +33,8 @@ class Automator extends System
         $this->calendarExport->generateSubscriptions();
 
         // Also empty the shared cache so there are no links to deleted files
-        $this->contaoAutomator->purgePageCache();
+        (new ContaoAutomator())->purgePageCache();
 
-        System::getContainer()->get('monolog.logger.contao.cron')->info('Regenerated the ICS files');
+        $this->logger->info('Regenerated the ICS files');
     }
 }

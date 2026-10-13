@@ -4,7 +4,9 @@
 
 # PhpUnit
 /.phpunit.result.cache
+/.phpunit.cache/
 /phpunit.xml
+/build/
 
 # Tools
 /tools/*/vendor
@@ -16,3 +18,7 @@
 # Mac
 .DS_Store
 
+
+# Claude
+/CLAUDE.md
+/TODO.md

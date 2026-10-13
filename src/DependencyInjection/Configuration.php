@@ -26,7 +26,7 @@ class Configuration implements ConfigurationInterface
             ->integerNode('end_date_time_difference_in_days')
             ->info('The difference in days between start and end date. This difference is used if an event is exported and no end date is given in the event. Default to 365.')
             ->min(1)
-            ->defaultValue('365')
+            ->defaultValue(365)
             ->end()
 
             ->end()

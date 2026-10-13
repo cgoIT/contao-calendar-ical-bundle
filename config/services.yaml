@@ -1,0 +1,21 @@
+services:
+    _defaults:
+        autoconfigure: true
+        autowire: true
+        public: false
+        bind:
+            $projectDir: '%kernel.project_dir%'
+            $defaultEndTimeDifference: '%calendar_ical.end_date_time_difference_in_days%'
+
+    Cgoit\ContaoCalendarIcalBundle\:
+        resource: ../src/*
+        exclude: '../src/{ContaoManager,DependencyInjection,Event,Export/EventlistModule.php,Import/Csv}'
+
+    Cgoit\ContaoCalendarIcalBundle\Backend\Automator:
+        public: true
+
+    Cgoit\ContaoCalendarIcalBundle\Controller\Route\EventlistIcsExportController:
+        public: true
+
+    Cgoit\ContaoCalendarIcalBundle\Controller\Route\SingleEventIcsExportController:
+        public: true

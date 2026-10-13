@@ -10,12 +10,9 @@ declare(strict_types=1);
  * @license    LGPL-3.0-or-later
  */
 
-namespace contao\dca;
-
-use Contao\Controller;
 use Contao\DataContainer;
 
-$GLOBALS['TL_DCA']['tl_content']['palettes']['ical'] = '{type_legend},type,headline;{calendar_legend},ical_calendar,ical_title,ical_description,ical_prefix,ical_start,ical_end;{link_legend},linkTitle,ical_download_template;{protected_legend:hide},protected;{expert_legend},{expert_legend:hide},guests,cssID,space';
+$GLOBALS['TL_DCA']['tl_content']['palettes']['ical'] = '{type_legend},type,headline;{calendar_legend},ical_calendar,ical_title,ical_description,ical_prefix,ical_start,ical_end;{link_legend},linkTitle;{protected_legend:hide},protected;{expert_legend},{expert_legend:hide},guests,cssID,space';
 
 $GLOBALS['TL_DCA']['tl_content']['fields']['ical_calendar'] = [
     'exclude' => true,
@@ -28,7 +25,7 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['ical_title'] = [
     'exclude' => true,
     'search' => true,
     'inputType' => 'text',
-    'eval' => ['mandatory' => true, 'maxlength' => 255, 'tl_class' => 'w50 clr'],
+    'eval' => ['mandatory' => true, 'maxlength' => 255, 'decodeEntities' => true, 'tl_class' => 'w50 clr'],
     'sql' => ['type' => 'text', 'length' => 1000, 'notnull' => false],
 ];
 
@@ -44,7 +41,7 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['ical_prefix'] = [
     'exclude' => true,
     'search' => true,
     'inputType' => 'text',
-    'eval' => ['maxlength' => 128, 'tl_class' => 'w50 clr'],
+    'eval' => ['maxlength' => 128, 'decodeEntities' => true, 'tl_class' => 'w50 clr'],
     'sql' => ['type' => 'text', 'length' => 1000, 'notnull' => false],
 ];
 
@@ -66,12 +63,4 @@ $GLOBALS['TL_DCA']['tl_content']['fields']['ical_end'] = [
     'inputType' => 'text',
     'eval' => ['mandatory' => false, 'maxlength' => 10, 'rgxp' => 'date', 'datepicker' => true, 'tl_class' => 'w50'],
     'sql' => ['type' => 'string', 'length' => 12, 'default' => ''],
-];
-
-$GLOBALS['TL_DCA']['tl_content']['fields']['ical_download_template'] = [
-    'exclude' => true,
-    'inputType' => 'select',
-    'options_callback' => static fn () => Controller::getTemplateGroup('ce_download_', [], 'ce_download'),
-    'eval' => ['chosen' => true, 'tl_class' => 'w50'],
-    'sql' => ['type' => 'text', 'length' => 1000, 'notnull' => false],
 ];

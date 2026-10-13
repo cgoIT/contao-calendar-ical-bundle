@@ -17,6 +17,7 @@ use Cgoit\ContaoCalendarIcalBundle\Import\IcsImport;
 use Contao\CalendarModel;
 use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
+use Contao\Message;
 
 #[AsCallback(table: 'tl_calendar', target: 'config.onsubmit')]
 class CalendarSubmitListener
@@ -37,7 +38,12 @@ class CalendarSubmitListener
         if (!empty($objCalendar)) {
             $objCalendar->refresh();
 
-            $this->icsImport->importIcsForCalendar($objCalendar);
+            // Saving a calendar in the back end applies changed source settings (URL, filter, timezone, ...) at once
+            if (!$this->icsImport->importIcsForCalendar($objCalendar, true) && !empty($objCalendar->ical_source) && !empty($objCalendar->ical_url)) {
+                // A running import (e.g. by the cron job) is not started a second time
+                Message::addInfo($GLOBALS['TL_LANG']['MSC']['ical_import_running']);
+            }
+
             $this->calendarExport->generateSubscriptions($objCalendar);
         }
     }

@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * This file is part of cgoit\contao-calendar-ical-bundle for Contao Open Source CMS.
  *
- * @copyright  Copyright (c) 2023, cgoIT
+ * @copyright  Copyright (c), cgoIT
  * @author     cgoIT <https://cgo-it.de>
  * @license    LGPL-3.0-or-later
  */
@@ -17,13 +17,16 @@ namespace Cgoit\ContaoCalendarIcalBundle\Import\Csv;
  */
 class CsvReader implements \Iterator
 {
-    protected mixed $fileHandle;
+    private const string UTF8_BOM = "\xEF\xBB\xBF";
 
-    protected int $position;
+    /**
+     * @var resource|null
+     */
+    protected mixed $fileHandle = null;
 
-    protected string $filename;
+    protected int $position = 0;
 
-    protected string|null $currentLine = null;
+    protected string $filename = '';
 
     /**
      * @var array<mixed>|null
@@ -35,13 +38,15 @@ class CsvReader implements \Iterator
         protected string $separator = ',',
         protected string $encoding = 'utf8',
     ) {
-        $this->fileHandle = fopen($filename, 'r');
-        if (!$this->fileHandle) {
+        $handle = @fopen($filename, 'r');
+
+        if (false === $handle) {
             return;
         }
+
+        $this->fileHandle = $handle;
         $this->filename = $filename;
-        $this->position = 0;
-        $this->_readLine();
+        $this->start();
     }
 
     public function __destruct()
@@ -53,7 +58,7 @@ class CsvReader implements \Iterator
     // file descriptor
     public function close(): void
     {
-        if ($this->fileHandle) {
+        if (null !== $this->fileHandle) {
             fclose($this->fileHandle);
             $this->fileHandle = null;
         }
@@ -61,16 +66,11 @@ class CsvReader implements \Iterator
 
     public function rewind(): void
     {
-        if ($this->fileHandle) {
-            $this->position = 0;
-            rewind($this->fileHandle);
-        }
-
-        $this->_readLine();
+        $this->start();
     }
 
     /**
-     * @return array<mixed>
+     * @return array<mixed>|null
      */
     public function current(): array|null
     {
@@ -85,7 +85,7 @@ class CsvReader implements \Iterator
     public function next(): void
     {
         ++$this->position;
-        $this->_readLine();
+        $this->readRecord();
     }
 
     public function valid(): bool
@@ -93,24 +93,71 @@ class CsvReader implements \Iterator
         return null !== $this->currentArray;
     }
 
-    protected function _readLine(): void
+    private function start(): void
     {
-        if (!feof($this->fileHandle)) {
-            if (false !== $line = fgets($this->fileHandle)) {
-                $this->currentLine = trim($line);
-            } else {
-                $this->currentLine = null;
-            }
-        } else {
-            $this->currentLine = null;
-        }
-        if (0 !== strcmp($this->encoding, 'utf8') && null !== $this->currentLine) {
-            $this->currentLine = mb_convert_encoding($this->currentLine, 'UTF-8', 'ISO-8859-1');
-        }
-        if (!empty($this->currentLine)) {
-            $this->currentArray = Csv::parseString($this->currentLine, $this->separator);
-        } else {
+        $this->position = 0;
+
+        if (null === $this->fileHandle) {
             $this->currentArray = null;
+
+            return;
         }
+
+        rewind($this->fileHandle);
+
+        // Excel and others write a byte order mark in front of UTF-8 files
+        if (self::UTF8_BOM !== fread($this->fileHandle, 3)) {
+            rewind($this->fileHandle);
+        }
+
+        $this->readRecord();
+    }
+
+    /**
+     * Reads the next record. Empty lines are skipped, quoted fields may contain line breaks.
+     */
+    private function readRecord(): void
+    {
+        $this->currentArray = null;
+
+        if (null === $this->fileHandle) {
+            return;
+        }
+
+        while (false !== ($row = fgetcsv($this->fileHandle, 0, $this->separator, '"', ''))) {
+            // fgetcsv() returns array(null) for an empty line
+            if ([null] === $row) {
+                continue;
+            }
+
+            $this->currentArray = array_map(fn (string|null $cell): string => $this->toUtf8((string) $cell), $row);
+
+            return;
+        }
+    }
+
+    private function toUtf8(string $value): string
+    {
+        switch (strtolower($this->encoding)) {
+            case 'utf8':
+            case 'utf-8':
+                return $value;
+
+            // The option "ISO-8859-1 (Windows)" means files exported by Windows programs, i.e. Windows-1252
+            case 'latin1':
+            case 'iso-8859-1':
+            case 'iso8859-1':
+            case 'windows-1252':
+            case 'cp1252':
+                return mb_convert_encoding($value, 'UTF-8', 'Windows-1252');
+        }
+
+        foreach (mb_list_encodings() as $known) {
+            if (0 === strcasecmp($known, $this->encoding)) {
+                return mb_convert_encoding($value, 'UTF-8', $known);
+            }
+        }
+
+        return $value;
     }
 }

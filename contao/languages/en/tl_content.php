@@ -31,6 +31,3 @@ $GLOBALS['TL_LANG']['tl_content']['ical_description']['1'] = 'Please enter a sho
 
 $GLOBALS['TL_LANG']['tl_content']['ical_prefix']['0'] = 'Title prefix';
 $GLOBALS['TL_LANG']['tl_content']['ical_prefix']['1'] = 'Here you can enter a prefix that will be added to every event title in the iCal subscription.';
-
-$GLOBALS['TL_LANG']['tl_content']['ical_download_template']['0'] = 'Template for iCal download element';
-$GLOBALS['TL_LANG']['tl_content']['ical_download_template']['1'] = 'Template used for rendering the download link of the iCal file.';
