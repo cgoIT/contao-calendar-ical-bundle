@@ -179,6 +179,17 @@ Bei Wiederholungen gilt `UNTIL` einschließlich der letzten Wiederholung; es wir
 ganztägigen Terminen und Zeiten ohne Zeitzone als Ortszeit des Kalenders). Eine Serie mit `COUNT=1` ist ein einzelner
 Termin. Gibt ein Feed `UNTIL` nur als Datum an, obwohl der Termin eine Uhrzeit hat, gilt die Wiederholung dieses Tages noch.
 
+Ausnahmen von Wiederholungen werden mit dem `cgoit/calendar-extended-bundle` übernommen: `EXDATE` blendet die
+Wiederholung aus (ein `EXDATE` in UTC ist ein exakter Zeitpunkt, mit `TZID` gilt dessen Zeitzone, bei Datumswerten und
+Zeiten ohne Zeitzone die Ortszeit des Kalenders). Eine einzelne geänderte Wiederholung (gleiche `UID` mit
+`RECURRENCE-ID`, z. B. ein verschobener Termin einer Serie) wird beim Termin der Serie als Ausnahme „verschieben“
+eingetragen (um die Anzahl der Tage, bei anderer Uhrzeit oder Dauer mit den neuen Zeiten); eine abgesagte Wiederholung
+(`STATUS:CANCELLED`) wird ausgeblendet. Andere Änderungen der Wiederholung (Titel, Ort) gehen dabei verloren. Bei
+ganztägigen Terminen wird zudem eine geänderte Dauer einer einzelnen Wiederholung nicht übernommen (nur die Verschiebung
+um Tage). Ist das `calendar-extended-bundle` nicht installiert, wird die geänderte Wiederholung als eigener Termin importiert (Kennung
+`UID#RECURRENCE-ID`); die ursprüngliche Wiederholung der Serie bleibt dann bestehen, weil Contao allein keine Ausnahmen kennt.
+Abgesagte Wiederholungen werden in diesem Fall nicht importiert.
+
 Der reguläre Ausdruck für die Titel-Umschreibung wird beim Speichern des Kalenders geprüft und benötigt Trennzeichen,
 z. B. `/^\[Verein\] /`. Das Feld „Benutzername:Passwort“ für den Proxy wird verdeckt angezeigt und ist nicht
 durchsuchbar. Hochgeladene Dateien für den Backend-Import werden nach dem Import aus `system/tmp` gelöscht.

@@ -272,8 +272,6 @@ class IcsImport extends AbstractImport
         // Get all default values for new entries
         $defaultFields = array_filter($GLOBALS['TL_DCA']['tl_calendar_events']['fields'], static fn ($val) => isset($val['default']));
 
-        $foundevents = [];
-
         $arrEvents = !empty($objCalendar->id) ? CalendarEventsModel::findByPid($objCalendar->id) ?? [] : [];
         $eventsDictionary = [];
 
@@ -284,264 +282,261 @@ class IcsImport extends AbstractImport
             $eventsDictionary[$event->ical_uuid] = $event;
         }
 
-        $publish = $this->publishImportedEvents($objCalendar);
-
         $eventArray = $cal->selectComponents((int) date('Y', (int) $startDate->tstamp), (int) date('m', (int) $startDate->tstamp),
             (int) date('d', (int) $startDate->tstamp), (int) date('Y', (int) $endDate->tstamp), (int) date('m', (int) $endDate->tstamp),
             (int) date('d', (int) $endDate->tstamp), IcalInterface::VEVENT, true);
 
-        if (\is_array($eventArray)) {
-            /** @var Vevent $vevent */
-            foreach ($eventArray as $vevent) {
-                // Use the existing event with matching uuid
-                $uid = $vevent->getUid();
-                if (isset($eventsDictionary[$uid])) {
-                    $objEvent = $eventsDictionary[$uid];
-                    unset($eventsDictionary[$uid]);
+        // Events that change a single recurrence of another event (RECURRENCE-ID) are not part of the selection
+        $supportsExceptions = \in_array('useExceptions', $fieldNames, true)
+            && \in_array('repeatExceptions', $fieldNames, true)
+            && \in_array('exceptionList', $fieldNames, true);
+        $components = $this->collectComponents($cal, \is_array($eventArray) ? $eventArray : [], $startDate, $endDate, $tz[1], $supportsExceptions);
+        $publish = $this->publishImportedEvents($objCalendar);
+
+        foreach ($components as $uid => [$vevent, $overrides]) {
+            // Use the existing event with matching uuid
+            $uid = (string) $uid;
+            if (isset($eventsDictionary[$uid])) {
+                $objEvent = $eventsDictionary[$uid];
+                unset($eventsDictionary[$uid]);
+            } else {
+                $objEvent = new CalendarEventsModel();
+                $objEvent->ical_uuid = $uid;
+            }
+
+            $beforeEvent = $this->eventDispatcher->dispatch(new BeforeImportItemEvent(
+                $objEvent,
+                $vevent,
+                $objCalendar,
+            ));
+
+            if ($beforeEvent->skip) {
+                continue;
+            }
+
+            $isNew = null === $objEvent->id;
+            $objEvent->tstamp = time();
+            $objEvent->pid = $objCalendar->id;
+
+            foreach ($defaultFields as $field => $value) {
+                $varValue = $value['default'];
+                if ($varValue instanceof \Closure) {
+                    $varValue = $varValue();
+                }
+                $objEvent->{$field} = $varValue;
+            }
+
+            // Events that exist already keep their state if the imported events are not published
+            if ($publish) {
+                $objEvent->published = true;
+            } elseif ($isNew) {
+                $objEvent->published = false;
+            }
+
+            $objEvent->author = BackendUser::getInstance()->id ?? 0;
+
+            /** @var Pc|bool|null $dtstart */
+            $dtstart = $vevent->getDtstart(true);
+            /** @var Pc|bool|null $dtend */
+            $dtend = $vevent->getDtend(true);
+
+            $rrule = $vevent->getRrule();
+            $summary = $vevent->getSummary() ?: '---';
+            if (!empty($filterEventTitle) && !str_contains(mb_strtolower($summary), mb_strtolower($filterEventTitle))) {
+                continue;
+            }
+            $description = $vevent->getDescription() ?: '';
+            $location = trim($vevent->getLocation() ?: '');
+
+            $title = $this->rewriteTitle($summary, $patternEventTitle, $replacementEventTitle);
+
+            // set values from vevent
+            $objEvent->title = $this->encodeImportedText(!empty($title) ? $title : $summary);
+            $cleanedup = $this->encodeImportedText(\strlen($description) ? $description : $summary);
+            $cleanedup = preg_replace('/[\\r](\\\\)n(\\t){0,1}/ims', '', $cleanedup);
+            $cleanedup = preg_replace('/[\\r\\n]/ims', '', (string) $cleanedup);
+            $cleanedup = str_replace('\\n', '<br />', (string) $cleanedup);
+            $eventcontent = [];
+
+            if (\strlen($cleanedup)) {
+                $eventcontent[] = '<p>'.$cleanedup.'</p>';
+            }
+
+            // calendar_events_plus fields
+            if (!empty($location)) {
+                $location = $this->encodeImportedText($location);
+
+                if (\in_array('location', $fieldNames, true)) {
+                    $location = preg_replace('/(\\\\r)|(\\\\n)/im', "\n", $location);
+                    $objEvent->location = $location;
                 } else {
-                    $objEvent = new CalendarEventsModel();
-                    $objEvent->ical_uuid = $uid;
+                    $location = preg_replace('/(\\\\r)|(\\\\n)/im', '<br />', $location);
+                    $eventcontent[] = '<p><strong>'.$GLOBALS['TL_LANG']['MSC']['location'].':</strong> '.$location.'</p>';
                 }
+            }
 
-                $beforeEvent = $this->eventDispatcher->dispatch(new BeforeImportItemEvent(
-                    $objEvent,
-                    $vevent,
-                    $objCalendar,
-                ));
+            if (\in_array('cep_participants', $fieldNames, true) && \is_array($vevent->getAllAttendee())) {
+                $attendees = [];
 
-                if ($beforeEvent->skip) {
-                    continue;
-                }
-
-                $isNew = null === $objEvent->id;
-                $objEvent->tstamp = time();
-                $objEvent->pid = $objCalendar->id;
-
-                foreach ($defaultFields as $field => $value) {
-                    $varValue = $value['default'];
-                    if ($varValue instanceof \Closure) {
-                        $varValue = $varValue();
-                    }
-                    $objEvent->{$field} = $varValue;
-                }
-
-                // Events that exist already keep their state if the imported events are not published
-                if ($publish) {
-                    $objEvent->published = true;
-                } elseif ($isNew) {
-                    $objEvent->published = false;
-                }
-
-                $objEvent->author = BackendUser::getInstance()->id ?? 0;
-
-                /** @var Pc|bool|null $dtstart */
-                $dtstart = $vevent->getDtstart(true);
-                /** @var Pc|bool|null $dtend */
-                $dtend = $vevent->getDtend(true);
-
-                $rrule = $vevent->getRrule();
-                $summary = $vevent->getSummary() ?: '---';
-                if (!empty($filterEventTitle) && !str_contains(mb_strtolower($summary), mb_strtolower($filterEventTitle))) {
-                    continue;
-                }
-                $description = $vevent->getDescription() ?: '';
-                $location = trim($vevent->getLocation() ?: '');
-
-                $title = $this->rewriteTitle($summary, $patternEventTitle, $replacementEventTitle);
-
-                // set values from vevent
-                $objEvent->title = $this->encodeImportedText(!empty($title) ? $title : $summary);
-                $cleanedup = $this->encodeImportedText(\strlen($description) ? $description : $summary);
-                $cleanedup = preg_replace('/[\\r](\\\\)n(\\t){0,1}/ims', '', $cleanedup);
-                $cleanedup = preg_replace('/[\\r\\n]/ims', '', (string) $cleanedup);
-                $cleanedup = str_replace('\\n', '<br />', (string) $cleanedup);
-                $eventcontent = [];
-
-                if (\strlen($cleanedup)) {
-                    $eventcontent[] = '<p>'.$cleanedup.'</p>';
-                }
-
-                // calendar_events_plus fields
-                if (!empty($location)) {
-                    $location = $this->encodeImportedText($location);
-
-                    if (\in_array('location', $fieldNames, true)) {
-                        $location = preg_replace('/(\\\\r)|(\\\\n)/im', "\n", $location);
-                        $objEvent->location = $location;
-                    } else {
-                        $location = preg_replace('/(\\\\r)|(\\\\n)/im', '<br />', $location);
-                        $eventcontent[] = '<p><strong>'.$GLOBALS['TL_LANG']['MSC']['location'].':</strong> '.$location.'</p>';
+                foreach ($vevent->getAllAttendee() as $attendee) {
+                    if (!empty($attendee->getParams('CN'))) {
+                        $attendees[] = $this->encodeImportedText((string) $attendee->getParams('CN'));
                     }
                 }
 
-                if (\in_array('cep_participants', $fieldNames, true) && \is_array($vevent->getAllAttendee())) {
-                    $attendees = [];
-
-                    foreach ($vevent->getAllAttendee() as $attendee) {
-                        if (!empty($attendee->getParams('CN'))) {
-                            $attendees[] = $this->encodeImportedText((string) $attendee->getParams('CN'));
-                        }
-                    }
-
-                    if (!empty($attendees)) {
-                        $objEvent->cep_participants = implode(',', $attendees);
-                    }
+                if (!empty($attendees)) {
+                    $objEvent->cep_participants = implode(',', $attendees);
                 }
+            }
 
-                if (\in_array('location_contact', $fieldNames, true)) {
-                    $contact = $vevent->getAllContact();
-                    $contacts = [];
+            if (\in_array('location_contact', $fieldNames, true)) {
+                $contact = $vevent->getAllContact();
+                $contacts = [];
 
-                    foreach ($contact as $c) {
-                        if (!empty($c->getValue())) {
-                            $contacts[] = $this->encodeImportedText((string) $c->getValue());
-                        }
-                    }
-                    if (!empty($contacts)) {
-                        $objEvent->location_contact = implode(',', $contacts);
+                foreach ($contact as $c) {
+                    if (!empty($c->getValue())) {
+                        $contacts[] = $this->encodeImportedText((string) $c->getValue());
                     }
                 }
+                if (!empty($contacts)) {
+                    $objEvent->location_contact = implode(',', $contacts);
+                }
+            }
 
-                $objEvent->startDate = null;
-                $objEvent->startTime = null;
-                $objEvent->addTime = false;
-                $objEvent->endDate = null;
-                $objEvent->endTime = null;
-                $timezone = $tz[1];
+            $objEvent->startDate = null;
+            $objEvent->startTime = null;
+            $objEvent->addTime = false;
+            $objEvent->endDate = null;
+            $objEvent->endTime = null;
+            $timezone = $tz[1];
 
-                if (!empty($dtstart)) {
-                    [$sDate, $timezone] = $this->getDateFromPc($dtstart, $tz[1]);
+            if (!empty($dtstart)) {
+                [$sDate, $timezone] = $this->getDateFromPc($dtstart, $tz[1]);
 
-                    if (!$dtstart->hasParamValue(IcalInterface::DATE)) {
-                        $objEvent->addTime = true;
-                    } else {
-                        $objEvent->addTime = false;
+                if (!$dtstart->hasParamValue(IcalInterface::DATE)) {
+                    $objEvent->addTime = true;
+                } else {
+                    $objEvent->addTime = false;
+                }
+                $objEvent->startDate = $sDate->getTimestamp();
+                $objEvent->startTime = $sDate->getTimestamp();
+            }
+            if (!empty($dtend)) {
+                [$eDate, $timezone] = $this->getDateFromPc($dtend, $tz[1]);
+
+                [$objEvent->endDate, $objEvent->endTime] = $this->getEndTimestamps($eDate, (bool) $objEvent->addTime);
+            }
+
+            if (0 !== $timeshift) {
+                $objEvent->startDate += $timeshift * 3600;
+                $objEvent->endDate += $timeshift * 3600;
+                $objEvent->startTime += $timeshift * 3600;
+                $objEvent->endTime += $timeshift * 3600;
+            }
+
+            if (\is_array($rrule)) {
+                if (
+                    \array_key_exists('BYDAY', $rrule)
+                    && \is_array($rrule['BYDAY'])
+                    && \array_key_exists(0, $rrule['BYDAY'][0])
+                    && \array_key_exists('DAY', $rrule['BYDAY'][0])
+                    && \in_array('recurringExt', $fieldNames, true)
+                ) {
+                    $objEvent->recurringExt = true;
+                    $objEvent->recurring = false;
+
+                    $rruleByDay = $rrule['BYDAY'][0];
+
+                    $repeatEachExt = [];
+                    $repeatEachExt['value'] = match ($rruleByDay[0]) {
+                        1 => 'first',
+                        2 => 'second',
+                        3 => 'third',
+                        4 => 'fourth',
+                        5 => 'fifth',
+                        default => 'last',
+                    };
+
+                    $repeatEachExt['unit'] = match ($rruleByDay['DAY']) {
+                        'MO' => 'monday',
+                        'TU' => 'tuesday',
+                        'WE' => 'wednesday',
+                        'TH' => 'thursday',
+                        'FR' => 'friday',
+                        'SA' => 'saturday',
+                        default => 'sunday',
+                    };
+
+                    $objEvent->repeatEachExt = serialize($repeatEachExt);
+                    $repeatEndEach = $repeatEachExt;
+                    $repeatEndExtended = true;
+                } else {
+                    $objEvent->recurring = true;
+                    if (\in_array('recurringExt', $fieldNames, true)) {
+                        $objEvent->recurringExt = false;
                     }
-                    $objEvent->startDate = $sDate->getTimestamp();
-                    $objEvent->startTime = $sDate->getTimestamp();
-                }
-                if (!empty($dtend)) {
-                    [$eDate, $timezone] = $this->getDateFromPc($dtend, $tz[1]);
+                    $repeatEach = [];
 
-                    [$objEvent->endDate, $objEvent->endTime] = $this->getEndTimestamps($eDate, (bool) $objEvent->addTime);
-                }
+                    switch ($rrule['FREQ']) {
+                        case 'DAILY':
+                            $repeatEach['unit'] = 'days';
+                            break;
+                        case 'WEEKLY':
+                            $repeatEach['unit'] = 'weeks';
+                            break;
+                        case 'MONTHLY':
+                            $repeatEach['unit'] = 'months';
+                            break;
+                        case 'YEARLY':
+                            $repeatEach['unit'] = 'years';
+                            break;
+                    }
 
-                if (0 !== $timeshift) {
-                    $objEvent->startDate += $timeshift * 3600;
-                    $objEvent->endDate += $timeshift * 3600;
-                    $objEvent->startTime += $timeshift * 3600;
-                    $objEvent->endTime += $timeshift * 3600;
-                }
-
-                if (\is_array($rrule)) {
                     if (
                         \array_key_exists('BYDAY', $rrule)
                         && \is_array($rrule['BYDAY'])
-                        && \array_key_exists(0, $rrule['BYDAY'][0])
-                        && \array_key_exists('DAY', $rrule['BYDAY'][0])
-                        && \in_array('recurringExt', $fieldNames, true)
+                        && \in_array('repeatWeekday', $fieldNames, true)
                     ) {
-                        $objEvent->recurringExt = true;
-                        $objEvent->recurring = false;
+                        $weekdays = ['MO' => 1, 'TU' => 2, 'WE' => 3, 'TH' => 4, 'FR' => 5, 'SA' => 6, 'SU' => 0];
+                        $mapWeekdays = static fn (array $value): int|null => \array_key_exists('DAY', $value)
+                            ? $weekdays[$value['DAY']] ?? null
+                            : null;
+                        $objEvent->repeatWeekday = serialize(array_map($mapWeekdays, $rrule['BYDAY']));
+                    }
 
-                        $rruleByDay = $rrule['BYDAY'][0];
-
-                        $repeatEachExt = [];
-                        $repeatEachExt['value'] = match ($rruleByDay[0]) {
-                            1 => 'first',
-                            2 => 'second',
-                            3 => 'third',
-                            4 => 'fourth',
-                            5 => 'fifth',
-                            default => 'last',
-                        };
-
-                        $repeatEachExt['unit'] = match ($rruleByDay['DAY']) {
-                            'MO' => 'monday',
-                            'TU' => 'tuesday',
-                            'WE' => 'wednesday',
-                            'TH' => 'thursday',
-                            'FR' => 'friday',
-                            'SA' => 'saturday',
-                            default => 'sunday',
-                        };
-
-                        $objEvent->repeatEachExt = serialize($repeatEachExt);
-                        $repeatEndEach = $repeatEachExt;
-                        $repeatEndExtended = true;
+                    if (\array_key_exists('BYMONTHDAY', $rrule) && !\array_key_exists('INTERVAL', $rrule)) {
+                        $repeatEach['value'] = 1;
                     } else {
-                        $objEvent->recurring = true;
-                        if (\in_array('recurringExt', $fieldNames, true)) {
-                            $objEvent->recurringExt = false;
-                        }
-                        $repeatEach = [];
-
-                        switch ($rrule['FREQ']) {
-                            case 'DAILY':
-                                $repeatEach['unit'] = 'days';
-                                break;
-                            case 'WEEKLY':
-                                $repeatEach['unit'] = 'weeks';
-                                break;
-                            case 'MONTHLY':
-                                $repeatEach['unit'] = 'months';
-                                break;
-                            case 'YEARLY':
-                                $repeatEach['unit'] = 'years';
-                                break;
-                        }
-
-                        if (
-                            \array_key_exists('BYDAY', $rrule)
-                            && \is_array($rrule['BYDAY'])
-                            && \in_array('repeatWeekday', $fieldNames, true)
-                        ) {
-                            $weekdays = ['MO' => 1, 'TU' => 2, 'WE' => 3, 'TH' => 4, 'FR' => 5, 'SA' => 6, 'SU' => 0];
-                            $mapWeekdays = static fn (array $value): int|null => \array_key_exists('DAY', $value)
-                                ? $weekdays[$value['DAY']] ?? null
-                                : null;
-                            $objEvent->repeatWeekday = serialize(array_map($mapWeekdays, $rrule['BYDAY']));
-                        }
-
-                        if (\array_key_exists('BYMONTHDAY', $rrule) && !\array_key_exists('INTERVAL', $rrule)) {
-                            $repeatEach['value'] = 1;
-                        } else {
-                            $repeatEach['value'] = $rrule['INTERVAL'] ?? 1;
-                        }
-                        $objEvent->repeatEach = serialize($repeatEach);
-                        $repeatEndEach = $repeatEach;
-                        $repeatEndExtended = false;
+                        $repeatEach['value'] = $rrule['INTERVAL'] ?? 1;
                     }
-
-                    // UNTIL is a UTC time, except for date values and floating times where it is a local time, too
-                    $untilIsLocal = !empty($dtstart) && $this->isWithoutTimezone($dtstart);
-
-                    $this->applyRecurrenceEnd($objEvent, $rrule, $repeatEndEach, $timezone, $timeshift, $repeatEndExtended, $untilIsLocal);
+                    $objEvent->repeatEach = serialize($repeatEach);
+                    $repeatEndEach = $repeatEach;
+                    $repeatEndExtended = false;
                 }
-                $this->handleRecurringExceptions($objEvent, $fieldNames, $vevent, $timezone, $timeshift);
 
-                $foundevents[$uid] ??= 0;
-                ++$foundevents[$uid];
+                // UNTIL is a UTC time, except for date values and floating times where it is a local time, too
+                $untilIsLocal = !empty($dtstart) && $this->isWithoutTimezone($dtstart);
 
-                if ($foundevents[$uid] <= 1) {
-                    if ('' === $objEvent->singleSRC) {
-                        $objEvent->singleSRC = null;
-                    }
-
-                    $objEvent = $objEvent->save();
-                    if (!empty($eventcontent)) {
-                        $this->addEventContent($objEvent, $eventcontent);
-                    }
-
-                    $this->generateAlias($objEvent);
-
-                    $this->eventDispatcher->dispatch(new AfterImportItemEvent(
-                        $objEvent,
-                        $vevent,
-                        $objCalendar,
-                    ));
-                }
+                $this->applyRecurrenceEnd($objEvent, $rrule, $repeatEndEach, $timezone, $timeshift, $repeatEndExtended, $untilIsLocal);
             }
+            $this->handleRecurringExceptions($objEvent, $fieldNames, $vevent, $timezone, $timeshift, $overrides);
+
+            if ('' === $objEvent->singleSRC) {
+                $objEvent->singleSRC = null;
+            }
+
+            $objEvent = $objEvent->save();
+            if (!empty($eventcontent)) {
+                $this->addEventContent($objEvent, $eventcontent);
+            }
+
+            $this->generateAlias($objEvent);
+
+            $this->eventDispatcher->dispatch(new AfterImportItemEvent(
+                $objEvent,
+                $vevent,
+                $objCalendar,
+            ));
         }
 
         if ($deleteCalendar) {
@@ -902,12 +897,89 @@ class IcsImport extends AbstractImport
     }
 
     /**
-     * @param array<mixed> $fieldNames
-     * @param Vevent       $vevent
-     * @param string       $timezone
-     * @param int          $timeshift
+     * Collects the events to import: one per UID (the selection of the period never contains events with a
+     * RECURRENCE-ID) plus their overrides. An override changes a single recurrence of a recurring event.
+     * With the exceptions of the calendar-extended-bundle it is added to the event as a "move" exception.
+     * Otherwise (or if the event of the override is not part of the period) it is imported as an event of its own,
+     * identified by UID and RECURRENCE-ID.
+     *
+     * @param list<Vevent> $events The events of the period
+     *
+     * @return array<string, array{0: Vevent, 1: list<Vevent>}> The event and its overrides by the key of the event
+     *
+     * @throws \Exception
      */
-    private function handleRecurringExceptions(CalendarEventsModel $objEvent, array $fieldNames, $vevent, $timezone, $timeshift): void
+    private function collectComponents(Vcalendar $cal, array $events, Date $startDate, Date $endDate, string $timezone, bool $supportsExceptions): array
+    {
+        $items = [];
+
+        foreach ($events as $vevent) {
+            $items[(string) $vevent->getUid()] = [$vevent, []];
+        }
+
+        $overrides = [];
+
+        foreach ($cal->getComponents(IcalInterface::VEVENT) as $component) {
+            if (!$component instanceof Vevent) {
+                continue;
+            }
+
+            if (false !== $component->getRecurrenceid(true)) {
+                $overrides[] = $component;
+            }
+        }
+
+        foreach ($overrides as $override) {
+            $uid = (string) $override->getUid();
+
+            if ($supportsExceptions && isset($items[$uid])) {
+                $items[$uid][1][] = $override;
+
+                continue;
+            }
+
+            if ('CANCELLED' === $override->getStatus() || !$this->isInPeriod($override, $startDate, $endDate, $timezone)) {
+                continue;
+            }
+
+            $recurrenceId = $override->getRecurrenceid(true);
+            $key = $uid.'#'.\DateTimeImmutable::createFromInterface($recurrenceId->getValue())->setTimezone(new \DateTimeZone('UTC'))->format('Ymd\THis');
+
+            // The key is stored in a column of 255 characters
+            $items[\strlen($key) > 255 ? substr($uid, 0, 200).'#'.md5($key) : $key] = [$override, []];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @throws \Exception
+     */
+    private function isInPeriod(Vevent $vevent, Date $startDate, Date $endDate, string $timezone): bool
+    {
+        $dtstart = $vevent->getDtstart(true);
+
+        if (!$dtstart instanceof Pc) {
+            return false;
+        }
+
+        $dtend = $vevent->getDtend(true);
+        $start = $this->getDateFromPc($dtstart, $timezone)[0]->getTimestamp();
+        $end = $dtend instanceof Pc ? $this->getDateFromPc($dtend, $timezone)[0]->getTimestamp() : $start;
+
+        $from = (int) strtotime(date('Y-m-d', (int) $startDate->tstamp).' 00:00:00');
+        $to = (int) strtotime(date('Y-m-d', (int) $endDate->tstamp).' 23:59:59');
+
+        return $start <= $to && $end >= $from;
+    }
+
+    /**
+     * @param array<mixed> $fieldNames
+     * @param list<Vevent> $overrides  The events that change a single recurrence of the event
+     *
+     * @throws \Exception
+     */
+    private function handleRecurringExceptions(CalendarEventsModel $objEvent, array $fieldNames, Vevent $vevent, string $timezone, int $timeshift, array $overrides = []): void
     {
         if (
             !\in_array('useExceptions', $fieldNames, true)
@@ -923,23 +995,36 @@ class IcsImport extends AbstractImport
 
         $exDates = [];
 
-        while (false !== ($exDateRow = $vevent->getExdate())) {
-            foreach ($exDateRow as $exDate) {
-                if ($exDate instanceof \DateTime) {
-                    // convert UNTIL date to current timezone
+        // getAllExdate() fails for an event that never had an EXDATE
+        foreach (false === $vevent->getExdate() ? [] : $vevent->getAllExdate(true) as $exDateRow) {
+            // Dates and floating times are local times; all others (UTC or with a time zone) are exact points in time
+            $isLocal = $this->isWithoutTimezone($exDateRow);
+
+            foreach ((array) $exDateRow->getValue() as $exDate) {
+                if (!$exDate instanceof \DateTimeInterface) {
+                    continue;
+                }
+
+                if ($isLocal) {
                     $exDate = new \DateTime(
                         $exDate->format(DateTimeFactory::$YmdHis),
                         DateTimeZoneFactory::factory($timezone),
                     );
-                    $timestamp = $exDate->getTimestamp();
-                    if (0 !== $timeshift) {
-                        $timestamp += $timeshift * 3600;
-                    }
-                    $exDates[$timestamp] = [
-                        'exception' => $timestamp,
-                        'action' => 'hide',
-                    ];
                 }
+
+                $timestamp = $exDate->getTimestamp() + $timeshift * 3600;
+                $exDates[$timestamp] = [
+                    'exception' => $timestamp,
+                    'action' => 'hide',
+                ];
+            }
+        }
+
+        foreach ($overrides as $override) {
+            $exception = $this->createException($objEvent, $override, $timezone, $timeshift);
+
+            if (null !== $exception) {
+                $exDates[$exception['exception']] = $exception;
             }
         }
 
@@ -951,6 +1036,53 @@ class IcsImport extends AbstractImport
         ksort($exDates);
         $objEvent->exceptionList = $exDates;
         $objEvent->repeatExceptions = array_values($exDates);
+    }
+
+    /**
+     * Creates the exception of the calendar-extended-bundle for an override: a cancelled recurrence is hidden,
+     * a changed one is moved by a number of days (and gets new times if they differ).
+     *
+     * @return array<string, mixed>|null Null if the override does not change the recurrence
+     *
+     * @throws \Exception
+     */
+    private function createException(CalendarEventsModel $objEvent, Vevent $override, string $timezone, int $timeshift): array|null
+    {
+        $recurrenceId = $override->getRecurrenceid(true);
+        $dtstart = $override->getDtstart(true);
+
+        if (!$recurrenceId instanceof Pc || !$dtstart instanceof Pc) {
+            return null;
+        }
+
+        $zone = DateTimeZoneFactory::factory($timezone);
+        $original = \DateTimeImmutable::createFromInterface($this->getDateFromPc($recurrenceId, $timezone)[0])->setTimezone($zone);
+        $exception = ['exception' => $original->getTimestamp() + $timeshift * 3600];
+
+        if ('CANCELLED' === $override->getStatus()) {
+            return $exception + ['action' => 'hide'];
+        }
+
+        $start = \DateTimeImmutable::createFromInterface($this->getDateFromPc($dtstart, $timezone)[0])->setTimezone($zone);
+        $shift = $timeshift * 3600;
+        $dtend = $override->getDtend(true);
+        $duration = max(0, (int) $objEvent->endTime - (int) $objEvent->startTime);
+        $end = $dtend instanceof Pc
+            ? \DateTimeImmutable::createFromInterface($this->getDateFromPc($dtend, $timezone)[0])->setTimezone($zone)
+            : $start->modify('+'.$duration.' seconds');
+
+        $days = (int) $original->setTime(0, 0)->diff($start->setTime(0, 0))->format('%r%a');
+        $exception += ['action' => 'move', 'new_exception' => \sprintf('%+d days', $days)];
+
+        // Different times need to be given explicitly, otherwise the time of the recurrence is kept
+        if (
+            !empty($objEvent->addTime)
+            && ($original->format('H:i') !== $start->format('H:i') || $end->getTimestamp() - $start->getTimestamp() !== $duration)
+        ) {
+            $exception += ['new_start' => $start->modify($shift.' seconds')->format('H:i'), 'new_end' => $end->modify($shift.' seconds')->format('H:i')];
+        }
+
+        return 0 === $days && !isset($exception['new_start']) ? null : $exception;
     }
 
     /**
