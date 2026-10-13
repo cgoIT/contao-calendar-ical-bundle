@@ -171,6 +171,14 @@ final class IcsExportTest extends ContaoTestCase
         $this->assertStringContainsString('LOCATION:Town hall & garden', $ics);
     }
 
+    public function testCalendarNameAndDescriptionAreDecoded(): void
+    {
+        $ics = $this->export->getVcalendar([], 0, 0, 'Tom &amp; Jerry&#039;s &#92;&#92; Club', 'Cats &amp; mice')->createCalendar();
+
+        $this->assertStringContainsString("X-WR-CALNAME:Tom & Jerry's \\\\ Club", $ics);
+        $this->assertStringContainsString('X-WR-CALDESC:Cats & mice', $ics);
+    }
+
     public function testCalendarPrefixIsPrependedToSummary(): void
     {
         $this->createCalendar(2, ['title' => 'With prefix', 'ical_prefix' => '[Club]']);

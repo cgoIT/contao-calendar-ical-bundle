@@ -74,7 +74,7 @@ $GLOBALS['TL_DCA']['tl_calendar']['fields']['ical_prefix'] = [
     'exclude' => true,
     'search' => true,
     'inputType' => 'text',
-    'eval' => ['maxlength' => 128, 'tl_class' => 'w50'],
+    'eval' => ['maxlength' => 128, 'decodeEntities' => true, 'tl_class' => 'w50'],
     'sql' => ['type' => 'string', 'length' => 128, 'default' => ''],
 ];
 

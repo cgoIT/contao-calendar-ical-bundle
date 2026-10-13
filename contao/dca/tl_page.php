@@ -26,7 +26,7 @@ $GLOBALS['TL_DCA']['tl_page']['fields']['ical_title'] = [
     'exclude' => true,
     'search' => true,
     'inputType' => 'text',
-    'eval' => ['mandatory' => true, 'maxlength' => 255, 'tl_class' => 'w50 clr'],
+    'eval' => ['mandatory' => true, 'maxlength' => 255, 'decodeEntities' => true, 'tl_class' => 'w50 clr'],
     'sql' => ['type' => 'text', 'length' => 1000, 'notnull' => false],
 ];
 
@@ -42,7 +42,7 @@ $GLOBALS['TL_DCA']['tl_page']['fields']['ical_prefix'] = [
     'exclude' => true,
     'search' => true,
     'inputType' => 'text',
-    'eval' => ['maxlength' => 128, 'tl_class' => 'w50 clr'],
+    'eval' => ['maxlength' => 128, 'decodeEntities' => true, 'tl_class' => 'w50 clr'],
     'sql' => ['type' => 'text', 'length' => 1000, 'notnull' => false],
 ];
 

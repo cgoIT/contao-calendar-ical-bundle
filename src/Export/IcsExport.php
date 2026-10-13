@@ -92,8 +92,9 @@ class IcsExport
 
         $ical = new Vcalendar();
         $ical->setMethod(IcalInterface::PUBLISH);
-        $ical->setXprop(IcalInterface::X_WR_CALNAME, $title ?? $firstCalendar->title ?? '');
-        $ical->setXprop(IcalInterface::X_WR_CALDESC, $description ?? $firstCalendar->ical_description ?? '');
+        // Titles are stored HTML-encoded by Contao
+        $ical->setXprop(IcalInterface::X_WR_CALNAME, StringUtil::decodeEntities($title ?? $firstCalendar->title ?? ''));
+        $ical->setXprop(IcalInterface::X_WR_CALDESC, StringUtil::decodeEntities($description ?? $firstCalendar->ical_description ?? ''));
         $ical->setXprop(IcalInterface::X_WR_TIMEZONE, Config::get('timeZone'));
 
         if (!empty($arrCalendars)) {
