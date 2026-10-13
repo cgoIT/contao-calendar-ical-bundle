@@ -52,7 +52,7 @@ class CsvImport extends AbstractImport
 
         foreach (['title', 'startTime', 'endTime', 'startDate', 'endDate', 'details', 'teaser', 'location', 'cep_participants', 'location_contact'] as $name) {
             // The last three fields exist only if the corresponding bundles are installed
-            if (\in_array($name, ['location', 'cep_participants', 'location_contact'], true) && !\in_array($name, $columns, true)) {
+            if (\in_array($name, ['location', 'cep_participants', 'location_contact'], true) && (!\in_array($name, $columns, true) || !isset($GLOBALS['TL_DCA']['tl_calendar_events']['fields'][$name]))) {
                 continue;
             }
 

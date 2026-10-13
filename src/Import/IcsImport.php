@@ -264,7 +264,8 @@ class IcsImport extends AbstractImport
         $fieldNames = [];
 
         foreach ($fields as $field) {
-            if ('id' !== $field->getName()) {
+            // The columns of an uninstalled extension remain in the database; only fields of the DCA are in use
+            if ('id' !== $field->getName() && isset($GLOBALS['TL_DCA']['tl_calendar_events']['fields'][$field->getName()])) {
                 $fieldNames[] = $field->getName();
             }
         }
