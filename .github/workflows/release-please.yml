@@ -1,7 +1,7 @@
 on:
     push:
         branches:
-            - main
+            - 5.x
 name: release-please
 permissions:
     contents: write
@@ -15,7 +15,7 @@ jobs:
               with:
                   release-type: php
                   package-name: cgoit/contao-calendar-ical-bundle
-                  default-branch: main
+                  target-branch: 5.x
                   token: ${{secrets.GITHUB_TOKEN}}
                   bump-minor-pre-major: true
                   bump-patch-for-minor-pre-major: true
